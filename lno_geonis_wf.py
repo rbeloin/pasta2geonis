@@ -1,20 +1,29 @@
 '''
 Created on Jan 14, 2013
-
+@contact: https://github.com/rbeloin/pasta2geonis
 @author: ron beloin
+@copyright: 2013 LTER Network Office, University of New Mexico 
 '''
 from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class ArcpyTool:
+    """
+    Arcgis 10.1 allows creating toolboxes containing tools to be created
+    completely in python. Each tool must follow a template, therefore this
+    abstract class enforces the template so that subclasses will appear as
+    properly written python tools, usable in the GUI or anywhere a toolbox
+    tool can be used.
+    """
     __metaclass__ = ABCMeta
-    def __init__(self):
-        self.canRunInBackground = False
+    @property
+    def canRunInBackground(self):
+        return False
     
     def isLicensed(self):
         """Set whether tool is licensed to execute."""
         return True
-    
+    # the following properties and methods must be implemented by the subclass
     @abstractproperty
     def description(self):
         pass
@@ -81,12 +90,14 @@ class testtool(ArcpyTool):
         return (len(parameters), len(messages))
     
     
-def main():
+def quicktest():
     mytest = testtool()
+    print mytest.canRunInBackground
+    print mytest.isLicensed()
     print mytest.label
     print mytest.description
     print mytest.execute([], [])
     
 if __name__ == '__main__':
-    main()
+    quicktest()
     
