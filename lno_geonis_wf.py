@@ -1,8 +1,12 @@
 '''
+
 Created on Jan 14, 2013
-@contact: https://github.com/rbeloin/pasta2geonis
+
+@change: https://github.com/rbeloin/pasta2geonis
+
 @author: ron beloin
 @copyright: 2013 LTER Network Office, University of New Mexico 
+@see https://nis.lternet.edu/NIS/
 '''
 from abc import ABCMeta, abstractmethod, abstractproperty
 
@@ -77,7 +81,7 @@ class testtool(ArcpyTool):
         return "test description property"
     
     def getParameterInfo(self):
-        params = None
+        params = []
         return params
 
     def updateParameters(self, parameters):
@@ -96,6 +100,7 @@ def quicktest():
     print mytest.isLicensed()
     print mytest.label
     print mytest.description
+    print mytest.getParameterInfo()
     print mytest.execute([], [])
     
 if __name__ == '__main__':
