@@ -8,12 +8,13 @@ Created on Jan 14, 2013
 @copyright: 2013 LTER Network Office, University of New Mexico 
 @see https://nis.lternet.edu/NIS/
 '''
+import sys, arcpy
 from lno_geonis_base import ArcpyTool
 
 
 class testtool(ArcpyTool):
     def __init__(self):
-        pass
+        pass    
         
     @property
     def label(self):
@@ -25,7 +26,7 @@ class testtool(ArcpyTool):
     
     @property
     def description(self):
-        return "test description property or testtool, the original"
+        return "test description property of testtool, the original"
     
     def getParameterInfo(self):
         params = []
@@ -38,9 +39,12 @@ class testtool(ArcpyTool):
         return
 
     def execute(self, parameters, messages):
-        print("params: " + str(len(parameters)) + ", messages: " + str(len(messages)))
-        #messages.addMessage("test 1 done");
+        if(self.isRunningAsTool):
+            messages.AddMessage("this message brought to you via message object pass in")
+        else:
+            arcpy.AddMessage("this message brought to you via arcpy")            
         return
+
     
 class test2tool(ArcpyTool):
     def __init__(self):
@@ -72,9 +76,12 @@ class test2tool(ArcpyTool):
         print("params: " + str(len(parameters)) + ", messages: " + str(len(messages)))
         #messages.addMessage("test 2 done");
         return
-        
+ 
+
 def quicktest():
+    #testtool.runAsToolboxTool()
     mytest = testtool()
+    print mytest.isRunningAsTool
     print mytest.canRunInBackground
     print mytest.isLicensed()
     print mytest.label

@@ -20,6 +20,18 @@ class ArcpyTool:
     tool can be used.
     """
     __metaclass__ = ABCMeta
+    
+    #class level var
+    isRunningAsTool = False
+    
+    @classmethod
+    def runAsToolboxTool(cls):
+        cls.isRunningAsTool = True
+        
+    @classmethod
+    def isArcpyTool():
+        return True
+    
     @property
     def canRunInBackground(self):
         return False
