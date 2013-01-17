@@ -8,7 +8,9 @@ Created on Jan 14, 2013
 @copyright: 2013 LTER Network Office, University of New Mexico 
 @see https://nis.lternet.edu/NIS/
 '''
-import sys, arcpy
+import sys, os
+import arcpy
+
 from lno_geonis_base import ArcpyTool
 from lno_geonis_base import getListofCommonInputs, updateParametersCommon
 

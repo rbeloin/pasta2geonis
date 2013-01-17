@@ -7,7 +7,7 @@ Created on Jan 15, 2013
 @copyright: 2013 LTER Network Office, University of New Mexico 
 @see https://nis.lternet.edu/NIS/
 '''
-
+import arcpy
 from abc import ABCMeta, abstractmethod, abstractproperty
 from arcpy import Parameter
 
