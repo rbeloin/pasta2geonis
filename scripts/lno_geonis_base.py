@@ -89,14 +89,14 @@ def getListofCommonInputs():
                       datatype = 'Folder',
                       direction = 'Input',
                       parameterType = 'Optional')]
-    commonparams[1].value = r"C:\temp\geonislogs";
+    #commonparams[1].value = r"C:\temp\geonislogs";
     return commonparams
     
 def updateParametersCommon(parameters):
     """ set a default log file path """
     logpath = [p for p in parameters if p.name == 'logfilepath']
     if len(logpath) == 1:
-        pass
+        pass # esri already checks for existence of folder
     return
 
 
