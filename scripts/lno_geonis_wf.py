@@ -10,6 +10,7 @@ Created on Jan 14, 2013
 '''
 import sys, arcpy
 from lno_geonis_base import ArcpyTool
+from lno_geonis_base import getListofCommonInputs, updateParametersCommon
 
 
 class testtool(ArcpyTool):
@@ -29,10 +30,11 @@ class testtool(ArcpyTool):
         return "test description property of testtool, the original"
     
     def getParameterInfo(self):
-        params = []
+        params = getListofCommonInputs()
         return params
 
     def updateParameters(self, parameters):
+        updateParametersCommon(parameters)
         return
 
     def updateMessages(self, parameters):
@@ -63,7 +65,7 @@ class test2tool(ArcpyTool):
         return "this is test 2 tool with changes"
     
     def getParameterInfo(self):
-        params = []
+        params = getListofCommonInputs()
         return params
 
     def updateParameters(self, parameters):
@@ -73,8 +75,10 @@ class test2tool(ArcpyTool):
         return
 
     def execute(self, parameters, messages):
-        print("params: " + str(len(parameters)) + ", messages: " + str(len(messages)))
-        #messages.addMessage("test 2 done");
+        if(self.isRunningAsTool):
+            messages.AddMessage("this message brought to you via message object pass in")
+        else:
+            arcpy.AddMessage("this message brought to you via arcpy")            
         return
  
 

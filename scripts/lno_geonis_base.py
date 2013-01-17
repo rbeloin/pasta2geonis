@@ -9,6 +9,7 @@ Created on Jan 15, 2013
 '''
 
 from abc import ABCMeta, abstractmethod, abstractproperty
+from arcpy import Parameter
 
 
 class ArcpyTool:
@@ -75,4 +76,28 @@ class ArcpyTool:
         """The source code of the tool."""
         return
     
+def getListofCommonInputs():
+    commonparams = [Parameter(
+                      displayName = 'Verbose',
+                      name = 'msgs_on',
+                      datatype = 'Boolean',
+                      direction = 'Input',
+                      parameterType = 'Optional'),
+                    Parameter(
+                      displayName = 'Log file location',
+                      name = 'logfilepath',
+                      datatype = 'Folder',
+                      direction = 'Input',
+                      parameterType = 'Optional')]
+    commonparams[1].value = r"C:\temp\geonislogs";
+    return commonparams
+    
+def updateParametersCommon(parameters):
+    """ set a default log file path """
+    logpath = [p for p in parameters if p.name == 'logfilepath']
+    if len(logpath) == 1:
+        pass
+    return
+
+
     
