@@ -14,15 +14,4 @@
 	<natures>
 		<nature>org.python.pydev.pythonNature</nature>
 	</natures>
-	<filteredResources>
-		<filter>
-			<id>1358386313449</id>
-			<name></name>
-			<type>6</type>
-			<matcher>
-				<id>org.eclipse.ui.ide.multiFilter</id>
-				<arguments>1.0-name-matches-true-false-.DS_Store</arguments>
-			</matcher>
-		</filter>
-	</filteredResources>
 </projectDescription>

@@ -15,6 +15,7 @@ from lno_geonis_base import ArcpyTool
 from lno_geonis_base import getListofCommonInputs, updateParametersCommon
 
 
+
 class testtool(ArcpyTool):
     def __init__(self):
         pass    
