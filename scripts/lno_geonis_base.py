@@ -9,8 +9,12 @@ Created on Jan 15, 2013
 '''
 import sys, os
 import arcpy
+
 from abc import ABCMeta, abstractmethod, abstractproperty
 from arcpy import Parameter
+
+ #set the default value for the verbose switch for each tool. Verbose forces DEBUG logging
+defaultVerboseValue = True
 
 class ArcpyTool:
     """
@@ -84,17 +88,13 @@ def getListofCommonInputs():
                       direction = 'Input',
                       parameterType = 'Optional'),
                     Parameter(
-                      displayName = 'Log file',
+                      displayName = 'Log file or location',
                       name = 'logfilepath',
-                      datatype = 'File',
+                      datatype = ['File', 'Folder'],
                       direction = 'Input',
-                      parameterType = 'Optional'),
-                    Parameter(
-                      displayName = 'Log file',
-                      name = 'logfilepath',
-                      datatype = 'File',
-                      direction = 'Output',
-                      parameterType = 'Derived')]
+                      parameterType = 'Optional')
+                    ]
+    commonparams[0].value = defaultVerboseValue
     return commonparams
 
 def getMultiDirInputParameter():
@@ -118,23 +118,10 @@ def getMultiDirOutputParameter():
         )
 
 def updateParametersCommon(parameters):
-    """ common parameter update tasks. """
-    #not sure if there's anything to do here
+    """ common parameter update tasks. Returns a logger if
+        a log file was selected """
     #can't set warning messages here-do that in updateMessages
-    # get logpath parameter
-    #logpathfilter = [p for p in parameters if p.name == 'logfilepath']
-    # esri already checks for existence of folder
-    """
-    if logpathfilter and len(logpathfilter) > 0:
-        logpath = logpathfilter[0]
-        logpathvalue = logpath.valueAsText
-        if logpathvalue and logpathvalue != "":
-            if not os.path.isfile(os.path.join(logpathvalue,'geonis_wf.log')):
-                logpath.setWarningMessage("Log file does not exist and will be created as geonis_wf.log")
-            else:
-                logpath.setWarningMessage("Log file will be appended to.")
-    """
+    # esri already checks for existence of file or folder
     pass
-
 
 

@@ -9,10 +9,42 @@ Created on Jan 14, 2013
 @see https://nis.lternet.edu/NIS/
 '''
 import sys, os
+import logging
 import arcpy
 
 from lno_geonis_base import ArcpyTool
 from lno_geonis_base import getListofCommonInputs, updateParametersCommon, getMultiDirInputParameter, getMultiDirOutputParameter
+
+# module var logger
+evtLogger = None
+
+def startLogger(logpath):
+    global evtLogger
+    evtLogger = logging.getLogger("geonisWF")
+    if logpath:
+        if not os.path.isfile(logpath):
+            logfile = os.path.join(logpath, "geonis_wf.log")
+        else:
+            logfile = logpath
+        fileHandler = logging.FileHandler(logfile)
+        #for files, we format with timestamp
+        fileHandler.setFormatter(logging.Formatter(fmt="%(asctime)s %(levelname)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p"))
+        evtLogger.addHandler(fileHandler)
+    else:
+        evtLogger.addHandler(logging.StreamHandler())
+    evtLogger.info("*************** Logging started ***************")
+
+def logMessage(level, verbose, msg):
+    global evtLogger
+    if evtLogger:
+        evtLogger.log(level, msg)
+    if not evtLogger or verbose:
+        if verbose and (level == logging.INFO or level == logging.DEBUG):
+            arcpy.AddMessage(msg)
+        elif level == logging.WARN or level == logging.WARNING:
+            arcpy.AddWarning(msg)
+        elif level == logging.ERROR or level == logging.CRITICAL:
+            arcpy.AddError(msg)
 
 
 class UnpackPackages(ArcpyTool):
@@ -21,7 +53,7 @@ class UnpackPackages(ArcpyTool):
 
     @property
     def label(self):
-        return "Unpack Packages"
+        return "S2. Unpack Packages"
 
     @property
     def alias(self):
@@ -33,48 +65,45 @@ class UnpackPackages(ArcpyTool):
 
     def getParameterInfo(self):
         params = getListofCommonInputs()
-        self.numberCommonParams = len(params)
         params.append(arcpy.Parameter(
                         displayName = "Directory of Packages",
                         name = "in_dir",
                         datatype = "Folder",
                         parameterType = "Required",
                         direction = "Input"))
-        #for indexing
-        self.in_ndx = self.numberCommonParams
         params.append(getMultiDirOutputParameter())
-        self.out_ndx = self.in_ndx + 1
         return params
 
     def updateParameters(self, parameters):
         updateParametersCommon(parameters)
-        parameters[0].value = True
-        return
+        #parameters[0].value = True
+        if not evtLogger and self.isRunningAsTool and parameters[1] and parameters[1].value:
+            startLogger(parameters[1].valueAsText)
+        if evtLogger:
+            if parameters[0].value:
+                evtLogger.setLevel(logging.DEBUG)
+            else:
+                evtLogger.setLevel(logging.INFO)
 
     def updateMessages(self, parameters):
         #check for empty input dir
-        return
+        pass
 
     def execute(self, parameters, messages):
         showMsgs = parameters[0].value
-        if showMsgs and self.isRunningAsTool:
-            messages.AddMessage("About to create test dirs")
-        else:
-            arcpy.AddMessage("Not running as tool.")
-        packageDir = parameters[self.in_ndx].valueAsText
-        if showMsgs:
-            messages.AddMessage("package dir is: " + str(os.path.isdir(packageDir)))
+        logMessage(logging.INFO, showMsgs,"uppacking, making dirs")
+        logMessage(logging.INFO, showMsgs, "About to create test dirs")
+        packageDir = parameters[2].valueAsText
+        logMessage(logging.DEBUG , showMsgs,"package dir is: " + str(os.path.isdir(packageDir)))
         outputDir = os.path.abspath(os.path.join(os.path.join(packageDir,os.path.pardir),"workflow_dirs"))
-        if showMsgs:
-            messages.AddMessage(str(outputDir))
+        logMessage( logging.INFO, showMsgs,  str(outputDir))
         outDirList = []
         for i in range(3):
             newdir = os.path.join(outputDir, "pkg_" + str(i))
             if not os.path.isdir(newdir):
                 os.mkdir(newdir)
             outDirList.append(newdir)
-        arcpy.SetParameterAsText(self.out_ndx, ";".join(outDirList))
-        return
+        arcpy.SetParameterAsText(3, ";".join(outDirList))
 
 
 class CheckSpatialData(ArcpyTool):
@@ -83,7 +112,7 @@ class CheckSpatialData(ArcpyTool):
 
     @property
     def label(self):
-        return "Check Spatial Data"
+        return "S3. Check Spatial Data"
 
     @property
     def alias(self):
@@ -95,36 +124,36 @@ class CheckSpatialData(ArcpyTool):
 
     def getParameterInfo(self):
         params = getListofCommonInputs()
-        self.numberCommonParams = len(params)
         params.append(getMultiDirInputParameter())
-        self.in_ndx = self.numberCommonParams
         params.append(getMultiDirOutputParameter())
-        self.out_ndx = self.in_ndx + 1
         return params
 
     def updateParameters(self, parameters):
-        parameters[0].value = True
-        return
+        if not evtLogger and self.isRunningAsTool and parameters[1] and parameters[1].value:
+            startLogger(parameters[1].valueAsText)
+        if evtLogger:
+            if parameters[0].value:
+                evtLogger.setLevel(logging.DEBUG)
+            else:
+                evtLogger.setLevel(logging.WARNING)
+
 
     def updateMessages(self, parameters):
         return
 
     def execute(self, parameters, messages):
         showMsgs = parameters[0].value
-        if parameters[self.in_ndx].value:
-            dirlist = parameters[self.in_ndx].valueAsText.split(';')
+        logMessage(logging.INFO, showMsgs,  "Checking data")
+        if parameters[2].value:
+            dirlist = parameters[2].valueAsText.split(';')
         else:
             dirlist = []
-        if(showMsgs and self.isRunningAsTool):
-            messages.AddMessage("Now running checks...")
-            messages.AddMessage("number of dirs: " + str(len(dirlist)))
-        else:
-            arcpy.AddMessage("Testing checks...")
+        logMessage(logging.INFO, showMsgs,  "Testing checks...")
         for d in dirlist:
-            messages.AddMessage("found d: " + d)
-            messages.AddMessage(str(os.path.isdir(d)))
+            logMessage(logging.DEBUG, showMsgs,  "found d: " + d)
+            logMessage(logging.DEBUG, showMsgs,  str(os.path.isdir(d)))
         #pass the list on
-        arcpy.SetParameterAsText(self.out_ndx, parameters[self.in_ndx].valueAsText)
+        arcpy.SetParameterAsText(3, parameters[2].valueAsText)
         return
 
 class CreateMetadata(ArcpyTool):
@@ -133,7 +162,7 @@ class CreateMetadata(ArcpyTool):
 
     @property
     def label(self):
-        return "Create Metadata"
+        return "S3. Create Metadata"
 
     @property
     def alias(self):
@@ -145,49 +174,44 @@ class CreateMetadata(ArcpyTool):
 
     def getParameterInfo(self):
         params = getListofCommonInputs()
-        self.numberCommonParams = len(params)
         params.append(getMultiDirInputParameter())
-        self.in_ndx = self.numberCommonParams
         params.append(getMultiDirOutputParameter())
-        self.out_ndx = self.in_ndx + 1
         return params
 
     def updateParameters(self, parameters):
-        parameters[0].value = True
-        return
+        if not evtLogger and self.isRunningAsTool and parameters[1] and parameters[1].value:
+            startLogger(parameters[1].valueAsText)
+        if evtLogger:
+            if parameters[0].value:
+                evtLogger.setLevel(logging.DEBUG)
+            else:
+                evtLogger.setLevel(logging.WARNING)
+
 
     def updateMessages(self, parameters):
         return
 
     def execute(self, parameters, messages):
         showMsgs = parameters[0].value
-        if parameters[self.in_ndx].value:
-            dirlist = parameters[self.in_ndx].valueAsText.split(';')
+        logMessage(logging.INFO, showMsgs, "Now making metadata")
+        if parameters[2].value:
+            dirlist = parameters[2].valueAsText.split(';')
         else:
             dirlist = []
-        if(showMsgs and self.isRunningAsTool):
-            messages.AddMessage("Now creating metadata...")
-            messages.AddMessage("number of dirs: " + str(len(dirlist)))
-        else:
-            arcpy.AddMessage("Testing checks...")
+            logMessage(logging.DEBUG, showMsgs , "number of dirs: " + str(len(dirlist)))
         for d in dirlist:
-            messages.AddMessage("found d: " + d)
-            messages.AddMessage(str(os.path.isdir(d)))
+            logMessage( logging.DEBUG, showMsgs,  "found d: " + d)
         #pass the list on
-        arcpy.SetParameterAsText(self.out_ndx, parameters[self.in_ndx].valueAsText)
+        arcpy.SetParameterAsText(3, parameters[2].valueAsText)
         return
 
 
 def quicktest():
     #testtool.runAsToolboxTool()
-    mytest = testtool()
-    print mytest.isRunningAsTool
-    print mytest.canRunInBackground
-    print mytest.isLicensed()
-    print mytest.label
-    print mytest.description
-    print mytest.getParameterInfo()
-    print mytest.execute([], [])
+    startLogger(None)
+    evtLogger.debug("What's up?")
+
+
 
 if __name__ == '__main__':
     quicktest()
