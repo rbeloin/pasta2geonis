@@ -15,14 +15,22 @@ Name=scripts
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]scripts\lno_geonis_base.py
+FileName=$[Project-Path]scripts\geonis_log.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node1]
 ClassName=TProjectFileNode
+FileName=$[Project-Path]scripts\lno_geonis_base.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node2]
+ClassName=TProjectFileNode
 FileName=$[Project-Path]scripts\lno_geonis_wf.py
 
+[Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node3]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]scripts\mainRun.py
+
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes]
-Count=2
+Count=4
 
 [Project\ChildNodes\Node0\ChildNodes]
 Count=1

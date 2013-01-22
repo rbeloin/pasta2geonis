@@ -1,8 +1,7 @@
 import arcpy
-import inspect
-import lno_geonis_wf
-from lno_geonis_wf import *
-
+from lno_geonis_wf import toolclasses as tools
+for tool in tools:
+    exec "from lno_geonis_wf import " + tool.__name__
 
 class Toolbox(object):
     def __init__(self):
@@ -10,11 +9,10 @@ class Toolbox(object):
         .pyt file)."""
         self.label = "GeoNIS Data Harvest"
         self.alias = "geonis"
-        self.description = "toolbox description field"
-        toollist = [obj for name, obj in inspect.getmembers(lno_geonis_wf) if inspect.isclass(obj) and "ArcpyTool" in str(obj.__bases__) and not inspect.isabstract(obj)]
-        for toolcls in toollist:
-            toolcls.runAsToolboxTool()
-        self.tools = toollist
+        self.description = "this is the toolbox description field"
+        for tool in tools:
+            tool.runAsToolboxTool()
+        self.tools = tools
         
 
 class Dummy(object):
@@ -41,5 +39,3 @@ class Dummy(object):
         pass
 
 
-
-    
