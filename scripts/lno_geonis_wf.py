@@ -42,20 +42,17 @@ class UnpackPackages(ArcpyTool):
 
     def execute(self, parameters, messages):
         super(UnpackPackages, self).execute(parameters, messages)
-        self.logger.logMessage(DEBUG, self.showMsgs, "this is debug msg")
-        self.logger.logMessage(INFO, self.showMsgs,"uppacking, making dirs")
-        self.logger.logMessage(INFO, self.showMsgs, "About to create test dirs")
         packageDir = self.getParamAsText(parameters,2)
-        self.logger.logMessage(DEBUG , self.showMsgs,"package dir is: " + str(os.path.isdir(packageDir)))
+        self.logger.logMessage(DEBUG , "package dir found? " + str(os.path.isdir(packageDir)))
         outputDir = os.path.abspath(os.path.join(os.path.join(packageDir,os.path.pardir),"workflow_dirs"))
-        self.logger.logMessage(INFO, self.showMsgs,  str(outputDir))
+        self.logger.logMessage(DEBUG,  "output directory: " + str(outputDir))
         outDirList = []
         for i in range(3):
             newdir = os.path.join(outputDir, "pkg_" + str(i))
             if not os.path.isdir(newdir):
                 os.mkdir(newdir)
             outDirList.append(newdir)
-        parameters[3].value = ";".join(outDirList)
+        arcpy.SetParameterAsText( 3,  ";".join(outDirList))
 
 
 
@@ -80,15 +77,14 @@ class CheckSpatialData(ArcpyTool):
 
     def execute(self, parameters, messages):
         super(CheckSpatialData, self).execute(parameters, messages)
-        self.logger.logMessage(INFO, self.showMsgs,  "Checking data")
         if parameters[2].value:
-            dirlist = parameters[2].valueAsText.split(';')
+            dirlist = self.getParamAsText( parameters,2).split(';')
         else:
             dirlist = []
         for d in dirlist:
-            self.logger.logMessage(INFO, self.showMsgs,  "found directory: " + d)
+            self.logger.logMessage(INFO, "working in: " + d)
         #pass the list on
-        arcpy.SetParameterAsText(3, parameters[2].valueAsText)
+        parameters[3].value = self.getParamAsText( parameters, 2)
         return
 
 class CreateMetadata(ArcpyTool):
@@ -112,16 +108,17 @@ class CreateMetadata(ArcpyTool):
 
     def execute(self, parameters, messages):
         super(CreateMetadata, self).execute(parameters, messages)
-        self.logger.logMessage(INFO, self.showMsgs,  "Metadata started.")
         if parameters[2].value:
-            dirlist = parameters[2].valueAsText.split(';')
+            dirlist = self.getParamAsText( parameters,2).split(';')
         else:
             dirlist = []
         for d in dirlist:
-            self.logger.logMessage(INFO, self.showMsgs,  "found directory: " + d)
+            self.logger.logMessage(INFO, "working in: " + d)
         #pass the list on
-        arcpy.SetParameterAsText(3, parameters[2].valueAsText)
-        return
+        #arcpy.SetParameterAsText(3,"c:/dir1;c:/dir2")
+        p2value = parameters[2].value
+        parameters[3].value = parameters[2].value #.getParamAsText( parameters,2)
+        self.logger.logMessage(INFO, "this is 3: " + self.getParamAsText(parameters,3))
 
 
 

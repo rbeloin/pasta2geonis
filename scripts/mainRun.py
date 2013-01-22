@@ -8,50 +8,66 @@ Created on Jan 15, 2013
 @see https://nis.lternet.edu/NIS/
 '''
 import os, sys
+import arcpy
 from arcpy import Parameter
 import lno_geonis_wf
 
 
-def quicktest():
-    #testtool.runAsToolboxTool()
+def testUnpack():
     unpack = lno_geonis_wf.UnpackPackages()
-    params = [Parameter(
-                          displayName = 'Verbose',
-                          name = 'send_msgs',
-                          datatype = 'Boolean',
-                          direction = 'Input',
-                          parameterType = 'Optional'),
-                        Parameter(
-                          displayName = 'Log file or location',
-                          name = 'logfilepath',
-                          datatype = ['File', 'Folder'],
-                          direction = 'Input',
-                          parameterType = 'Optional')
-                        ]
+    tool._isRunningAsTool = False
+    params = unpack.getParameterInfo()
     params[0].value = True
-    params.append(Parameter(displayName = "Directory of Packages",
-                        name = "in_dir",
-                        datatype = "Folder",
-                        parameterType = "Required",
-                        direction = "Input"))
-    params.append(Parameter(
-    displayName = "Output Directories",
-            name = "out_dirlist",
-            datatype = "Folder",
-            direction = "Output",
-            parameterType = "Derived",
-            multiValue = True))
-
-    #params = unpack.getParameterInfo()
-    params[0].value = True
-    params[1].value = None
+    params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
     params[2].value = r"C:\Users\ron\Documents\geonis_tests\newpackages"
     params[3].value = None
     unpack.execute(params,[])
     print params[3].value
 
+def testUnpackAsTool():
+    mytoolspath = arcpy.gp.getMyToolboxesPath()
+    toolname = r"GeoNIS PASTA Processing.pyt"
+    toolbox = os.path.join(mytoolspath, toolname )
+    arcpy.ImportToolbox(toolbox)
 
+    send_msgs = True
+    logfilepath = None # r"C:\Users\ron\Documents\geonis_tests\wf.log"
+    in_dir = r"C:\Users\ron\Documents\geonis_tests\newpackages"
+
+    try:
+        result = arcpy.UnpackPackages_geonis (send_msgs, logfilepath, in_dir)
+        print result
+    except arcpy.ExecuteError:
+        print arcpy.GetMessages(2)
+    except Exception as e:
+        print e.message
+
+
+def testCheckData():
+    tool = lno_geonis_wf.CheckSpatialData()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = True
+    params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
+    params[2].value = r"C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_0;C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_1;C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_2"
+    params[3].value = None
+    tool.execute(params,[])
+    print params[3].value
+
+def testMetadata():
+    tool = lno_geonis_wf.CreateMetadata()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = True
+    params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
+    params[2].value = r"C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_0;C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_1;C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_2"
+    params[3].value = None
+    tool.execute(params,[])
+    print params[3].value
 
 
 if __name__ == '__main__':
-    quicktest()
+    #testUnpack()
+   # testCheckData()
+    #testMetadata()
+    testUnpackAsTool()

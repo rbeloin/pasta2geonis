@@ -12,7 +12,6 @@ import arcpy
 from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as arcAddWarn
 from geonis_log import EvtLog
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
-
 from arcpy import Parameter
 
  #set the default value for the verbose switch for each tool. Verbose forces DEBUG logging
@@ -27,23 +26,17 @@ class ArcpyTool(object):
     properly written python tools, usable in the GUI or anywhere a toolbox
     tool can be used.
     """
-    #class variable
-    _isRunningAsTool = False
 
     def __init__(self):
         self._description = ""
         self._label = ""
         self._alias = ""
         self.logger = None
-        self.showMsgs = defaultVerboseValue
-
-    @classmethod
-    def runAsToolboxTool(cls):
-        cls._isRunningAsTool = True
+        self._isRunningAsTool = True
 
     @property
     def isRunningAsTool(self):
-        return ArcpyTool._isRunningAsTool
+        return self._isRunningAsTool
 
     @property
     def canRunInBackground(self):
@@ -117,7 +110,7 @@ class ArcpyTool(object):
         pass
 
     def getParamAsText(self, paramlist, numericIndex):
-        if not paramlist[numericIndex]:
+        if not paramlist or not paramlist[numericIndex]:
             return None
         if self.isRunningAsTool:
             return paramlist[numericIndex].valueAsText
@@ -126,16 +119,22 @@ class ArcpyTool(object):
 
     def execute(self, parameters, messages):
         """Common tasks for excecuting the tool here"""
-        self.showMsgs = parameters[0].value
         logdest = None
-        #logdest = arcpy.GetParameterAsText(1)
-        #if self.isRunningAsTool and logdest:
-        #    print logdest
-        if self.isRunningAsTool:
-            if parameters[1] and parameters[1].valueAsText:
-                logdest = parameters[1].valueAsText
-        self.logger = EvtLog.getLogger(fileorpath = logdest)
-        self.logger.logMessage(DEBUG, True, "param is " + str(type(parameters[1])))
-        return
+        try:
+            assert len(parameters) > 1
+            assert parameters[0]
+            assert parameters[1]
+            logdest = self.getParamAsText(parameters,1)
+            if logdest:
+                testpath = str(logdest)
+                if not os.path.isdir(testpath) and not os.path.isfile(testpath):
+                    logdest = None
+            self.logger = EvtLog.getLogger(fileorpath = logdest, showMessages = parameters[0].value)
+            assert self.logger
+            self.logger.logMessage(INFO,  self.__class__.__name__ + " started.")
+            self.logger.logMessage(DEBUG, "As tool: " + str(self.isRunningAsTool))
+        except AssertionError as asrtErr:
+            #if these parameters are not here, tool has not been started correctly
+            raise Exception("Unable to create log file. No parameters? " + asrtErr.message)
 
 

@@ -7,7 +7,7 @@ Created on Jan 21, 2013
 @copyright: 2013 LTER Network Office, University of New Mexico
 @see https://nis.lternet.edu/NIS/
 '''
-import os
+import os, datetime
 import logging
 from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as arcAddWarn
 
@@ -19,8 +19,9 @@ class EvtLog(object):
     with optional name and path to get a logger that can be used for logging.
     """
     singleinstance = None
-    def __init__(self, name, fileorpath):
+    def __init__(self, name, fileorpath, showMessages):
         self.evtLogger = logging.getLogger(name)
+        self.showMsgs = showMessages
         if fileorpath:
             if not os.path.isfile(fileorpath):
                 logfile = os.path.join(fileorpath, "geonis_wf.log")
@@ -33,17 +34,18 @@ class EvtLog(object):
         else:
             self.evtLogger.addHandler(logging.StreamHandler())
         self.evtLogger.setLevel(defaultLoggingLevel)
-        self.evtLogger.info("*************** Logging started ***************")
 
 
     @staticmethod
-    def getLogger( name = "geonisWF", fileorpath = None):
+    def getLogger( name = "geonisWF", fileorpath = None, showMessages = False):
         if not EvtLog.singleinstance:
-            EvtLog.singleinstance = EvtLog(name, fileorpath)
+            EvtLog.singleinstance = EvtLog(name, fileorpath, showMessages)
+            if fileorpath:
+                EvtLog.singleinstance.logMessage(logging.WARN,str( datetime.datetime.now()) + " ***** Log started  with path = " + fileorpath + " and verbose = " + str(showMessages) + " ****")
         return EvtLog.singleinstance
 
-    def logMessage(self, level, verbose, msg):
-        """ Log to log file, and if verbose log to arcpy also. If no log
+    def logMessage(self, level, msg):
+        """ Log to log file, and if showMsgs has been set in init log to arcpy also. If no log
             file has been given, log to std_err """
         try:
             assert self.evtLogger
@@ -51,8 +53,8 @@ class EvtLog(object):
             # if running not optimized, log everthing, changing level as needed
             if __debug__ and not self.evtLogger.isEnabledFor(level):
                 self.evtLogger.log(self.evtLogger.getEffectiveLevel(), "<debug mode>" + msg)
-            if not self.evtLogger or verbose:
-                if verbose and (level == logging.INFO or level == logging.DEBUG):
+            if not self.evtLogger or self.showMsgs:
+                if self.showMsgs and (level == logging.INFO or level == logging.DEBUG):
                     arcAddMsg(msg)
                 elif level == logging.WARN or level == logging.WARNING:
                     arcAddWarn(msg)
