@@ -27,16 +27,23 @@ class ArcpyTool(object):
     properly written python tools, usable in the GUI or anywhere a toolbox
     tool can be used.
     """
+    #class variable
+    _isRunningAsTool = False
+
     def __init__(self):
-        self.isRunningAsTool = False
         self._description = ""
         self._label = ""
         self._alias = ""
         self.logger = None
         self.showMsgs = defaultVerboseValue
 
-    def runAsToolboxTool(self):
-        self.isRunningAsTool = True
+    @classmethod
+    def runAsToolboxTool(cls):
+        cls._isRunningAsTool = True
+
+    @property
+    def isRunningAsTool(self):
+        return ArcpyTool._isRunningAsTool
 
     @property
     def canRunInBackground(self):
@@ -109,14 +116,24 @@ class ArcpyTool(object):
         parameter.  This method is called after internal validation."""
         pass
 
+    def getParamAsText(self, paramlist, numericIndex):
+        if not paramlist[numericIndex]:
+            return None
+        if self.isRunningAsTool:
+            return paramlist[numericIndex].valueAsText
+        else:
+            return str(paramlist[numericIndex].value)
+
     def execute(self, parameters, messages):
         """Common tasks for excecuting the tool here"""
         self.showMsgs = parameters[0].value
         logdest = None
-        if self.isRunningAsTool and parameters[1] and parameters[1].valueAsText:
-            logdest = parameters[1].valueAsText
-        arcAddMsg("log dest: " + str(logdest))
-        arcAddMsg("__db " + str(__debug__))
+        #logdest = arcpy.GetParameterAsText(1)
+        #if self.isRunningAsTool and logdest:
+        #    print logdest
+        if self.isRunningAsTool:
+            if parameters[1] and parameters[1].valueAsText:
+                logdest = parameters[1].valueAsText
         self.logger = EvtLog.getLogger(fileorpath = logdest)
         self.logger.logMessage(DEBUG, True, "param is " + str(type(parameters[1])))
         return

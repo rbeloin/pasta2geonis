@@ -16,7 +16,6 @@ from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 
 from lno_geonis_base import ArcpyTool
 
-
 class UnpackPackages(ArcpyTool):
     def __init__(self):
         ArcpyTool.__init__(self)
@@ -36,130 +35,99 @@ class UnpackPackages(ArcpyTool):
         return params
 
     def updateParameters(self, parameters):
-        super(UnpackPackages, self).updateParameters()
+        super(UnpackPackages, self).updateParameters(parameters)
 
     def updateMessages(self, parameters):
-        super(UnpackPackages, self).updateMessages()
+        super(UnpackPackages, self).updateMessages(parameters)
 
     def execute(self, parameters, messages):
         super(UnpackPackages, self).execute(parameters, messages)
         self.logger.logMessage(DEBUG, self.showMsgs, "this is debug msg")
         self.logger.logMessage(INFO, self.showMsgs,"uppacking, making dirs")
         self.logger.logMessage(INFO, self.showMsgs, "About to create test dirs")
-        """
-        packageDir = parameters[2].valueAsText
-        logger.logMessage(logging.DEBUG , showMsgs,"package dir is: " + str(os.path.isdir(packageDir)))
+        packageDir = self.getParamAsText(parameters,2)
+        self.logger.logMessage(DEBUG , self.showMsgs,"package dir is: " + str(os.path.isdir(packageDir)))
         outputDir = os.path.abspath(os.path.join(os.path.join(packageDir,os.path.pardir),"workflow_dirs"))
-        logger.logMessage( logging.INFO, showMsgs,  str(outputDir))
+        self.logger.logMessage(INFO, self.showMsgs,  str(outputDir))
         outDirList = []
         for i in range(3):
             newdir = os.path.join(outputDir, "pkg_" + str(i))
             if not os.path.isdir(newdir):
                 os.mkdir(newdir)
             outDirList.append(newdir)
-        #arcpy.SetParameterAsText(3, ";".join(outDirList))
-        """
-
-
-##class CheckSpatialData(ArcpyTool):
-##    def __init__(self):
-##        pass
-##
-##    @property
-##    def label(self):
-##        return "S3. Check Spatial Data"
-##
-##    @property
-##    def alias(self):
-##        return "runchecks"
-##
-##    @property
-##    def description(self):
-##        return "Performs validation checks on the spatial data found in the input directories."
-##
-##    def getParameterInfo(self):
-##        params = getListofCommonInputs()
-##        params.append(getMultiDirInputParameter())
-##        params.append(getMultiDirOutputParameter())
-##        return params
-##
-##    def updateParameters(self, parameters):
-##        pass
-##
-##
-##    def updateMessages(self, parameters):
-##        return
-##
-##    def execute(self, parameters, messages):
-####        showMsgs = parameters[0].value
-####        logMessage(logging.INFO, showMsgs,  "Checking data")
-####        if parameters[2].value:
-####            dirlist = parameters[2].valueAsText.split(';')
-####        else:
-####            dirlist = []
-####        logMessage(logging.INFO, showMsgs,  "Testing checks...")
-####        for d in dirlist:
-####            logMessage(logging.DEBUG, showMsgs,  "found d: " + d)
-####            logMessage(logging.DEBUG, showMsgs,  str(os.path.isdir(d)))
-##        #pass the list on
-##        arcpy.SetParameterAsText(3, parameters[2].valueAsText)
-##        return
-##
-##class CreateMetadata(ArcpyTool):
-##    def __init__(self):
-##        pass
-##
-##    @property
-##    def label(self):
-##        return "S3. Create Metadata"
-##
-##    @property
-##    def alias(self):
-##        return "metadata"
-##
-##    @property
-##    def description(self):
-##        return "Creates new metadata from the EML."
-##
-##    def getParameterInfo(self):
-##        params = getListofCommonInputs()
-##        params.append(getMultiDirInputParameter())
-##        params.append(getMultiDirOutputParameter())
-##        return params
-##
-##    def updateParameters(self, parameters):
-##        pass
-##
-##
-##    def updateMessages(self, parameters):
-##        pass
-##
-##    def execute(self, parameters, messages):
-##        showMsgs = parameters[0].value
-####        logMessage(logging.INFO, showMsgs, "Now making metadata")
-####        if parameters[2].value:
-####            dirlist = parameters[2].valueAsText.split(';')
-####        else:
-####            dirlist = []
-####            logMessage(logging.DEBUG, showMsgs , "number of dirs: " + str(len(dirlist)))
-####        for d in dirlist:
-####            logMessage( logging.DEBUG, showMsgs,  "found d: " + d)
-##        #pass the list on
-##        arcpy.SetParameterAsText(3, parameters[2].valueAsText)
-##        return
-
-
-def quicktest():
-    #testtool.runAsToolboxTool()
-    unpack = UnpackPackages()
-    params = unpack.getParameterInfo()
-    params[0].value = True
-    params[1].value = None
-    unpack.execute(params,[])
+        parameters[3].value = ";".join(outDirList)
 
 
 
+class CheckSpatialData(ArcpyTool):
+    def __init__(self):
+        ArcpyTool.__init__(self)
+        self._description = "Performs validation checks on the spatial data found in the input directories."
+        self._label = "S3. Check Spatial Data"
+        self._alias = "runchecks"
+
+    def getParameterInfo(self):
+        params = super(CheckSpatialData, self).getParameterInfo()
+        params.append(self.getMultiDirInputParameter())
+        params.append(self.getMultiDirOutputParameter())
+        return params
+
+    def updateParameters(self, parameters):
+        super(CheckSpatialData, self).updateParameters(parameters)
+
+    def updateMessages(self, parameters):
+        super(CheckSpatialData, self).updateMessages(parameters)
+
+    def execute(self, parameters, messages):
+        super(CheckSpatialData, self).execute(parameters, messages)
+        self.logger.logMessage(INFO, self.showMsgs,  "Checking data")
+        if parameters[2].value:
+            dirlist = parameters[2].valueAsText.split(';')
+        else:
+            dirlist = []
+        for d in dirlist:
+            self.logger.logMessage(INFO, self.showMsgs,  "found directory: " + d)
+        #pass the list on
+        arcpy.SetParameterAsText(3, parameters[2].valueAsText)
+        return
+
+class CreateMetadata(ArcpyTool):
+    def __init__(self):
+        ArcpyTool.__init__(self)
+        self._description = "Creates new metadata from the EML."
+        self._label = "S4. Create Metadata"
+        self._alias = "metadata"
+
+    def getParameterInfo(self):
+        params = super(CreateMetadata, self).getParameterInfo()
+        params.append(self.getMultiDirInputParameter())
+        params.append(self.getMultiDirOutputParameter())
+        return params
+
+    def updateParameters(self, parameters):
+        super(CreateMetadata, self).updateParameters(parameters)
+
+    def updateMessages(self, parameters):
+        super(CreateMetadata, self).updateMessages(parameters)
+
+    def execute(self, parameters, messages):
+        super(CreateMetadata, self).execute(parameters, messages)
+        self.logger.logMessage(INFO, self.showMsgs,  "Metadata started.")
+        if parameters[2].value:
+            dirlist = parameters[2].valueAsText.split(';')
+        else:
+            dirlist = []
+        for d in dirlist:
+            self.logger.logMessage(INFO, self.showMsgs,  "found directory: " + d)
+        #pass the list on
+        arcpy.SetParameterAsText(3, parameters[2].valueAsText)
+        return
 
 
-if __name__ == '__main__':
-    quicktest()
+
+#this is imported into Toolbox.pyt file and used to instantiate tools
+toolclasses =  [UnpackPackages,
+                CheckSpatialData,
+                CreateMetadata]
+
+
