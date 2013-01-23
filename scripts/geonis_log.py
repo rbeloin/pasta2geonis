@@ -7,9 +7,10 @@ Created on Jan 21, 2013
 @copyright: 2013 LTER Network Office, University of New Mexico
 @see https://nis.lternet.edu/NIS/
 '''
-import os, datetime
-import logging
+import os, sys, datetime, traceback, logging
+from functools import wraps
 from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as arcAddWarn
+from arcpy import ExecuteError as gpError, GetMessages as gpMessages
 
 defaultLoggingLevel = logging.INFO
 
@@ -63,6 +64,32 @@ class EvtLog(object):
         except Exception as ex:
             print "Exception in logMessage"
             raise ex
+
+
+def errHandledWorkflowTask(taskName = ""):
+    """This is a decorator for task methods of tools. It wraps the task function
+       in a try block, makes log entries, and will raise Exception if any exceptions are
+       raised in the task function. The taskName parameter will show up in log entries.
+       This decorator only works for methods of an object, and will look for self.logger
+       variable for logging. """
+    def decorate(taskFunc):
+        @wraps(taskFunc)
+        def errHandlingWrapper(*args, **kwargs):
+            try:
+                if args[0] is None or args[0].logger is None:
+                    raise Exception("errHandleWorkflowTask did not find logger instance.")
+                logger = args[0].logger
+                logger.logMessage(logging.INFO, taskName + ":")
+                return taskFunc(*args, **kwargs)
+            except gpError:
+                logger.logMessage(logging.ERROR, gpMessages(2))
+                raise Exception(gpMessages())
+            except Exception as e:
+                logger.logMessage(logging.ERROR, "error type: " + str(type(e)))
+                logger.logMessage(logging.ERROR, e.message)
+                raise Exception(taskName + " terminated with exception.")
+        return errHandlingWrapper
+    return decorate
 
 
 

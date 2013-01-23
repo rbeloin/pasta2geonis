@@ -10,7 +10,7 @@ Created on Jan 14, 2013
 '''
 import sys, os
 import arcpy
-from geonis_log import EvtLog
+from geonis_log import EvtLog, errHandledWorkflowTask
 from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as arcAddWarn
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 
@@ -40,6 +40,11 @@ class UnpackPackages(ArcpyTool):
     def updateMessages(self, parameters):
         super(UnpackPackages, self).updateMessages(parameters)
 
+    @errHandledWorkflowTask(taskName="unzip main package")
+    def unzipPkg(self, apackageDir):
+        er = 3.14/0
+        return True
+
     def execute(self, parameters, messages):
         super(UnpackPackages, self).execute(parameters, messages)
         packageDir = self.getParamAsText(parameters,2)
@@ -52,6 +57,8 @@ class UnpackPackages(ArcpyTool):
             if not os.path.isdir(newdir):
                 os.mkdir(newdir)
             outDirList.append(newdir)
+        if self.unzipPkg(None):
+            self.logger.logMessage(INFO, "got true from task")
         arcpy.SetParameterAsText( 3,  ";".join(outDirList))
 
 
@@ -84,47 +91,43 @@ class CheckSpatialData(ArcpyTool):
         for d in dirlist:
             self.logger.logMessage(INFO, "working in: " + d)
         #pass the list on
-        parameters[3].value = self.getParamAsText( parameters, 2)
-        return
+        arcpy.SetParameterAsText(3, self.getParamAsText( parameters, 2))
 
-class CreateMetadata(ArcpyTool):
+
+class GatherMetadata(ArcpyTool):
     def __init__(self):
         ArcpyTool.__init__(self)
         self._description = "Creates new metadata from the EML."
-        self._label = "S4. Create Metadata"
+        self._label = "S4. Gather Metadata"
         self._alias = "metadata"
 
     def getParameterInfo(self):
-        params = super(CreateMetadata, self).getParameterInfo()
+        params = super(GatherMetadata, self).getParameterInfo()
         params.append(self.getMultiDirInputParameter())
         params.append(self.getMultiDirOutputParameter())
         return params
 
     def updateParameters(self, parameters):
-        super(CreateMetadata, self).updateParameters(parameters)
+        super(GatherMetadata, self).updateParameters(parameters)
 
     def updateMessages(self, parameters):
-        super(CreateMetadata, self).updateMessages(parameters)
+        super(GatherMetadata, self).updateMessages(parameters)
 
     def execute(self, parameters, messages):
-        super(CreateMetadata, self).execute(parameters, messages)
+        super(GatherMetadata, self).execute(parameters, messages)
         if parameters[2].value:
-            dirlist = self.getParamAsText( parameters,2).split(';')
+            dirlist = self.getParamAsText(parameters, 2).split(';')
         else:
             dirlist = []
         for d in dirlist:
             self.logger.logMessage(INFO, "working in: " + d)
         #pass the list on
-        #arcpy.SetParameterAsText(3,"c:/dir1;c:/dir2")
-        p2value = parameters[2].value
-        parameters[3].value = parameters[2].value #.getParamAsText( parameters,2)
-        self.logger.logMessage(INFO, "this is 3: " + self.getParamAsText(parameters,3))
-
+        arcpy.SetParameterAsText(3, self.getParamAsText( parameters, 2))
 
 
 #this is imported into Toolbox.pyt file and used to instantiate tools
 toolclasses =  [UnpackPackages,
                 CheckSpatialData,
-                CreateMetadata]
+                GatherMetadata]
 
 
