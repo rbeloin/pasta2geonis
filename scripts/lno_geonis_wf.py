@@ -42,8 +42,7 @@ class UnpackPackages(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="unzip main package")
     def unzipPkg(self, apackageDir):
-        er = 3.14/0
-        return True
+        return os.path.isdir(apackageDir)
 
     def execute(self, parameters, messages):
         super(UnpackPackages, self).execute(parameters, messages)
@@ -57,7 +56,7 @@ class UnpackPackages(ArcpyTool):
             if not os.path.isdir(newdir):
                 os.mkdir(newdir)
             outDirList.append(newdir)
-        if self.unzipPkg(None):
+        if self.unzipPkg(r"c:\arcgis"):
             self.logger.logMessage(INFO, "got true from task")
         arcpy.SetParameterAsText( 3,  ";".join(outDirList))
 
