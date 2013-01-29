@@ -16,7 +16,7 @@ from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType
-from geonis_helpers import isShapefile, isKML, isTif
+from geonis_helpers import isShapefile, isKML, isTif, isASCIIRaster, isFileGDB
 
 class UnpackPackages(ArcpyTool):
     def __init__(self):
@@ -53,7 +53,7 @@ class UnpackPackages(ArcpyTool):
         outputDir = os.path.abspath(os.path.join(os.path.join(packageDir,os.path.pardir),"workflow_dirs"))
         self.logger.logMessage(DEBUG,  "output directory: " + str(outputDir))
         outDirList = []
-        for i in range(3):
+        for i in range(4):
             newdir = os.path.join(outputDir, "pkg_" + str(i))
             if not os.path.isdir(newdir):
                 os.mkdir(newdir)
@@ -91,16 +91,55 @@ class CheckSpatialData(ArcpyTool):
         super(CheckSpatialData, self).updateMessages(parameters)
 
     @errHandledWorkflowTask(taskName="Data type check")
-    def acceptableDataType(self, apackageDir):
+    def acceptableDataType(self, apackageDir, hint = None):
         if not os.path.isdir(apackageDir):
+            self.logger.logMessage(WARN,"Parameter not a directory.")
             return GeoNISDataType.NA
-        files = os.listdir(apackageDir)
-        for afile in (os.path.join(apackageDir,f) for f in files):
+        contents = [os.path.join(apackageDir,item) for item in os.listdir(apackageDir)]
+        self.logger.logMessage(DEBUG, str(contents))
+        allTypesFound = []
+        for afile in (f for f in contents if os.path.isfile(f)):
             if isShapefile(afile):
-                return GeoNISDataType.SHAPEFILE
+                allTypesFound.append(GeoNISDataType.SHAPEFILE)
             elif isKML(afile):
+                allTypesFound.append(GeoNISDataType.KML)
+            elif isTif(afile):
+                allTypesFound.append(GeoNISDataType.TIF)
+            elif isASCIIRaster(afile):
+                allTypesFound.append(GeoNISDataType.ASCIIRASTER)
+        for afolder in (f for f in contents if os.path.isdir(f)):
+            if isFileGDB(afolder):
+                allTypesFound.append(GeoNISDataType.FILEGEODB)
+        if len(allTypesFound) > 0:
+            #in most cases we probably just had one hit
+            if len(allTypesFound) == 1:
+                if hint is not None and allTypesFound[0] != hint:
+                    self.logger.logMessage(WARN, "Expected data type not matching found data")
+                return allTypesFound[0]
+            #found more than one candidate
+            #figure out what we really have by certainty
+            #if we have a hint, use it
+            if hint is not None and hint in allTypesFound:
+                return hint
+            #files with world files are good bets
+            if GeoNISDataType.TFW in allTypesFound and GeoNISDataType.TIF in allTypesFound:
+                return GeoNISDataType.TIF
+            if GeoNISDataType.JPGW in allTypesFound and GeoNISDataType.JPEG in allTypesFound:
+                return GeoNISDataType.JPEG
+            if GeoNISDataType.FILEGEODB in allTypesFound:
+                return GeoNISDataType.FILEGEODB
+            if GeoNISDataType.SHAPEFILE in allTypesFound:
+                return GeoNISDataType.SHAPEFILE
+            if GeoNISDataType.KML in allTypesFound:
                 return GeoNISDataType.KML
-        return GeoNISDataType.NA
+            if GeoNISDataType.ASCIIRASTER in allTypesFound:
+                return GeoNISDataType.ASCIIRASTER
+            if GeoNISDataType.TIF in allTypesFound:
+                # Tif without world file. Are geotags enough?
+                return GeoNISDataType.TIF
+            return GeoNISDataType.NA
+        else:
+            return GeoNISDataType.NA
 
     @errHandledWorkflowTask(taskName="Format report")
     def getReport(self, notesfilePath):
@@ -126,10 +165,16 @@ class CheckSpatialData(ArcpyTool):
                             raise Exception("No compatible data found in %s" % dataDir)
                         if spatialType == GeoNISDataType.KML:
                             self.logger.logMessage(INFO, "kml  found")
-                            notesfile.write('Checking as kml vector\n')
+                            notesfile.write('TYPE:kml\n')
                         if spatialType == GeoNISDataType.SHAPEFILE:
                             self.logger.logMessage(INFO, "shapefile found")
-                            notesfile.write('Checking as shapefile\n')
+                            notesfile.write('TYPE:shapefile\n')
+                        if spatialType == GeoNISDataType.ASCIIRASTER:
+                            self.logger.logMessage(INFO, "ascii raster found")
+                            notesfile.write('TYPE:ascii raster\n')
+                        if spatialType == GeoNISDataType.FILEGEODB:
+                            self.logger.logMessage(INFO, "file gdb found")
+                            notesfile.write('TYPE:file geodatabase\n')
                         self.logger.logMessage(INFO, "working in: " + dataDir)
                     except Exception as e:
                         self.logger.logMessage(WARN, e.message)

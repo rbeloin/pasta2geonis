@@ -21,7 +21,12 @@ class GeoNISDataType:
     """
     NA = object() # not acceptable type
     SHAPEFILE = ('.shp',)
-    KML = ('.kml','.kmz')
-    TIF = ('.tif','.tiff')
+    KML = ('.kml', '.kmz')
+    TIF = ('.tif', '.tiff', '.tff')
+    TFW = ('.tfw',)
+    FILEGEODB = ('.gdb',)
+    ASCIIRASTER = ('.txt', '.asc')
+    JPEG = ('.jpg', '.jpeg', '.jpc', '.jpe')
+    JPGW = ('.jgw',)
 
 
