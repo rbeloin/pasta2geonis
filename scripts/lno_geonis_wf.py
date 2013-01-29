@@ -12,9 +12,11 @@ import sys, os
 import arcpy
 from geonis_log import EvtLog, errHandledWorkflowTask
 from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as arcAddWarn
+from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
-
 from lno_geonis_base import ArcpyTool
+from geonis_pyconfig import GeoNISDataType
+from geonis_helpers import isShapefile, isKML, isTif
 
 class UnpackPackages(ArcpyTool):
     def __init__(self):
@@ -73,6 +75,13 @@ class CheckSpatialData(ArcpyTool):
         params = super(CheckSpatialData, self).getParameterInfo()
         params.append(self.getMultiDirInputParameter())
         params.append(self.getMultiDirOutputParameter())
+        params.append(Parameter(
+                        displayName = "Report from checks",
+                        name = "report",
+                        datatype = "String",
+                        direction = "Output",
+                        parameterType = "Derived",
+                        multiValue = False))
         return params
 
     def updateParameters(self, parameters):
@@ -81,16 +90,61 @@ class CheckSpatialData(ArcpyTool):
     def updateMessages(self, parameters):
         super(CheckSpatialData, self).updateMessages(parameters)
 
+    @errHandledWorkflowTask(taskName="Data type check")
+    def acceptableDataType(self, apackageDir):
+        if not os.path.isdir(apackageDir):
+            return GeoNISDataType.NA
+        files = os.listdir(apackageDir)
+        for afile in (os.path.join(apackageDir,f) for f in files):
+            if isShapefile(afile):
+                return GeoNISDataType.SHAPEFILE
+            elif isKML(afile):
+                return GeoNISDataType.KML
+        return GeoNISDataType.NA
+
+    @errHandledWorkflowTask(taskName="Format report")
+    def getReport(self, notesfilePath):
+        retval = {}
+        pkgname = os.path.dirname(notesfilePath)
+        with open(notesfilePath) as notesfile:
+            retval[pkgname] = " ".join(notesfile.readlines())
+        return retval
+
     def execute(self, parameters, messages):
         super(CheckSpatialData, self).execute(parameters, messages)
-        if parameters[2].value:
-            dirlist = self.getParamAsText( parameters,2).split(';')
-        else:
-            dirlist = []
-        for d in dirlist:
-            self.logger.logMessage(INFO, "working in: " + d)
-        #pass the list on
-        arcpy.SetParameterAsText(3, self.getParamAsText( parameters, 2))
+        try:
+            assert self.inputDirs != None
+            assert self.outputDirs != None
+            reportText = []
+            for dataDir in self.inputDirs:
+                notesfilePath = os.path.join(dataDir,"pkgID_geonis_notes.txt")
+                reportfilePath = os.path.join(dataDir, "pkgID_geonis_report.txt")
+                with open(notesfilePath,'w') as notesfile:
+                    try:
+                        spatialType = self.acceptableDataType(dataDir)
+                        if spatialType == GeoNISDataType.NA:
+                            raise Exception("No compatible data found in %s" % dataDir)
+                        if spatialType == GeoNISDataType.KML:
+                            self.logger.logMessage(INFO, "kml  found")
+                            notesfile.write('Checking as kml vector\n')
+                        if spatialType == GeoNISDataType.SHAPEFILE:
+                            self.logger.logMessage(INFO, "shapefile found")
+                            notesfile.write('Checking as shapefile\n')
+                        self.logger.logMessage(INFO, "working in: " + dataDir)
+                    except Exception as e:
+                        self.logger.logMessage(WARN, e.message)
+                    else:
+                        self.outputDirs.append(dataDir)
+                reportText.append(self.getReport(notesfilePath))
+            arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
+            arcpy.SetParameterAsText(4,str(reportText))
+        except AssertionError:
+            self.logger.logMessage(CRITICAL, "expected parameter not found")
+            sys.exit(1)
+        except Exception as crit:
+            self.logger.logMessage(CRITICAL, crit.message)
+            sys.exit(1)
+
 
 
 class GatherMetadata(ArcpyTool):

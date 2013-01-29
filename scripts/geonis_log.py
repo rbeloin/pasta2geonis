@@ -11,8 +11,8 @@ import os, sys, datetime, traceback, logging
 from functools import wraps
 from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as arcAddWarn
 from arcpy import ExecuteError as gpError, GetMessages as gpMessages
+from geonis_pyconfig import defaultLoggingLevel
 
-defaultLoggingLevel = logging.INFO
 
 class EvtLog(object):
     """

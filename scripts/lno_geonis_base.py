@@ -13,10 +13,7 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from geonis_log import EvtLog
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from arcpy import Parameter
-
- #set the default value for the verbose switch for each tool. Verbose forces DEBUG logging
-defaultVerboseValue = True
-
+from geonis_pyconfig import defaultVerboseValue
 
 class ArcpyTool(object):
     """
@@ -122,8 +119,6 @@ class ArcpyTool(object):
         logdest = None
         try:
             assert len(parameters) > 1
-            assert parameters[0]
-            assert parameters[1]
             logdest = self.getParamAsText(parameters,1)
             if logdest:
                 testpath = str(logdest)
@@ -133,6 +128,12 @@ class ArcpyTool(object):
             assert self.logger
             self.logger.logMessage(INFO,  self.__class__.__name__ + " started.")
             self.logger.logMessage(DEBUG, "As tool: " + str(self.isRunningAsTool))
+            # if we have input dirs list, output dirs list parameters, make list instance
+            for n in range(2,len(parameters)):
+                if parameters[n].name == "in_dirlist":
+                    self.inputDirs = [d for d in self.getParamAsText(parameters,n).split(';') if os.path.isdir(d)]
+                elif parameters[n].name == "out_dirlist":
+                    self.outputDirs = [] # copied here as processing succeeds
         except AssertionError as asrtErr:
             #if these parameters are not here, tool has not been started correctly
             raise Exception("Unable to create log file. No parameters? " + asrtErr.message)

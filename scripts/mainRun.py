@@ -27,8 +27,9 @@ def testChain():
         # but fatal exceptions will be caught here
         result = arcpy.UnpackPackages_geonis (send_msgs, logfilepath, in_dir)
         result2 = arcpy.CheckSpatialData_geonis(send_msgs, logfilepath, result)
-        result3 = arcpy.GatherMetadata_geonis(send_msgs, logfilepath, result2)
-        print result3
+        #result3 = arcpy.GatherMetadata_geonis(send_msgs, logfilepath, result2)
+        print result2.getOutput(0)
+        print result2.getOutput(1)
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
     except Exception as e:
@@ -79,6 +80,7 @@ def testCheckData():
     params[3].value = None
     tool.execute(params,[])
     print params[3].value
+    print params[4].value
 
 def testMetadata():
     tool = lno_geonis_wf.CreateMetadata()
@@ -94,7 +96,7 @@ def testMetadata():
 
 if __name__ == '__main__':
     #testUnpack()
-    #testCheckData()
+    testCheckData()
     #testMetadata()
-    testUnpackAsTool()
+    #testUnpackAsTool()
     #testChain()
