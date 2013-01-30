@@ -24,20 +24,22 @@ isTif = partial(fileExtensionMatch, GeoNISDataType.TIF)
 isTifWorld = partial(fileExtensionMatch, GeoNISDataType.TFW)
 isJpeg = partial(fileExtensionMatch, GeoNISDataType.JPEG)
 isJpegWorld = partial(fileExtensionMatch, GeoNISDataType.JPGW)
+isEsriE00 = partial(fileExtensionMatch, GeoNISDataType.ESRIE00)
 
 '''
 Bit more work needed for some
 '''
 def isFileGDB(path):
-    print 'testing ', path
+    '''Returns True if directory ending with ".gdb" '''
     return (os.path.isdir(path) and path[-4:] == '.gdb')
 
 def isASCIIRaster(pathToFile):
+    ''' Checks for ascii file extension, peeks at first two lines comparing
+    to what is expected for an ASCII raster '''
     if fileExtensionMatch(GeoNISDataType.ASCIIRASTER, pathToFile):
         with open(pathToFile, 'r') as txtfile:
             line1 = txtfile.readline(64)
             line2 = txtfile.readline(64)
         return (len(line1) > 6 and line1[:5] == 'ncols' and len(line2) > 6 and line2[:5] == 'nrows')
-
 
 

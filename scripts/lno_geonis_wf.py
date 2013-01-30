@@ -16,7 +16,7 @@ from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType
-from geonis_helpers import isShapefile, isKML, isTif, isASCIIRaster, isFileGDB
+from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld
 
 class UnpackPackages(ArcpyTool):
     def __init__(self):
