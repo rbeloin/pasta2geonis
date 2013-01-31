@@ -12,8 +12,10 @@ Created on Jan 28, 2013
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 
 defaultLoggingLevel = INFO
- #set the default value for the verbose switch for each tool. Verbose forces DEBUG logging
+#set the default value for the verbose switch for each tool. Verbose forces DEBUG logging
 defaultVerboseValue = True
+#set name of metadata temp file used in workflow
+tempMetadataFilename = "temp_meta.data"
 
 class GeoNISDataType:
     """ members of this class serve as both enum type values for data types,

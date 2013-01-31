@@ -12,7 +12,9 @@ Created on Jan 28, 2013
 import os
 from copy import deepcopy
 from lxml import etree
+import re
 
+istest = False
 ##
 ##class EMLItem:
 ##    """ Parent class of items to be stored in a list after parsing the EML.
@@ -81,7 +83,9 @@ from lxml import etree
 ##                    xpath_metadata="/desc/item"))
 
 def main():
-    tmp = parseAndPopulateEMLDicts(pathToEML = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv-1\tv06101a.xml")
+    tmp = parseAndPopulateEMLDicts(pathToEML = r"Z:\docs\local\geonis_testdata\downloaded_pkgs\gi01001i.xml")
+    if tmp is None:
+        return
     recoveredThing = eval(str(tmp))
     for item in recoveredThing:
         if item['name'] == 'spatialType':
@@ -104,34 +108,38 @@ emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
                 'xs':"http://www.w3.org/2001/XMLSchema",
                 'xsi':"http://www.w3.org/2001/XMLSchema-instance"}
 
+
 def parseAndPopulateEMLDicts(pathToEML = "", logger = None):
     global emlnamespaces
-    experimental = False
-    with open(pathToEML) as eml:
-        treeObj = etree.parse(eml)
-    if experimental:
-        for n in treeObj.xpath('dataset/*/keyword', namespaces = emlnamespaces):
-            nodename, content = (n.tag, n.text)
-            print nodename, "contains ", content
-        return parseEMLdata
+    global istest
+    treeObj = etree.parse(pathToEML)
+    if istest:
+        results = treeObj.xpath('dataset/abstract/descendant::text()', namespaces = emlnamespaces)
+        if results is not None:
+            for kw in [s for s in results if re.search(r"[\S]",s) is not None]:
+                print str(kw)
+            #print ';'.join(results)
+        else:
+            print "no results"
+        return None
     temp = deepcopy(parseEMLdata)
     spatialNod = treeObj.xpath('//spatialVector')
+    stype = [item for item in temp if item["name"] == "spatialType"]
     if spatialNod and etree.iselement(spatialNod[0]):
-        print "vector!!"
-        temp.append({'name': 'spatialType','content':'vector'})
+        stype[0]["content"] = "vector"
     else:
         spatialNod = treeObj.xpath('//spatialRaster')
         if spatialNod and etree.iselement(spatialNod[0]):
-            print "raster!!"
-            temp.append({'name': 'spatialType','content':'raster'})
+            stype[0]["content"] = "rastor"
         else:
             print "problem, no spatial node seen"
     for item in [d for d in temp if 'xpath' in d]:
-        nodes = treeObj.xpath(item['xpath'], namespaces = emlnamespaces)
-        if len(nodes) == 1:
-            item['content'] = nodes[0].text
-        elif len(nodes) > 1:
-            item['content'] = ';'.join([n.text for n in nodes])
+        elementText = treeObj.xpath(item['xpath'], namespaces = emlnamespaces)
+        actualText = [t for t in elementText if re.search(r"[\S]",t)]
+        if len(actualText) == 1:
+            item['content'] = actualText[0]
+        elif len(actualText) > 1:
+            item['content'] = ';'.join(actualText)
         else:
             item['content'] = None
     return temp
@@ -146,37 +154,47 @@ def parseAndPopulateEMLDicts(pathToEML = "", logger = None):
     key are for checks against the data. An item may be used for both purposes.
 """
 parseEMLdata = [
+            {"name": "spatialType",
+            "content": ""},
+            {"name": "packageId",
+            "xpath": "/eml:eml/@packageId",
+            "content": "",
+            "xpath_metadata": ""},
+            {"name": "messages",
+            "content": []},
             {"name": "title",
-            "xpath": "dataset/title",
+            "xpath": "dataset/title/text()",
             "content": None,
             "xpath_metadata": "/path/to/node",
             "overwrite": True},
             {"name": "keywords",
-            "xpath": "dataset/*/keyword",
+            "xpath": "//keyword/text()",
             "content": None,
             "xpath_metadata": "/path/to/node",
             "overwrite": True},
             {"name": "abstract",
-            "xpath": "//abstract/para",
+            "xpath": "//abstract/descendant::text()",
             "content": None,
             "xpath_metadata": "/path/to/node"},
             {"name": "purpose",
-            "xpath": "dataset/purpose/para",
+            "xpath": "dataset/purpose/descendant::text()",
             "content": None,
             "xpath_metadata": "/path/to/node"},
             {"name": "url",
-            "xpath": "//distribution/online/url",
+            "xpath": "//distribution/online/url/text()",
             "content": None,
             "applies_to": ("vector","raster") },
             {"name": "entityName",
-            "xpath": "dataset/*/entityName",
+            "xpath": "dataset/*/entityName/text()",
             "content": None,
             "applies_to": ("vector","raster") },
             {"name": "entityDescription",
-            "xpath": "dataset/*/entityDescription",
+            "xpath": "dataset/*/entityDescription/text()",
             "content": None,
             "applies_to": ("vector","raster") },
             ]
 
 if __name__ == '__main__':
+    global istest
+    #istest = True
     main()
