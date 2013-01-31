@@ -15,30 +15,34 @@ Name=scripts
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]scripts\geonis_helpers.py
+FileName=$[Project-Path]scripts\geonis_emlparse.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node1]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]scripts\geonis_log.py
+FileName=$[Project-Path]scripts\geonis_helpers.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node2]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]scripts\geonis_pyconfig.py
+FileName=$[Project-Path]scripts\geonis_log.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node3]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]scripts\lno_geonis_base.py
+FileName=$[Project-Path]scripts\geonis_pyconfig.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]scripts\lno_geonis_wf.py
+FileName=$[Project-Path]scripts\lno_geonis_base.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node5]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]scripts\lno_geonis_wf.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node6]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]scripts\mainRun.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes]
-Count=6
+Count=7
 
 [Project\ChildNodes\Node0\ChildNodes]
 Count=1
