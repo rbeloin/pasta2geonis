@@ -33,6 +33,12 @@ class UnpackPackages(ArcpyTool):
                         datatype = "Folder",
                         parameterType = "Required",
                         direction = "Input"))
+        params.append(arcpy.Parameter(
+                        displayName = "Location for new directories",
+                        name = "out_location",
+                        datatype = "Folder",
+                        parameterType = "Required",
+                        direction = "Input"))
         params.append(self.getMultiDirOutputParameter())
         return params
 
@@ -42,25 +48,42 @@ class UnpackPackages(ArcpyTool):
     def updateMessages(self, parameters):
         super(UnpackPackages, self).updateMessages(parameters)
 
-    @errHandledWorkflowTask(taskName="unzip main package")
-    def unzipPkg(self, apackageDir):
-        return os.path.isdir(apackageDir)
-
-    def execute(self, parameters, messages):
-        super(UnpackPackages, self).execute(parameters, messages)
-        packageDir = self.getParamAsText(parameters,2)
-        self.logger.logMessage(DEBUG , "package dir found? " + str(os.path.isdir(packageDir)))
-        outputDir = os.path.abspath(os.path.join(os.path.join(packageDir,os.path.pardir),"workflow_dirs"))
-        self.logger.logMessage(DEBUG,  "output directory: " + str(outputDir))
+    @errHandledWorkflowTask(taskName="Open Packages")
+    def unzipPkg(self, apackageDir, locationDir):
+        if not os.path.isdir(locationDir):
+            os.mkdir(locationDir)
         outDirList = []
         for i in range(4):
             newdir = os.path.join(outputDir, "pkg_" + str(i))
             if not os.path.isdir(newdir):
                 os.mkdir(newdir)
             outDirList.append(newdir)
-        if self.unzipPkg(r"c:\arcgis"):
-            self.logger.logMessage(INFO, "got true from task")
-        arcpy.SetParameterAsText( 3,  ";".join(outDirList))
+        return outDirList
+
+    @errHandledWorkflowTask(taskName="Parse EML")
+    def parseEML(self, workDir):
+        return os.path.isdir(workDir)
+
+    @errHandledWorkflowTask(taskName="Retrieve and unzip data")
+    def retrieveData(self, workDir):
+        return os.path.isdir(workDir)
+
+    def execute(self, parameters, messages):
+        super(UnpackPackages, self).execute(parameters, messages)
+        carryForwardList = []
+        packageDir = self.getParamAsText(parameters,2)
+        outputDir = self.getParamAsText(parameters, 3)
+        self.logger.logMessage(DEBUG,  "in: %s; out:%s" % (packageDir, outputDir))
+        dirList = self.unzipPkg(packageDir, outputDir)
+        try:
+            for workdir in dirList:
+                self.parseEML(workdir)
+                self.retrieveData(workdir)
+        except Exception as err:
+            self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (workdir, err.message))
+        else:
+            carryForwardList.append(workdir)
+        arcpy.SetParameterAsText(4,  ";".join(carryForwardList))
 
 
 

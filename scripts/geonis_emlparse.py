@@ -9,12 +9,10 @@ Created on Jan 28, 2013
 @copyright: 2013 LTER Network Office, University of New Mexico
 @see https://nis.lternet.edu/NIS/
 """
-import os
+import os, re
 from copy import deepcopy
 from lxml import etree
-import re
 
-istest = False
 ##
 ##class EMLItem:
 ##    """ Parent class of items to be stored in a list after parsing the EML.
@@ -83,7 +81,7 @@ istest = False
 ##                    xpath_metadata="/desc/item"))
 
 def main():
-    tmp = parseAndPopulateEMLDicts(pathToEML = r"Z:\docs\local\geonis_testdata\downloaded_pkgs\gi01001i.xml")
+    tmp = parseAndPopulateEMLDicts(r"Z:\docs\local\geonis_testdata\downloaded_pkgs\gi01001i.xml")
     if tmp is None:
         return
     recoveredThing = eval(str(tmp))
@@ -109,10 +107,21 @@ emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
                 'xsi':"http://www.w3.org/2001/XMLSchema-instance"}
 
 
-def parseAndPopulateEMLDicts(pathToEML = "", logger = None):
+def parseAndPopulateEMLDicts(pathToEML, logger = None):
     global emlnamespaces
-    global istest
-    treeObj = etree.parse(pathToEML)
+    try:
+        treeObj = etree.parse(pathToEML)
+    except etree.ParseError as e:
+        if logger:
+            logger.logMessage("Error parsing %s with message %s" % (pathToEML, e.message))
+        else:
+            print e.message
+        raise Exception("Parsing error.")
+    if not treeObj.getroot().tag == ( "{%s}eml" % (emlnamespaces['eml'],) ):
+        msg = "%s does not appear to be valid EML doc." % (pathToEML,)
+        if logger is not None:
+            logger.logMessage(msg)
+        raise Exception(msg)
     if istest:
         results = treeObj.xpath('dataset/abstract/descendant::text()', namespaces = emlnamespaces)
         if results is not None:
@@ -123,25 +132,38 @@ def parseAndPopulateEMLDicts(pathToEML = "", logger = None):
             print "no results"
         return None
     temp = deepcopy(parseEMLdata)
-    spatialNod = treeObj.xpath('//spatialVector')
-    stype = [item for item in temp if item["name"] == "spatialType"]
-    if spatialNod and etree.iselement(spatialNod[0]):
-        stype[0]["content"] = "vector"
-    else:
-        spatialNod = treeObj.xpath('//spatialRaster')
+    try:
+        spatialNod = treeObj.xpath('//spatialVector')
+        stype = [item for item in temp if item["name"] == "spatialType"]
         if spatialNod and etree.iselement(spatialNod[0]):
-            stype[0]["content"] = "rastor"
+            stype[0]["content"] = "vector"
         else:
-            print "problem, no spatial node seen"
-    for item in [d for d in temp if 'xpath' in d]:
-        elementText = treeObj.xpath(item['xpath'], namespaces = emlnamespaces)
-        actualText = [t for t in elementText if re.search(r"[\S]",t)]
-        if len(actualText) == 1:
-            item['content'] = actualText[0]
-        elif len(actualText) > 1:
-            item['content'] = ';'.join(actualText)
+            spatialNod = treeObj.xpath('//spatialRaster')
+            if spatialNod and etree.iselement(spatialNod[0]):
+                stype[0]["content"] = "rastor"
+            else:
+                print "problem, no spatial node seen"
+        for item in [d for d in temp if 'xpath' in d]:
+            elementText = treeObj.xpath(item['xpath'], namespaces = emlnamespaces)
+            actualText = [t for t in elementText if re.search(r"[\S]",t)]
+            if len(actualText) == 1:
+                item['content'] = actualText[0]
+            elif len(actualText) > 1:
+                item['content'] = ';'.join(actualText)
+            else:
+                item['content'] = None
+    except etree.XPathError as x:
+        if logger is not None:
+            logger.logMessage("Error with xpath.  %s" % (x.message,))
         else:
-            item['content'] = None
+            print x.message
+        raise Exception(x.message)
+    except Exception as e:
+        if logger:
+            logger.logMessage("EML error. %s" % ( e.message, ))
+        else:
+            print e.message
+        raise Exception(e.message)
     return temp
 
 
@@ -192,9 +214,11 @@ parseEMLdata = [
             "xpath": "dataset/*/entityDescription/text()",
             "content": None,
             "applies_to": ("vector","raster") },
+            {"name": "oops",
+            "xpath": "road/to/nowhere",
+            "content": None },
             ]
 
 if __name__ == '__main__':
-    global istest
-    #istest = True
+    istest = False
     main()
