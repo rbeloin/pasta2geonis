@@ -81,9 +81,11 @@ from lxml import etree
 ##                    xpath_metadata="/desc/item"))
 
 def main():
-    tmp = parseAndPopulateEMLDicts(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv-2\gi01001a.xml")
+    tmp = parseAndPopulateEMLDicts(pathToEML = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv-1\tv06101a.xml")
     recoveredThing = eval(str(tmp))
     for item in recoveredThing:
+        if item['name'] == 'spatialType':
+            print "%s !!" % (item['content'],)
         if item['content'] is not None and 'xpath_metadata' in item:
             print item['name'], ": ", item['content']
     for item in recoveredThing:
@@ -102,7 +104,7 @@ emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
                 'xs':"http://www.w3.org/2001/XMLSchema",
                 'xsi':"http://www.w3.org/2001/XMLSchema-instance"}
 
-def parseAndPopulateEMLDicts(pathToEML):
+def parseAndPopulateEMLDicts(pathToEML = "", logger = None):
     global emlnamespaces
     experimental = False
     with open(pathToEML) as eml:
@@ -111,17 +113,28 @@ def parseAndPopulateEMLDicts(pathToEML):
         for n in treeObj.xpath('dataset/*/keyword', namespaces = emlnamespaces):
             nodename, content = (n.tag, n.text)
             print nodename, "contains ", content
+        return parseEMLdata
+    temp = deepcopy(parseEMLdata)
+    spatialNod = treeObj.xpath('//spatialVector')
+    if spatialNod and etree.iselement(spatialNod[0]):
+        print "vector!!"
+        temp.append({'name': 'spatialType','content':'vector'})
     else:
-        temp = deepcopy(parseEMLdata)
-        for item in temp:
-            nodes =treeObj.xpath(item['xpath'], namespaces = emlnamespaces)
-            if len(nodes) == 1:
-                item['content'] = nodes[0].text
-            elif len(nodes) > 1:
-                item['content'] = ';'.join([n.text for n in nodes])
-            else:
-                item['content'] = None
-        return temp
+        spatialNod = treeObj.xpath('//spatialRaster')
+        if spatialNod and etree.iselement(spatialNod[0]):
+            print "raster!!"
+            temp.append({'name': 'spatialType','content':'raster'})
+        else:
+            print "problem, no spatial node seen"
+    for item in [d for d in temp if 'xpath' in d]:
+        nodes = treeObj.xpath(item['xpath'], namespaces = emlnamespaces)
+        if len(nodes) == 1:
+            item['content'] = nodes[0].text
+        elif len(nodes) > 1:
+            item['content'] = ';'.join([n.text for n in nodes])
+        else:
+            item['content'] = None
+    return temp
 
 
 """
@@ -151,8 +164,16 @@ parseEMLdata = [
             "xpath": "dataset/purpose/para",
             "content": None,
             "xpath_metadata": "/path/to/node"},
-            {"name": "hello",
-            "xpath": "dataset/notfound",
+            {"name": "url",
+            "xpath": "//distribution/online/url",
+            "content": None,
+            "applies_to": ("vector","raster") },
+            {"name": "entityName",
+            "xpath": "dataset/*/entityName",
+            "content": None,
+            "applies_to": ("vector","raster") },
+            {"name": "entityDescription",
+            "xpath": "dataset/*/entityDescription",
             "content": None,
             "applies_to": ("vector","raster") },
             ]
