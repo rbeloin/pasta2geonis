@@ -9,14 +9,18 @@ Created on Jan 14, 2013
 @see https://nis.lternet.edu/NIS/
 '''
 import sys, os
+import urllib2
+from shutil import copyfileobj
+from zipfile import ZipFile
 import arcpy
 from geonis_log import EvtLog, errHandledWorkflowTask
 from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as arcAddWarn
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
-from geonis_pyconfig import GeoNISDataType
+from geonis_pyconfig import GeoNISDataType, tempMetadataFilename
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld
+from geonis_emlparse import parseAndPopulateEMLDicts
 
 class UnpackPackages(ArcpyTool):
     def __init__(self):
@@ -48,21 +52,42 @@ class UnpackPackages(ArcpyTool):
     def updateMessages(self, parameters):
         super(UnpackPackages, self).updateMessages(parameters)
 
-    @errHandledWorkflowTask(taskName="Open Packages")
-    def unzipPkg(self, apackageDir, locationDir):
-        if not os.path.isdir(locationDir):
-            os.mkdir(locationDir)
-        outDirList = []
-        for i in range(4):
-            newdir = os.path.join(outputDir, "pkg_" + str(i))
-            if not os.path.isdir(newdir):
-                os.mkdir(newdir)
-            outDirList.append(newdir)
-        return outDirList
+    @errHandledWorkflowTask(taskName="Open Package")
+    def unzipPkg(self, apackage, locationDir):
+        name, ext = os.path.splitext(os.path.basename(apackage))
+        testpath = os.path.join(locationDir,name)
+        destpath = testpath
+        i = 1
+        while os.path.isdir(destpath):
+            destpath = '%s_%i' % (testpath,i)
+            i += 1
+        with ZipFile(apackage) as pkg:
+            if pkg.testzip() is None:
+                pkg.extractall(destpath)
+            else:
+                self.logger.logMessage(WARN,"%s did not pass zip test." & (apackage,))
+                raise Exception("Zip test fail.")
+        return destpath
 
     @errHandledWorkflowTask(taskName="Parse EML")
     def parseEML(self, workDir):
-        return os.path.isdir(workDir)
+        emldatafile = os.path.join(workDir,tempMetadataFilename)
+        pkgfiles = os.listdir(workDir)
+        xmlfiles = [f for f in pkgfiles if f[-4:].lower() == '.xml']
+        if len(xmlfiles) == 0:
+            self.logger.logMessage(WARN,"No xml files in %s" % (workDir,))
+            raise Exception("No xml file in package.")
+        elif len(xmlfiles) > 1:
+            xmlfiles = [f for f in xmlfiles if f[:8].lower() == 'knb-lter']
+            if len(xmlfiles) != 1:
+                self.logger.logMessage(WARN,"More than one EML file in %s ?" % (workDir,))
+                if len(xmlfiles) == 0:
+                    raise Exception("No EML file in package.")
+        emlfile = os.path.join(workDir, xmlfiles[0])
+        emldata = parseAndPopulateEMLDicts(emlfile, self.logger)
+        with open(emldatafile,'w') as datafile:
+            datafile.write(repr(emldata))
+
 
     @errHandledWorkflowTask(taskName="Retrieve and unzip data")
     def retrieveData(self, workDir):
@@ -74,15 +99,19 @@ class UnpackPackages(ArcpyTool):
         packageDir = self.getParamAsText(parameters,2)
         outputDir = self.getParamAsText(parameters, 3)
         self.logger.logMessage(DEBUG,  "in: %s; out:%s" % (packageDir, outputDir))
-        dirList = self.unzipPkg(packageDir, outputDir)
-        try:
-            for workdir in dirList:
+        if not os.path.isdir(outputDir):
+            os.mkdir(outputDir)
+        allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.zip']
+        #loop over packages, handling one at a time. an error will drop the current package and go to the next one
+        for pkg in allpackages:
+            try:
+                workdir = self.unzipPkg(pkg, outputDir)
                 self.parseEML(workdir)
                 self.retrieveData(workdir)
-        except Exception as err:
-            self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (workdir, err.message))
-        else:
-            carryForwardList.append(workdir)
+            except Exception as err:
+                self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (pkg, err.message))
+            else:
+                carryForwardList.append(workdir)
         arcpy.SetParameterAsText(4,  ";".join(carryForwardList))
 
 

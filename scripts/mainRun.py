@@ -61,14 +61,15 @@ def testUnpackAsTool():
 
 def testUnpack():
     unpack = lno_geonis_wf.UnpackPackages()
-    tool._isRunningAsTool = False
+    unpack._isRunningAsTool = False
     params = unpack.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
-    params[2].value = r"C:\Users\ron\Documents\geonis_tests\newpackages"
-    params[3].value = None
+    params[2].value = r"Z:\docs\local\geonis_testdata\downloaded_pkgs"
+    params[3].value = r"Z:\docs\local\geonis_testdata\pkgs"
+    params[4].value = None
     unpack.execute(params,[])
-    print params[3].value
+    print params[4].value
 
 def testCheckData():
     tool = lno_geonis_wf.CheckSpatialData()
@@ -95,8 +96,8 @@ def testMetadata():
 
 
 if __name__ == '__main__':
-    #testUnpack()
+    testUnpack()
     #testCheckData()
     #testMetadata()
     #testUnpackAsTool()
-    testChain()
+    #testChain()

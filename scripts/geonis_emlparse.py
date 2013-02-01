@@ -13,6 +13,9 @@ import os, re
 from copy import deepcopy
 from lxml import etree
 
+
+unittest = False
+
 ##
 ##class EMLItem:
 ##    """ Parent class of items to be stored in a list after parsing the EML.
@@ -108,7 +111,7 @@ emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
 
 
 def parseAndPopulateEMLDicts(pathToEML, logger = None):
-    global emlnamespaces
+    global emlnamespaces, unittest
     try:
         treeObj = etree.parse(pathToEML)
     except etree.ParseError as e:
@@ -122,7 +125,7 @@ def parseAndPopulateEMLDicts(pathToEML, logger = None):
         if logger is not None:
             logger.logMessage(msg)
         raise Exception(msg)
-    if istest:
+    if unittest:
         results = treeObj.xpath('dataset/abstract/descendant::text()', namespaces = emlnamespaces)
         if results is not None:
             for kw in [s for s in results if re.search(r"[\S]",s) is not None]:
@@ -203,7 +206,7 @@ parseEMLdata = [
             "content": None,
             "xpath_metadata": "/path/to/node"},
             {"name": "url",
-            "xpath": "//distribution/online/url/text()",
+            "xpath": "//physical/descendant::url/text()",
             "content": None,
             "applies_to": ("vector","raster") },
             {"name": "entityName",
@@ -220,5 +223,5 @@ parseEMLdata = [
             ]
 
 if __name__ == '__main__':
-    istest = False
+    unittest = False
     main()
