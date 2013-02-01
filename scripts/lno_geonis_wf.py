@@ -65,7 +65,7 @@ class UnpackPackages(ArcpyTool):
             if pkg.testzip() is None:
                 pkg.extractall(destpath)
             else:
-                self.logger.logMessage(WARN,"%s did not pass zip test." & (apackage,))
+                self.logger.logMessage(WARN,"%s did not pass zip test." % (apackage,))
                 raise Exception("Zip test fail.")
         return destpath
 
@@ -91,7 +91,36 @@ class UnpackPackages(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Retrieve and unzip data")
     def retrieveData(self, workDir):
-        return os.path.isdir(workDir)
+        emldatafile = os.path.join(workDir,tempMetadataFilename)
+        if os.path.isfile(emldatafile):
+            with open(emldatafile) as datafile:
+                datastr = datafile.read()
+            emldata = eval(datastr)
+        else:
+            raise Exception("EML data file not found.")
+        urlobj = [item for item in emldata if item["name"] == "url"]
+        if not urlobj:
+            raise Exception("URL item not found in eml data.")
+        dataloc = urlobj[0]["content"]
+        try:
+            resourceName = dataloc[dataloc.rindex("/") + 1 :]
+            sdatafile = os.path.join(workDir,resourceName)
+            resource = urllib2.urlopen(dataloc)
+            with open(sdatafile,'wb') as dest:
+                copyfileobj(resource,dest)
+        except Exception as e:
+            raise Exception(e.message)
+        finally:
+            resource.close()
+        if not os.path.exists(sdatafile):
+            raise Exception("spatial data file %s missing after download" % (sdatafile,))
+        with ZipFile(sdatafile) as sdata:
+            if sdata.testzip() is None:
+                sdata.extractall(workDir)
+            else:
+                self.logger.logMessage(WARN,"%s did not pass zip test." % (sdatafile,))
+                raise Exception("Zip test fail.")
+
 
     def execute(self, parameters, messages):
         super(UnpackPackages, self).execute(parameters, messages)
