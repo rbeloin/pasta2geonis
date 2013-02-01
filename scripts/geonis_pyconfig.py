@@ -22,8 +22,8 @@ class GeoNISDataType:
         and hold simple data for helper function to test for type
     """
     NA = object() # not acceptable type
-    SPATIALVECTOR = object() # for expected type, from EML
-    SPATIALRASTER = object() # for expected type, from EML
+    SPATIALVECTOR = ('any vector',) # for expected type, from EML
+    SPATIALRASTER = ('any raster') # for expected type, from EML
     SHAPEFILE = ('.shp',)
     KML = ('.kml', '.kmz')
     TIF = ('.tif', '.tiff', '.tff')
@@ -32,6 +32,6 @@ class GeoNISDataType:
     ASCIIRASTER = ('.txt', '.asc')
     JPEG = ('.jpg', '.jpeg', '.jpc', '.jpe')
     JPGW = ('.jgw',)
-    ESRIE00 = ('e00',)
+    ESRIE00 = ('.e00',)
 
 

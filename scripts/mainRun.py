@@ -77,7 +77,7 @@ def testCheckData():
     params = tool.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
-    params[2].value = r"C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_0;C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_1;C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_2;C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_3"
+    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.1.1;Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1"
     params[3].value = None
     tool.execute(params,[])
     print params[3].value
@@ -96,8 +96,8 @@ def testMetadata():
 
 
 if __name__ == '__main__':
-    testUnpack()
-    #testCheckData()
+    #testUnpack()
+    testCheckData()
     #testMetadata()
     #testUnpackAsTool()
     #testChain()

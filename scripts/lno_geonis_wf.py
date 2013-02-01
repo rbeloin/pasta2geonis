@@ -8,7 +8,7 @@ Created on Jan 14, 2013
 @copyright: 2013 LTER Network Office, University of New Mexico
 @see https://nis.lternet.edu/NIS/
 '''
-import sys, os
+import sys, os, re
 import urllib2
 from shutil import copyfileobj
 from zipfile import ZipFile
@@ -19,7 +19,7 @@ from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename
-from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld
+from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00
 from geonis_emlparse import parseAndPopulateEMLDicts
 
 class UnpackPackages(ArcpyTool):
@@ -171,13 +171,44 @@ class CheckSpatialData(ArcpyTool):
     def updateMessages(self, parameters):
         super(CheckSpatialData, self).updateMessages(parameters)
 
+    @errHandledWorkflowTask(taskName="Examine EML data for type")
+    def examineEMLforType(self, emlData):
+        spatialTypeItem = [item for item in emlData if item["name"] == "spatialType"][0]
+        if spatialTypeItem["content"] == "vector":
+            retval = GeoNISDataType.SPATIALVECTOR
+        elif spatialTypeItem["content"] == "raster":
+            retval = GeoNISDataType.SPATIALRASTER
+        else:
+            retval = None
+            self.logger.logMessage(WARN,"EML spatial type not set, implying 'spatialVector' or 'spatialRaster' node not found.")
+            return retval
+        # now see if can find out more specifically
+        entDescItem = [item for item in emlData if item["name"] == "entityDescription"][0]
+        entDescStr = entDescItem["content"].lower()
+        if retval == GeoNISDataType.SPATIALVECTOR:
+            for fileext in [GeoNISDataType.SHAPEFILE, GeoNISDataType.KML, GeoNISDataType.FILEGEODB]:
+                for ext in fileext:
+                    pat = r"\b%s\b" % (ext[1:],)
+                    if re.search(pat, entDescStr) is not None:
+                        retval = fileext
+                        return retval
+        else:
+            for fileext in [GeoNISDataType.TIF, GeoNISDataType.ESRIE00, GeoNISDataType.JPEG, GeoNISDataType.ASCIIRASTER, GeoNISDataType.FILEGEODB]:
+                for ext in fileext:
+                    pat = r"\b%s\b" % (ext[1:],)
+                    if re.search(pat, entDescStr) is not None:
+                        retval = fileext
+                        return retval
+        return retval
+
+
     @errHandledWorkflowTask(taskName="Data type check")
     def acceptableDataType(self, apackageDir, hint = None):
         if not os.path.isdir(apackageDir):
             self.logger.logMessage(WARN,"Parameter not a directory.")
             return GeoNISDataType.NA
         contents = [os.path.join(apackageDir,item) for item in os.listdir(apackageDir)]
-        self.logger.logMessage(DEBUG, str(contents))
+        #self.logger.logMessage(DEBUG, str(contents))
         allTypesFound = []
         for afile in (f for f in contents if os.path.isfile(f)):
             if isShapefile(afile):
@@ -188,6 +219,8 @@ class CheckSpatialData(ArcpyTool):
                 allTypesFound.append(GeoNISDataType.TIF)
             elif isASCIIRaster(afile):
                 allTypesFound.append(GeoNISDataType.ASCIIRASTER)
+            elif isEsriE00(afile):
+                allTypesFound.append(GeoNISDataType.ESRIE00)
         for afolder in (f for f in contents if os.path.isdir(f)):
             if isFileGDB(afolder):
                 allTypesFound.append(GeoNISDataType.FILEGEODB)
@@ -195,7 +228,7 @@ class CheckSpatialData(ArcpyTool):
             #in most cases we probably just had one hit
             if len(allTypesFound) == 1:
                 if hint is not None and allTypesFound[0] != hint:
-                    self.logger.logMessage(WARN, "Expected data type not matching found data")
+                    self.logger.logMessage(WARN, "Expected data type %s not exactly found data type %s" % (hint, allTypesFound[0]))
                 return allTypesFound[0]
             #found more than one candidate
             #figure out what we really have by certainty
@@ -241,7 +274,15 @@ class CheckSpatialData(ArcpyTool):
                 reportfilePath = os.path.join(dataDir, "pkgID_geonis_report.txt")
                 with open(notesfilePath,'w') as notesfile:
                     try:
-                        spatialType = self.acceptableDataType(dataDir)
+                        emldatafile = os.path.join(dataDir,tempMetadataFilename)
+                        if os.path.isfile(emldatafile):
+                            with open(emldatafile) as datafile:
+                                datastr = datafile.read()
+                            emldata = eval(datastr)
+                        else:
+                            raise Exception("EML data file not found.")
+                        hint = self.examineEMLforType(emldata)
+                        spatialType = self.acceptableDataType(dataDir, hint)
                         if spatialType == GeoNISDataType.NA:
                             raise Exception("No compatible data found in %s" % dataDir)
                         if spatialType == GeoNISDataType.KML:
@@ -256,6 +297,9 @@ class CheckSpatialData(ArcpyTool):
                         if spatialType == GeoNISDataType.FILEGEODB:
                             self.logger.logMessage(INFO, "file gdb found")
                             notesfile.write('TYPE:file geodatabase\n')
+                        if spatialType == GeoNISDataType.ESRIE00:
+                            self.logger.logMessage(INFO, "arcinfo e00  found")
+                            notesfile.write('TYPE:ArcInfo Exchange (e00)\n')
                         self.logger.logMessage(INFO, "working in: " + dataDir)
                     except Exception as e:
                         self.logger.logMessage(WARN, e.message)

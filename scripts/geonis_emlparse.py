@@ -143,7 +143,7 @@ def parseAndPopulateEMLDicts(pathToEML, logger = None):
         else:
             spatialNod = treeObj.xpath('//spatialRaster')
             if spatialNod and etree.iselement(spatialNod[0]):
-                stype[0]["content"] = "rastor"
+                stype[0]["content"] = "raster"
             else:
                 print "problem, no spatial node seen"
         for item in [d for d in temp if 'xpath' in d]:
