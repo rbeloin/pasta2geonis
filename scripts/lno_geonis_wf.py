@@ -206,54 +206,79 @@ class CheckSpatialData(ArcpyTool):
     def acceptableDataType(self, apackageDir, hint = None):
         if not os.path.isdir(apackageDir):
             self.logger.logMessage(WARN,"Parameter not a directory.")
-            return GeoNISDataType.NA
+            return (None, GeoNISDataType.NA)
         contents = [os.path.join(apackageDir,item) for item in os.listdir(apackageDir)]
         #self.logger.logMessage(DEBUG, str(contents))
-        allTypesFound = []
+        #array of tuples, one of which we will return
+        allPotentialFiles = []
         for afile in (f for f in contents if os.path.isfile(f)):
             if isShapefile(afile):
-                allTypesFound.append(GeoNISDataType.SHAPEFILE)
+                allPotentialFiles.append((afile,GeoNISDataType.SHAPEFILE))
             elif isKML(afile):
-                allTypesFound.append(GeoNISDataType.KML)
+                allPotentialFiles.append((afile,GeoNISDataType.KML))
             elif isTif(afile):
-                allTypesFound.append(GeoNISDataType.TIF)
+                allPotentialFiles.append((afile,GeoNISDataType.TIF))
             elif isASCIIRaster(afile):
-                allTypesFound.append(GeoNISDataType.ASCIIRASTER)
+                allPotentialFiles.append((afile, GeoNISDataType.ASCIIRASTER))
             elif isEsriE00(afile):
-                allTypesFound.append(GeoNISDataType.ESRIE00)
+                allPotentialFiles.append((afile, GeoNISDataType.ESRIE00))
         for afolder in (f for f in contents if os.path.isdir(f)):
             if isFileGDB(afolder):
-                allTypesFound.append(GeoNISDataType.FILEGEODB)
-        if len(allTypesFound) > 0:
+                allPotentialFiles.append((afolder, GeoNISDataType.FILEGEODB))
+        if len(allPotentialFiles) > 0:
             #in most cases we probably just had one hit
-            if len(allTypesFound) == 1:
-                if hint is not None and allTypesFound[0] != hint:
-                    self.logger.logMessage(WARN, "Expected data type %s not exactly found data type %s" % (hint, allTypesFound[0]))
-                return allTypesFound[0]
+            if len(allPotentialFiles) == 1:
+                if hint is not None and hint not in allPotentialFiles[0]:
+                    self.logger.logMessage(WARN, "Expected data type %s is not exactly found data type %s for %s" % (hint, allPotentialFiles[0][1], allPotentialFiles[0][0]))
+                return allPotentialFiles[0]
             #found more than one candidate
             #figure out what we really have by certainty
             #if we have a hint, use it
-            if hint is not None and hint in allTypesFound:
-                return hint
+            for found in allPotentialFiles:
+                if hint is not None and hint in found:
+                    return found
+            #list of all types found for easy checking
+            allTypesFound = [item[1] for item in allPotentialFiles]
             #files with world files are good bets
             if GeoNISDataType.TFW in allTypesFound and GeoNISDataType.TIF in allTypesFound:
-                return GeoNISDataType.TIF
+                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.TIF)
+                return (fileHit[0], GeoNISDataType.TIF)
             if GeoNISDataType.JPGW in allTypesFound and GeoNISDataType.JPEG in allTypesFound:
-                return GeoNISDataType.JPEG
+                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.JPEG)
+                return (fileHit[0], GeoNISDataType.JPEG)
             if GeoNISDataType.FILEGEODB in allTypesFound:
-                return GeoNISDataType.FILEGEODB
+                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.FILEGEODB)
+                return (fileHit[0], GeoNISDataType.FILEGEODB)
             if GeoNISDataType.SHAPEFILE in allTypesFound:
-                return GeoNISDataType.SHAPEFILE
+                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.SHAPEFILE)
+                return (fileHit[0], GeoNISDataType.SHAPEFILE)
             if GeoNISDataType.KML in allTypesFound:
-                return GeoNISDataType.KML
+                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.KML)
+                return (fileHit[0], GeoNISDataType.KML)
             if GeoNISDataType.ASCIIRASTER in allTypesFound:
-                return GeoNISDataType.ASCIIRASTER
+                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.ASCIIRASTER)
+                return (fileHit[0], GeoNISDataType.ASCIIRASTER)
             if GeoNISDataType.TIF in allTypesFound:
                 # Tif without world file. Are geotags enough?
-                return GeoNISDataType.TIF
-            return GeoNISDataType.NA
+                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.TIF)
+                return (fileHit[0], GeoNISDataType.TIF)
+            return (None, GeoNISDataType.NA)
         else:
-            return GeoNISDataType.NA
+            return (None, GeoNISDataType.NA)
+
+    @errHandledWorkflowTask(taskName="Data name check")
+    def entityNameMatch(self, entityName, dataFilePath):
+        dataFileName = os.path.basename(dataFilePath).lower()
+        if entityName.lower() == dataFileName:
+            return True
+        else:
+            name, ext = os.path.splitext(dataFileName)
+            if entityName.lower() == name:
+                return True
+            else:
+                self.logger.logMessage(WARN, "entityName s% did not match data name %s" % (entityName, dataFileName))
+                return False
+
 
     @errHandledWorkflowTask(taskName="Format report")
     def getReport(self, notesfilePath):
@@ -270,21 +295,30 @@ class CheckSpatialData(ArcpyTool):
             assert self.outputDirs != None
             reportText = []
             for dataDir in self.inputDirs:
-                notesfilePath = os.path.join(dataDir,"pkgID_geonis_notes.txt")
-                reportfilePath = os.path.join(dataDir, "pkgID_geonis_report.txt")
-                with open(notesfilePath,'w') as notesfile:
-                    try:
-                        emldatafile = os.path.join(dataDir,tempMetadataFilename)
-                        if os.path.isfile(emldatafile):
-                            with open(emldatafile) as datafile:
-                                datastr = datafile.read()
-                            emldata = eval(datastr)
-                        else:
-                            raise Exception("EML data file not found.")
+                try:
+                    emldatafile = os.path.join(dataDir,tempMetadataFilename)
+                    if os.path.isfile(emldatafile):
+                        with open(emldatafile) as datafile:
+                            datastr = datafile.read()
+                        emldata = eval(datastr)
+                    else:
+                        raise Exception("EML data file not found.")
+                    #simple lookup when we expect exactly one value
+                    getEMLitem = lambda ky : [item["content"] for item in emldata if item["name"] == ky][0]
+                    #get packageId from emldata
+                    pkgId = getEMLitem("packageId")
+                    shortPkgId = pkgId[9:]
+                    notesfilePath = os.path.join(dataDir, shortPkgId + "_geonis_notes.txt")
+                    reportfilePath = os.path.join(dataDir, shortPkgId + "_geonis_report.txt")
+                    with open(notesfilePath,'w') as notesfile:
                         hint = self.examineEMLforType(emldata)
-                        spatialType = self.acceptableDataType(dataDir, hint)
+                        foundFile, spatialType = self.acceptableDataType(dataDir, hint)
                         if spatialType == GeoNISDataType.NA:
                             raise Exception("No compatible data found in %s" % dataDir)
+                        entityName = getEMLitem("entityName")
+                        nameMatch = self.entityNameMatch(entityName, foundFile)
+                        notesfile.write("PackageId:%s\n" % (pkgId,))
+                        notesfile.write("EntityNameFound:%s\n" % (nameMatch,))
                         if spatialType == GeoNISDataType.KML:
                             self.logger.logMessage(INFO, "kml  found")
                             notesfile.write('TYPE:kml\n')
@@ -301,10 +335,10 @@ class CheckSpatialData(ArcpyTool):
                             self.logger.logMessage(INFO, "arcinfo e00  found")
                             notesfile.write('TYPE:ArcInfo Exchange (e00)\n')
                         self.logger.logMessage(INFO, "working in: " + dataDir)
-                    except Exception as e:
-                        self.logger.logMessage(WARN, e.message)
-                    else:
-                        self.outputDirs.append(dataDir)
+                except Exception as e:
+                    self.logger.logMessage(WARN, e.message)
+                else:
+                    self.outputDirs.append(dataDir)
                 reportText.append(self.getReport(notesfilePath))
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
             arcpy.SetParameterAsText(4,str(reportText))
