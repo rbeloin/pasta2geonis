@@ -13,7 +13,7 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from geonis_log import EvtLog
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from arcpy import Parameter
-from geonis_pyconfig import defaultVerboseValue
+from geonis_pyconfig import defaultVerboseValue, tempMetadataFilename
 
 class ArcpyTool(object):
     """
@@ -113,6 +113,17 @@ class ArcpyTool(object):
             return paramlist[numericIndex].valueAsText
         else:
             return str(paramlist[numericIndex].value)
+
+    def getEMLdata(self, workDir):
+        emldatafile = os.path.join(workDir,tempMetadataFilename)
+        if os.path.isfile(emldatafile):
+            with open(emldatafile) as datafile:
+                datastr = datafile.read()
+            emldata = eval(datastr)
+        else:
+            raise Exception("EML data file not found.")
+        return emldata
+
 
     def execute(self, parameters, messages):
         """Common tasks for excecuting the tool here"""

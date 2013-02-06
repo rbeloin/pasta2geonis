@@ -91,13 +91,7 @@ class UnpackPackages(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Retrieve and unzip data")
     def retrieveData(self, workDir):
-        emldatafile = os.path.join(workDir,tempMetadataFilename)
-        if os.path.isfile(emldatafile):
-            with open(emldatafile) as datafile:
-                datastr = datafile.read()
-            emldata = eval(datastr)
-        else:
-            raise Exception("EML data file not found.")
+        emldata = self.getEMLdata(workDir)
         urlobj = [item for item in emldata if item["name"] == "url"]
         if not urlobj:
             raise Exception("URL item not found in eml data.")
@@ -295,6 +289,7 @@ class CheckSpatialData(ArcpyTool):
             assert self.outputDirs != None
             reportText = []
             for dataDir in self.inputDirs:
+                self.logger.logMessage(INFO, "working in: " + dataDir)
                 try:
                     emldatafile = os.path.join(dataDir,tempMetadataFilename)
                     if os.path.isfile(emldatafile):
@@ -311,14 +306,14 @@ class CheckSpatialData(ArcpyTool):
                     notesfilePath = os.path.join(dataDir, shortPkgId + "_geonis_notes.txt")
                     reportfilePath = os.path.join(dataDir, shortPkgId + "_geonis_report.txt")
                     with open(notesfilePath,'w') as notesfile:
+                        entityName = getEMLitem("entityName")
+                        notesfile.write("PackageId:%s\n" % (pkgId,))
+                        notesfile.write("EntityNameFound:%s\n" % (nameMatch,))
                         hint = self.examineEMLforType(emldata)
                         foundFile, spatialType = self.acceptableDataType(dataDir, hint)
                         if spatialType == GeoNISDataType.NA:
                             raise Exception("No compatible data found in %s" % dataDir)
-                        entityName = getEMLitem("entityName")
                         nameMatch = self.entityNameMatch(entityName, foundFile)
-                        notesfile.write("PackageId:%s\n" % (pkgId,))
-                        notesfile.write("EntityNameFound:%s\n" % (nameMatch,))
                         if spatialType == GeoNISDataType.KML:
                             self.logger.logMessage(INFO, "kml  found")
                             notesfile.write('TYPE:kml\n')
@@ -334,8 +329,8 @@ class CheckSpatialData(ArcpyTool):
                         if spatialType == GeoNISDataType.ESRIE00:
                             self.logger.logMessage(INFO, "arcinfo e00  found")
                             notesfile.write('TYPE:ArcInfo Exchange (e00)\n')
-                        self.logger.logMessage(INFO, "working in: " + dataDir)
                 except Exception as e:
+                    notesfile.write("TYPE:NOT FOUND")
                     self.logger.logMessage(WARN, e.message)
                 else:
                     self.outputDirs.append(dataDir)
@@ -351,40 +346,47 @@ class CheckSpatialData(ArcpyTool):
 
 
 
-class GatherMetadata(ArcpyTool):
+class Tool(ArcpyTool):
+    """template for GEONIS tool"""
     def __init__(self):
         ArcpyTool.__init__(self)
-        self._description = "Creates new metadata from the EML."
-        self._label = "S4. Gather Metadata"
-        self._alias = "metadata"
+        self._description = "Description"
+        self._label = "Name in toolbox"
+        self._alias = "Name in scripts"
 
     def getParameterInfo(self):
-        params = super(GatherMetadata, self).getParameterInfo()
+        params = super(Tool, self).getParameterInfo()
         params.append(self.getMultiDirInputParameter())
         params.append(self.getMultiDirOutputParameter())
         return params
 
     def updateParameters(self, parameters):
-        super(GatherMetadata, self).updateParameters(parameters)
+        """called whenever user edits parameter in tool GUI. Can adjust other parameters here. """
+        super(Tool, self).updateParameters(parameters)
 
     def updateMessages(self, parameters):
-        super(GatherMetadata, self).updateMessages(parameters)
+        """called after all of the update parameter calls. Call attach messages to parameters, usually warnings."""
+        super(Tool, self).updateMessages(parameters)
+
+    @errHandledWorkflowTask(taskName="Task 1")
+    def someTask(self, path):
+        """perfom some task of this tool. decorator will wrap in error handling code and log task entry and errors"""
+        pass
 
     def execute(self, parameters, messages):
-        super(GatherMetadata, self).execute(parameters, messages)
-        if parameters[2].value:
-            dirlist = self.getParamAsText(parameters, 2).split(';')
-        else:
-            dirlist = []
-        for d in dirlist:
-            self.logger.logMessage(INFO, "working in: " + d)
+        """called when user clicks run, or when invoked as script, after parameters adjusted by arcpy
+        superclass will instantiate or get logger, inputDirs, and outputDirs instance variables
+        """
+        super(Tool, self).execute(parameters, messages)
+        for dir in self.inputDirs:
+            someTask(dir)
         #pass the list on
-        arcpy.SetParameterAsText(3, self.getParamAsText( parameters, 2))
+        arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
 
 #this is imported into Toolbox.pyt file and used to instantiate tools
 toolclasses =  [UnpackPackages,
-                CheckSpatialData,
-                GatherMetadata]
+                CheckSpatialData
+                ]
 
 
