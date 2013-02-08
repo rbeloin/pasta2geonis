@@ -9,13 +9,17 @@ Created on Jan 28, 2013
 @copyright: 2013 LTER Network Office, University of New Mexico
 @see https://nis.lternet.edu/NIS/
 '''
-from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
+from logging import DEBUG, INFO, WARN
 
 defaultLoggingLevel = INFO
 #set the default value for the verbose switch for each tool. Verbose forces DEBUG logging
 defaultVerboseValue = True
 #set name of metadata temp file used in workflow
 tempMetadataFilename = "temp_meta.data"
+#path to env settings file. settings loaded by base execute method
+envSettingsPath = r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml"
+#file gdb for dev
+myFileGDB = r"C:\Users\ron\Documents\geonis_tests\geonis.gdb"
 
 class GeoNISDataType:
     """ members of this class serve as both enum type values for data types,
@@ -23,7 +27,7 @@ class GeoNISDataType:
     """
     NA = object() # not acceptable type
     SPATIALVECTOR = ('any vector',) # for expected type, from EML
-    SPATIALRASTER = ('any raster') # for expected type, from EML
+    SPATIALRASTER = ('any raster',) # for expected type, from EML
     SHAPEFILE = ('.shp',)
     KML = ('.kml', '.kmz')
     TIF = ('.tif', '.tiff', '.tff')

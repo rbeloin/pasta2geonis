@@ -71,7 +71,9 @@ def errHandledWorkflowTask(taskName = ""):
        in a try block, makes log entries, and will raise Exception if any exceptions are
        raised in the task function. The taskName parameter will show up in log entries.
        This decorator only works for methods of an object, and will look for self.logger
-       variable for logging. """
+       variable for logging. It logs as warnings because logging an ERROR will call arcpy.AddError,
+       which in turn will terminate the program. Usually we just want to terminate processing this
+       data set. """
     def decorate(taskFunc):
         @wraps(taskFunc)
         def errHandlingWrapper(*args, **kwargs):
@@ -82,11 +84,11 @@ def errHandledWorkflowTask(taskName = ""):
                 logger.logMessage(logging.INFO, taskName + ":")
                 return taskFunc(*args, **kwargs)
             except gpError:
-                logger.logMessage(logging.ERROR, gpMessages(2))
+                logger.logMessage(logging.WARN, gpMessages(2))
                 raise Exception(gpMessages())
             except Exception as e:
-                logger.logMessage(logging.ERROR, "error type: " + str(type(e)))
-                logger.logMessage(logging.ERROR, e.message)
+                logger.logMessage(logging.WARN, "error type: " + str(type(e)))
+                logger.logMessage(logging.WARN, e.message)
                 raise Exception(taskName + " terminated with exception.")
         return errHandlingWrapper
     return decorate

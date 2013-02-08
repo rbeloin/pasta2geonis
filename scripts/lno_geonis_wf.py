@@ -18,8 +18,9 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
-from geonis_pyconfig import GeoNISDataType, tempMetadataFilename
+from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, myFileGDB
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00
+from geonis_helpers import siteFromId
 from geonis_emlparse import parseAndPopulateEMLDicts
 
 class UnpackPackages(ArcpyTool):
@@ -173,9 +174,8 @@ class CheckSpatialData(ArcpyTool):
         elif spatialTypeItem["content"] == "raster":
             retval = GeoNISDataType.SPATIALRASTER
         else:
-            retval = None
             self.logger.logMessage(WARN,"EML spatial type not set, implying 'spatialVector' or 'spatialRaster' node not found.")
-            return retval
+            raise Exception("EML spatialType node not found.")
         # now see if can find out more specifically
         entDescItem = [item for item in emlData if item["name"] == "entityDescription"][0]
         entDescStr = entDescItem["content"].lower()
@@ -291,29 +291,26 @@ class CheckSpatialData(ArcpyTool):
             for dataDir in self.inputDirs:
                 self.logger.logMessage(INFO, "working in: " + dataDir)
                 try:
-                    emldatafile = os.path.join(dataDir,tempMetadataFilename)
-                    if os.path.isfile(emldatafile):
-                        with open(emldatafile) as datafile:
-                            datastr = datafile.read()
-                        emldata = eval(datastr)
-                    else:
-                        raise Exception("EML data file not found.")
+                    emldata = self.getEMLdata(dataDir)
                     #simple lookup when we expect exactly one value
                     getEMLitem = lambda ky : [item["content"] for item in emldata if item["name"] == ky][0]
                     #get packageId from emldata
                     pkgId = getEMLitem("packageId")
                     shortPkgId = pkgId[9:]
-                    notesfilePath = os.path.join(dataDir, shortPkgId + "_geonis_notes.txt")
+                    notesfilePath = os.path.join(dataDir, "geonis_notes.txt")
                     reportfilePath = os.path.join(dataDir, shortPkgId + "_geonis_report.txt")
                     with open(notesfilePath,'w') as notesfile:
                         entityName = getEMLitem("entityName")
                         notesfile.write("PackageId:%s\n" % (pkgId,))
-                        notesfile.write("EntityNameFound:%s\n" % (nameMatch,))
+                        notesfile.write("EntityNameFound:%s\n" % (entityName,))
                         hint = self.examineEMLforType(emldata)
                         foundFile, spatialType = self.acceptableDataType(dataDir, hint)
                         if spatialType == GeoNISDataType.NA:
+                            notesfile.write("TYPE:NOT FOUND\n")
                             raise Exception("No compatible data found in %s" % dataDir)
+                        notesfile.write("DatafilePath:%s\n" % (foundFile,))
                         nameMatch = self.entityNameMatch(entityName, foundFile)
+                        notesfile.write("DatafileMatchesEntity:%s\n" % (nameMatch,))
                         if spatialType == GeoNISDataType.KML:
                             self.logger.logMessage(INFO, "kml  found")
                             notesfile.write('TYPE:kml\n')
@@ -330,7 +327,8 @@ class CheckSpatialData(ArcpyTool):
                             self.logger.logMessage(INFO, "arcinfo e00  found")
                             notesfile.write('TYPE:ArcInfo Exchange (e00)\n')
                 except Exception as e:
-                    notesfile.write("TYPE:NOT FOUND")
+                    with open(notesfilePath,'w') as notesfile:
+                        notesfile.write("Exception:%s\n", (e.message,))
                     self.logger.logMessage(WARN, e.message)
                 else:
                     self.outputDirs.append(dataDir)
@@ -343,6 +341,87 @@ class CheckSpatialData(ArcpyTool):
         except Exception as crit:
             self.logger.logMessage(CRITICAL, crit.message)
             sys.exit(1)
+
+
+class LoadVectorTypes(ArcpyTool):
+    """Loads to geodatabase any vector types, then exports, amends, and imports metadata."""
+    def __init__(self):
+        ArcpyTool.__init__(self)
+        self._description = "Loads to geodatabase any vector data types, then exports, amends, and imports metadata."
+        self._label = "S4. Load Vector"
+        self._alias = "loadvector"
+
+    def getParameterInfo(self):
+        params = super(LoadVectorTypes, self).getParameterInfo()
+        params.append(self.getMultiDirInputParameter())
+        params.append(self.getMultiDirOutputParameter())
+        return params
+
+    def updateParameters(self, parameters):
+        """called whenever user edits parameter in tool GUI. Can adjust other parameters here. """
+        super(LoadVectorTypes, self).updateParameters(parameters)
+
+    def updateMessages(self, parameters):
+        """called after all of the update parameter calls. Call attach messages to parameters, usually warnings."""
+        super(LoadVectorTypes, self).updateMessages(parameters)
+
+    @errHandledWorkflowTask(taskName="Load shapefile")
+    def shapefile(self, site, name, path):
+        """call feature class to feature class to copy shapefile to geodatabase"""
+        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, myFileGDB, site, name))
+        #if no dataset, make one
+        if not arcpy.Exists(os.path.join(myFileGDB,site)):
+            arcpy.CreateFeatureDataset_management(out_dataset_path = myFileGDB,
+                                                out_name = site,
+                                                spatial_reference = self.spatialRef)
+        arcpy.FeatureClassToFeatureClass_conversion(in_features = path,
+                                    out_path = os.path.join(myFileGDB,site),
+                                    out_name = name)
+
+
+
+    @errHandledWorkflowTask(taskName="Load KML")
+    def kml(self, site, name, path):
+        """call KML to Layer tool to copy kml to geodatabase"""
+        print path
+
+    def execute(self, parameters, messages):
+        super(LoadVectorTypes, self).execute(parameters, messages)
+##        arcpy.env.overwriteOutput = True
+##        arcpy.env.scratchWorkspace = r"C:\Users\ron\Documents\geonis_tests\scratch"
+##        arcpy.SaveSettings(r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml")
+        for dir in self.inputDirs:
+            datafilePath, pkgId, datatype, entityname = ("" for i in range(4))
+            try:
+                with open(os.path.join(dir,"geonis_notes.txt"),'r') as notesfile:
+                    notes = notesfile.readlines()
+                for line in notes:
+                    if ':' in line:
+                        lineval = line[line.index(':') + 1 : -1]
+                        if line.startswith("PackageId"):
+                            pkgId = lineval
+                        elif line.startswith("DatafilePath"):
+                            datafilePath = lineval
+                        elif line.startswith("TYPE"):
+                            datatype = lineval
+                        elif line.startswith("EntityName"):
+                            entityname = lineval
+                siteId = siteFromId(pkgId)
+                if 'shapefile' in datatype:
+                    self.shapefile(siteId, entityname, datafilePath)
+                elif 'kml' in datatype:
+                    self.kml(siteId, entityname, datafilePath)
+                else:
+                    # no vector data here; continue to next dir, placing this one into the output set
+                    self.outputDirs.append(dir)
+                    continue
+                # amend metadata
+                self.outputDirs.append(dir)
+            except Exception as err:
+                self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
+        #pass the list on
+        arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
+
 
 
 
@@ -379,14 +458,18 @@ class Tool(ArcpyTool):
         """
         super(Tool, self).execute(parameters, messages)
         for dir in self.inputDirs:
-            someTask(dir)
+            try:
+                someTask(dir)
+                self.outputDirs.append(dir)
+            except Exception as err:
+                self.logger.logMessage(WARN, err.message)
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
 
-#this is imported into Toolbox.pyt file and used to instantiate tools
+#this list is imported into Toolbox.pyt file and used to instantiate tools
 toolclasses =  [UnpackPackages,
-                CheckSpatialData
-                ]
+                CheckSpatialData,
+                LoadVectorTypes ]
 
 

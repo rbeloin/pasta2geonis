@@ -33,6 +33,7 @@ def isFileGDB(path):
     '''Returns True if directory ending with ".gdb" '''
     return (os.path.isdir(path) and path[-4:] == '.gdb')
 
+
 def isASCIIRaster(pathToFile):
     ''' Checks for ascii file extension, peeks at first two lines comparing
     to what is expected for an ASCII raster '''
@@ -43,3 +44,9 @@ def isASCIIRaster(pathToFile):
         return (len(line1) > 6 and line1[:5] == 'ncols' and len(line2) > 6 and line2[:5] == 'nrows')
 
 
+def siteFromId(packageId):
+    """ returns the upper case site code part of the package id """
+    if packageId.lower().startswith("knb-lter-"):
+        return packageId[9:12].upper()
+    else:
+        return "unrecognized package id"

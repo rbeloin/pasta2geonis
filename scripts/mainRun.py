@@ -83,21 +83,22 @@ def testCheckData():
     print params[3].value
     print params[4].value
 
-def testMetadata():
-    tool = lno_geonis_wf.CreateMetadata()
+def testLoadVector():
+    tool = lno_geonis_wf.LoadVectorTypes()
     tool._isRunningAsTool = False
     params = tool.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
-    params[2].value = r"C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_0;C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_1;C:\Users\ron\Documents\geonis_tests\workflow_dirs\pkg_2"
+    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.1.1;Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1"
     params[3].value = None
     tool.execute(params,[])
     print params[3].value
 
 
+
 if __name__ == '__main__':
     #testUnpack()
-    testCheckData()
-    #testMetadata()
+    #testCheckData()
+    testLoadVector()
     #testUnpackAsTool()
     #testChain()

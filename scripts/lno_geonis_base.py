@@ -13,7 +13,7 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from geonis_log import EvtLog
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from arcpy import Parameter
-from geonis_pyconfig import defaultVerboseValue, tempMetadataFilename
+from geonis_pyconfig import defaultVerboseValue, tempMetadataFilename, envSettingsPath
 
 class ArcpyTool(object):
     """
@@ -30,6 +30,7 @@ class ArcpyTool(object):
         self._alias = ""
         self.logger = None
         self._isRunningAsTool = True
+        arcpy.LoadSettings(envSettingsPath)
 
     @property
     def isRunningAsTool(self):
@@ -55,6 +56,10 @@ class ArcpyTool(object):
     @property
     def alias(self):
         return self._alias
+
+    @property
+    def spatialRef(self):
+        return arcpy.SpatialReference(3857)
 
     def getParameterInfo(self):
         """Defines common parameter definitions"""
@@ -117,12 +122,15 @@ class ArcpyTool(object):
     def getEMLdata(self, workDir):
         emldatafile = os.path.join(workDir,tempMetadataFilename)
         if os.path.isfile(emldatafile):
-            with open(emldatafile) as datafile:
-                datastr = datafile.read()
-            emldata = eval(datastr)
+            try:
+                with open(emldatafile) as datafile:
+                    datastr = datafile.read()
+                return eval(datastr)
+            except Exception as err:
+                self.logger.logMessage(WARN, "EML data in %s could not be read or parsed. %s" % (emldatafile, err.message))
+                raise err
         else:
-            raise Exception("EML data file not found.")
-        return emldata
+            raise Exception("EML data file %s not found." % (emldatafile,))
 
 
     def execute(self, parameters, messages):
