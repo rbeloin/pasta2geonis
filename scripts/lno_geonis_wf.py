@@ -366,9 +366,10 @@ class LoadVectorTypes(ArcpyTool):
         super(LoadVectorTypes, self).updateMessages(parameters)
 
     @errHandledWorkflowTask(taskName="Load shapefile")
-    def shapefile(self, site, name, path):
+    def loadShapefile(self, site, name, path):
         """call feature class to feature class to copy shapefile to geodatabase"""
         self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, myFileGDB, site, name))
+        addedFC = []
         #if no dataset, make one
         if not arcpy.Exists(os.path.join(myFileGDB,site)):
             arcpy.CreateFeatureDataset_management(out_dataset_path = myFileGDB,
@@ -377,13 +378,38 @@ class LoadVectorTypes(ArcpyTool):
         arcpy.FeatureClassToFeatureClass_conversion(in_features = path,
                                     out_path = os.path.join(myFileGDB,site),
                                     out_name = name)
-
+        addedFC.append(myFileGDB + os.sep + site + os.sep + name)
+        return addedFC
 
 
     @errHandledWorkflowTask(taskName="Load KML")
-    def kml(self, site, name, path):
-        """call KML to Layer tool to copy kml to geodatabase"""
-        print path
+    def loadKml(self, site, name, path):
+        """call KML to Layer tool to copy kml contents to file gdb, then loop over features
+        and load each to geodatabase"""
+        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, myFileGDB, site, name))
+        addedFC = []
+        #if no dataset, make one
+        if not arcpy.Exists(os.path.join(myFileGDB,site)):
+            arcpy.CreateFeatureDataset_management(out_dataset_path = myFileGDB,
+                                                out_name = site,
+                                                spatial_reference = self.spatialRef)
+        arcpy.KMLToLayer_conversion( in_kml_file = path,
+                                    output_folder = os.path.dirname(path),
+                                    output_data = name)
+        # load resulting feature classes out of fgdb just created
+        fgdb = os.path.join(os.path.dirname(path), name + '.gdb')
+        arcpy.env.workspace = fgdb
+        fclasses = arcpy.ListFeatureClasses(wild_card = '*', feature_type = '', feature_dataset = "Placemarks")
+        for feature in fclasses:
+            fcpath = fgdb + os.sep + "Placemarks" + os.sep + feature
+            outDS = os.path.join(myFileGDB, site)
+            outF = name + '_' + feature
+            arcpy.FeatureClassToFeatureClass_conversion(in_features = fcpath,
+                                                        out_path = outDS,
+                                                        out_name = outF)
+            addedFC.append(outDS + os.sep + outF)
+        return addedFC
+
 
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
@@ -392,6 +418,7 @@ class LoadVectorTypes(ArcpyTool):
 ##        arcpy.SaveSettings(r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml")
         for dir in self.inputDirs:
             datafilePath, pkgId, datatype, entityname = ("" for i in range(4))
+            loadedFeatureClasses = []
             try:
                 with open(os.path.join(dir,"geonis_notes.txt"),'r') as notesfile:
                     notes = notesfile.readlines()
@@ -408,14 +435,17 @@ class LoadVectorTypes(ArcpyTool):
                             entityname = lineval
                 siteId = siteFromId(pkgId)
                 if 'shapefile' in datatype:
-                    self.shapefile(siteId, entityname, datafilePath)
+                    loadedFeatureClasses = self.loadShapefile(siteId, entityname, datafilePath)
                 elif 'kml' in datatype:
-                    self.kml(siteId, entityname, datafilePath)
+                    loadedFeatureClasses = self.loadKml(siteId, entityname, datafilePath)
                 else:
                     # no vector data here; continue to next dir, placing this one into the output set
                     self.outputDirs.append(dir)
                     continue
                 # amend metadata
+                for fc in loadedFeatureClasses:
+                    pass
+                # add dir for next tool, in any case except exception
                 self.outputDirs.append(dir)
             except Exception as err:
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
