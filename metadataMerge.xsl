@@ -6,8 +6,9 @@
 	<xsl:param name="gpparam"/>
 	<!-- this title will replace the one that is there, because arcgis always supplies a title -->
 	<xsl:variable name="title" select="document($gpparam)//resTitle" />
-	<!-- abstract and keywords copied only if no idAbs or searchKeys, respectively, exists -->
+	<!-- abstract, purpose, keywords copied only if they are not present -->
 	<xsl:variable name="abstract" select="document($gpparam)//idAbs" />
+	<xsl:variable name="purpose" select="document($gpparam)//idPurp" />
 	<xsl:variable name="keywords" select="document($gpparam)//searchKeys" />
 	<!-- any text in idCitation/otherCitDet is saved and combined with new text -->
 	<xsl:variable name="otherDetails" select="document($gpparam)//otherCitDet/text()" />
@@ -16,7 +17,7 @@
 	<xsl:variable name="existingCitDet">
 		<xsl:choose>
 			<xsl:when test="//dataIdInfo/idCitation/otherCitDet" >
-				<xsl:value-of select="//dataIdInfo/idCitation/otherCitDet/text()" />
+				<xsl:value-of select="concat(//dataIdInfo/idCitation/otherCitDet/text(),'; ')" />
 			</xsl:when>
 			<xsl:otherwise>
 				<xsl:value-of select="''" />
@@ -39,27 +40,22 @@
 	<xsl:template match="//dataIdInfo/idCitation/otherCitDet" priority="3">
 	</xsl:template>
 	
-	<!-- match dataIdInfo if it doesn't have abstract. This will also add searchKeys. -->
-	<xsl:template match="//dataIdInfo[not(idAbs)]" priority="1">
+	<!-- match dataIdInfo if it doesn't have one of the nodes we have. -->
+	<xsl:template match="//dataIdInfo[not(idAbs) or not(idPurp) or not(searchKeys)]" priority="1">
 		<xsl:copy>
 			<xsl:apply-templates select="node()|@*"/>
-			<xsl:copy-of select="$abstract" />
+			<xsl:if test="not(./idAbs)" >
+				<xsl:copy-of select="$abstract" />
+			</xsl:if>
 			<xsl:if test="not(./searchKeys)" >
 				<xsl:copy-of select="$keywords" />	
+			</xsl:if>
+			<xsl:if test="not(./idPurp)" >
+				<xsl:copy-of select="$purpose" />	
 			</xsl:if>
 		</xsl:copy>
 	</xsl:template>
 	
-	<!-- match dataIdInfo if it doesn't have searchKeys. This will also add abstract -->
-	<xsl:template match="//dataIdInfo[not(searchKeys)]" priority="1">
-		<xsl:copy>
-			<xsl:apply-templates select="node()|@*"/>
-			<xsl:copy-of select="$keywords" />
-			<xsl:if test="not(./idAbs)" >
-				<xsl:copy-of select="$abstract" />	
-			</xsl:if>
-		</xsl:copy>
-	</xsl:template>
 
 	<!-- match idCitation node, which I think is always going to be there with data loaded into dataset.
 		 Copy the node, process childred, then create the otherCitDet node and merge the text.  -->

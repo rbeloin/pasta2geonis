@@ -14,89 +14,24 @@ from copy import deepcopy
 from lxml import etree
 
 
-unittest = False
+unittest = True
 
-##
-##class EMLItem:
-##    """ Parent class of items to be stored in a list after parsing the EML.
-##        Some items are for the checking of spatial data, other items for
-##        inclusion into the metadata upon loading of the data.
-##    """
-##    def __init__(self):
-##        self.name = ""
-##        self.xpath = ""
-##        self.value = ""
-##        self.atts = dict()
-##    def compareToContent(content):
-##        return self.value.strip() == content.strip()
-##
-##
-##class EMLSourceItem(EMLItem):
-##    def __init__(self, name="", xpath="", emlcontent = ""):
-##        EMLItem.__init__(self)
-##        self.name = name
-##        self.xpath = xpath
-##        self.value = emlcontent
-##        self.protocol = 'ftp://'
-##        self.downloaded = False
-##
-##
-##class EMLValidationItem(EMLItem):
-##    def __init__(self, name="", xpath="", emlcontent = ""):
-##        EMLItem.__init__(self)
-##        self.name = name
-##        self.xpath = xpath
-##        self.value = emlcontent
-##        #list of GeoNISDataType to apply this check to, or e.g. GeoNISDataType.SPATIALVECTOR
-##        self.appliesTo = []
-##        self.comparisonFunc = None
-##    def compareToContent(content):
-##        if super(EMLValidationItem,self).compareToContent(content):
-##            return True
-##        elif comparer is not None:
-##            # other checks specific to type
-##            return comparisonFunc(self.value, content)
-##        else:
-##            return False
-##
-##
-##class EMLMetadataItem(EMLItem):
-##    def __init__(self, name="", xpath="", content = "", overwrite=False, xpath_metadata="" ):
-##        EMLItem.__init__(self)
-##        self.name = name
-##        self.xpath = xpath
-##        self.value = content
-##        self.overwrite = overwrite
-##        self.metaXpath = xpath_metadata
-##
-##parsedEMLdata = []
-##
-##parsedEMLdata.append(EMLMetadataItem(name="item1",
-##                    xpath="/spatialraster/node",
-##                    content="item1 content",
-##                    overwrite=True,
-##                    xpath_metadata="/desc/item"))
-##
-##parsedEMLdata.append(EMLMetadataItem(name="item2",
-##                    xpath="/spatialraster/node",
-##                    content="item2 content",
-##                    overwrite=True,
-##                    xpath_metadata="/desc/item"))
 
 def main():
+    """used for testing """
     tmp = parseAndPopulateEMLDicts(r"Z:\docs\local\geonis_testdata\downloaded_pkgs\gi01001i.xml")
     if tmp is None:
         return
-    recoveredThing = eval(str(tmp))
-    for item in recoveredThing:
-        if item['name'] == 'spatialType':
-            print "%s !!" % (item['content'],)
-        if item['content'] is not None and 'xpath_metadata' in item:
-            print item['name'], ": ", item['content']
-    for item in recoveredThing:
-        if 'applies_to' in item:
-            print "check ", item['applies_to']
-
+##    recoveredThing = eval(str(tmp))
+##    for item in recoveredThing:
+##        if item['name'] == 'spatialType':
+##            print "%s !!" % (item['content'],)
+##        if item['content'] is not None and 'xpath_metadata' in item:
+##            print item['name'], ": ", item['content']
+##    for item in recoveredThing:
+##        if 'applies_to' in item:
+##            print "check ", item['applies_to']
+    createSuppXML(tmp)
 
 emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
                 'stmml':"http://www.xml-cml.org/schema/stmml",
@@ -125,7 +60,7 @@ def parseAndPopulateEMLDicts(pathToEML, logger = None):
         if logger is not None:
             logger.logMessage(msg)
         raise Exception(msg)
-    if unittest:
+    if False:
         results = treeObj.xpath('dataset/abstract/descendant::text()', namespaces = emlnamespaces)
         if results is not None:
             for kw in [s for s in results if re.search(r"[\S]",s) is not None]:
@@ -133,7 +68,7 @@ def parseAndPopulateEMLDicts(pathToEML, logger = None):
             #print ';'.join(results)
         else:
             print "no results"
-        return None
+        return treeObj
     temp = deepcopy(parseEMLdata)
     try:
         spatialNod = treeObj.xpath('//spatialVector')
@@ -169,13 +104,55 @@ def parseAndPopulateEMLDicts(pathToEML, logger = None):
         raise Exception(e.message)
     return temp
 
+def addToXML(root, xpth, value = None, overwrite = False):
+    """given top node, and full xpath to destination node, create the path
+        if needed and insert value as text
+    """
+    node = root
+    nodes = xpth.strip(' /').split("/")
+    # loop over nodes, creating if needed
+    for nodeName in nodes[1:]:
+        if not nodeName in [n.tag for n in node]:
+            node = etree.SubElement(node, nodeName)
+        else:
+            node = [n for n in node if n.tag == nodeName][0]
+    if not overwrite and node.text is not None:
+        etree.SubElement(node.getparent(),nodes[-1]).text = value
+    else:
+        node.text = value
+
+def createSuppXML(emldata):
+    suppX = etree.Element("supplemental")
+    #break emldata list into different lists for different processing
+    allMeta = [item for item in emldata if "xpath_metadata" in item]
+    otherCitDet = [item for item in allMeta if item["xpath_metadata"].endswith("otherCitDet")]
+    keywds = [item for item in allMeta if item["xpath_metadata"].endswith("keyword")]
+    remains = [item for item in allMeta if item not in otherCitDet and item not in keywds]
+    if len(otherCitDet) > 0:
+        otherCitDetVal = ""
+        for item in otherCitDet:
+            #combine content and make one entry
+            otherCitDetVal = "%s %s: %s; " % (otherCitDetVal, item["name"], item["content"])
+        addToXML(suppX, otherCitDet[0]["xpath_metadata"], otherCitDetVal.strip("; "), overwrite = True)
+    if len(keywds) > 0:
+        # make entry for each keyword
+        keywords = keywds[0]["content"].split(";")
+        for kw in keywords:
+            addToXML(suppX, keywds[0]["xpath_metadata"], kw, overwrite = False)
+    for item in remains:
+        addToXML(suppX, item["xpath_metadata"], item["content"], overwrite = True)
+    with open("C:\\Users\\ron\\Documents\\geonis_tests\\meta-supp.xml",'w') as outfile:
+        outfile.write(etree.tostring(suppX, pretty_print = True))
+    print (etree.tostring(suppX, pretty_print = True))
+
+
 
 """
     List contains objects that describe what and where to pull information from the EML file
     for primarily two purposes: data checking and merging of metadata from here with Arc metadata
     file created when loading or storing the data. A function in this module iterates over
     this list to capture the text from the EML. Items that have 'xpath_metadata' are for
-    merging with other metadata. They should have an 'overwrite' flag. Items with 'applies_to'
+    merging with other metadata.  Items with 'applies_to'
     key are for checks against the data. An item may be used for both purposes.
 """
 parseEMLdata = [
@@ -184,31 +161,30 @@ parseEMLdata = [
             {"name": "packageId",
             "xpath": "/eml:eml/@packageId",
             "content": "",
-            "xpath_metadata": ""},
+            "xpath_metadata": "/supplemental/dataIdInfo/idCitation/otherCitDet"},
             {"name": "messages",
             "content": []},
             {"name": "title",
             "xpath": "dataset/title/text()",
             "content": None,
-            "xpath_metadata": "/path/to/node",
-            "overwrite": True},
+            "xpath_metadata": "/supplemental/dataIdInfo/idCitation/resTitle"},
             {"name": "keywords",
             "xpath": "//keyword/text()",
             "content": None,
-            "xpath_metadata": "/path/to/node",
-            "overwrite": True},
+            "xpath_metadata": "/supplemental/dataIdInfo/searchKeys/keyword"},
             {"name": "abstract",
             "xpath": "//abstract/descendant::text()",
             "content": None,
-            "xpath_metadata": "/path/to/node"},
+            "xpath_metadata": "/supplemental/dataIdInfo/idAbs"},
             {"name": "purpose",
             "xpath": "dataset/purpose/descendant::text()",
             "content": None,
-            "xpath_metadata": "/path/to/node"},
+            "xpath_metadata": "/supplemental/dataIdInfo/idPurp"},
             {"name": "url",
             "xpath": "//physical/descendant::url/text()",
             "content": None,
-            "applies_to": ("vector","raster") },
+            "applies_to": ("vector","raster"),
+            "xpath_metadata": "/supplemental/dataIdInfo/idCitation/otherCitDet" },
             {"name": "entityName",
             "xpath": "dataset/*/entityName/text()",
             "content": None,
@@ -223,5 +199,5 @@ parseEMLdata = [
             ]
 
 if __name__ == '__main__':
-    unittest = False
+    unittest = True
     main()
