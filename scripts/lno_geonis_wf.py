@@ -21,7 +21,8 @@ from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, myFileGDB
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00
 from geonis_helpers import siteFromId
-from geonis_emlparse import parseAndPopulateEMLDicts
+from geonis_emlparse import parseAndPopulateEMLDicts, createSuppXML
+
 
 class UnpackPackages(ArcpyTool):
     def __init__(self):
@@ -411,6 +412,23 @@ class LoadVectorTypes(ArcpyTool):
         return addedFC
 
 
+    @errHandledWorkflowTask(taskName="Merge metadata")
+    def mergeMetadata(self, workDir, loadedFeatureClasses):
+        if not loadedFeatureClasses:
+            return
+        emldataObj = self.getEMLdata(workDir)
+        xmlSuppFile = os.path.join(workDir, "supp_metadata.xml")
+        createSuppXML(emldataObj, xmlSuppFile)
+        if not os.path.isfile(xmlSuppFile):
+            self.logger.logMessage(WARN, "Supplemental metadata file missing in %s" % (workDir,))
+            return
+        arcpy.env.workspace = workDir
+        for fc in loadedFeatureClasses:
+            result = arcpy.XSLTransform_conversion(fc,r"C:\Users\ron\Documents\geonis_tests\metadataMerge.xsl","merged_metadata.xml",xmlSuppFile)
+            result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", fc)
+
+
+
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
 ##        arcpy.env.overwriteOutput = True
@@ -443,8 +461,7 @@ class LoadVectorTypes(ArcpyTool):
                     self.outputDirs.append(dir)
                     continue
                 # amend metadata
-                for fc in loadedFeatureClasses:
-                    pass
+                self.mergeMetadata(dir, loadedFeatureClasses)
                 # add dir for next tool, in any case except exception
                 self.outputDirs.append(dir)
             except Exception as err:

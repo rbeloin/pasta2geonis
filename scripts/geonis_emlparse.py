@@ -19,7 +19,7 @@ unittest = True
 
 def main():
     """used for testing """
-    tmp = parseAndPopulateEMLDicts(r"Z:\docs\local\geonis_testdata\downloaded_pkgs\gi01001i.xml")
+    tmp = parseAndPopulateEMLDicts(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.1.1\tv06101a.xml")
     if tmp is None:
         return
 ##    recoveredThing = eval(str(tmp))
@@ -31,7 +31,9 @@ def main():
 ##    for item in recoveredThing:
 ##        if 'applies_to' in item:
 ##            print "check ", item['applies_to']
-    createSuppXML(tmp)
+    with open(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.1.1\temp_meta.data", 'w') as tmpdat:
+        tmpdat.write(str(tmp))
+    #createSuppXML(tmp, r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.1.1\supp_metadata.xml")
 
 emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
                 'stmml':"http://www.xml-cml.org/schema/stmml",
@@ -121,29 +123,32 @@ def addToXML(root, xpth, value = None, overwrite = False):
     else:
         node.text = value
 
-def createSuppXML(emldata):
-    suppX = etree.Element("supplemental")
-    #break emldata list into different lists for different processing
-    allMeta = [item for item in emldata if "xpath_metadata" in item]
-    otherCitDet = [item for item in allMeta if item["xpath_metadata"].endswith("otherCitDet")]
-    keywds = [item for item in allMeta if item["xpath_metadata"].endswith("keyword")]
-    remains = [item for item in allMeta if item not in otherCitDet and item not in keywds]
-    if len(otherCitDet) > 0:
-        otherCitDetVal = ""
-        for item in otherCitDet:
-            #combine content and make one entry
-            otherCitDetVal = "%s %s: %s; " % (otherCitDetVal, item["name"], item["content"])
-        addToXML(suppX, otherCitDet[0]["xpath_metadata"], otherCitDetVal.strip("; "), overwrite = True)
-    if len(keywds) > 0:
-        # make entry for each keyword
-        keywords = keywds[0]["content"].split(";")
-        for kw in keywords:
-            addToXML(suppX, keywds[0]["xpath_metadata"], kw, overwrite = False)
-    for item in remains:
-        addToXML(suppX, item["xpath_metadata"], item["content"], overwrite = True)
-    with open("C:\\Users\\ron\\Documents\\geonis_tests\\meta-supp.xml",'w') as outfile:
-        outfile.write(etree.tostring(suppX, pretty_print = True))
-    print (etree.tostring(suppX, pretty_print = True))
+def createSuppXML(emldata, outFilePath):
+    try:
+        suppX = etree.Element("supplemental")
+        #break emldata list into different lists for different processing
+        allMeta = [item for item in emldata if "xpath_metadata" in item]
+        otherCitDet = [item for item in allMeta if item["xpath_metadata"].endswith("otherCitDet")]
+        keywds = [item for item in allMeta if item["xpath_metadata"].endswith("keyword")]
+        remains = [item for item in allMeta if item not in otherCitDet and item not in keywds]
+        if len(otherCitDet) > 0:
+            otherCitDetVal = ""
+            for item in otherCitDet:
+                #combine content and make one entry
+                otherCitDetVal = "%s %s: %s; " % (otherCitDetVal, item["name"], item["content"])
+            addToXML(suppX, otherCitDet[0]["xpath_metadata"], otherCitDetVal.strip("; "), overwrite = True)
+        if len(keywds) > 0:
+            # make entry for each keyword
+            keywords = keywds[0]["content"].split(";")
+            for kw in keywords:
+                addToXML(suppX, keywds[0]["xpath_metadata"], kw, overwrite = False)
+        for item in remains:
+            addToXML(suppX, item["xpath_metadata"], item["content"], overwrite = True)
+        with open(outFilePath,'w') as outfile:
+            outfile.write(etree.tostring(suppX, xml_declaration = True))
+    except Exception as err:
+        raise Exception("Error creating supplemental metadata XML in %s. %s" % (outFilePath, err.message))
+    #print (etree.tostring(suppX, pretty_print = True))
 
 
 
