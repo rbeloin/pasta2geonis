@@ -9,6 +9,7 @@ Created on Jan 14, 2013
 @see https://nis.lternet.edu/NIS/
 '''
 import sys, os, re
+import time
 import urllib2
 from shutil import copyfileobj
 from zipfile import ZipFile
@@ -18,12 +19,12 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
-from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, myFileGDB
-from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00
+from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, myFileGDB, pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets
+from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS
 from geonis_helpers import siteFromId
 from geonis_emlparse import parseAndPopulateEMLDicts, createSuppXML
 
-
+## *****************************************************************************
 class UnpackPackages(ArcpyTool):
     def __init__(self):
         ArcpyTool.__init__(self)
@@ -85,6 +86,7 @@ class UnpackPackages(ArcpyTool):
                 self.logger.logMessage(WARN,"More than one EML file in %s ?" % (workDir,))
                 if len(xmlfiles) == 0:
                     raise Exception("No EML file in package.")
+        #TODO: rename eml file so as to avoid confusion with other xml files that may be unpacked
         emlfile = os.path.join(workDir, xmlfiles[0])
         emldata = parseAndPopulateEMLDicts(emlfile, self.logger)
         with open(emldatafile,'w') as datafile:
@@ -116,6 +118,7 @@ class UnpackPackages(ArcpyTool):
             else:
                 self.logger.logMessage(WARN,"%s did not pass zip test." % (sdatafile,))
                 raise Exception("Zip test fail.")
+        #TODO: check to see if only a dir after unpacking. Its contents may need to be raised to the current dir level
 
 
     def execute(self, parameters, messages):
@@ -140,7 +143,7 @@ class UnpackPackages(ArcpyTool):
         arcpy.SetParameterAsText(4,  ";".join(carryForwardList))
 
 
-
+## *****************************************************************************
 class CheckSpatialData(ArcpyTool):
     def __init__(self):
         ArcpyTool.__init__(self)
@@ -206,6 +209,12 @@ class CheckSpatialData(ArcpyTool):
         #self.logger.logMessage(DEBUG, str(contents))
         #array of tuples, one of which we will return
         allPotentialFiles = []
+        #special handling - if we have interchange file, E00, then import it and continue
+        interchangeF = [f for f in contents if isEsriE00(f)]
+        if len(interchangeF):
+            arcpy.env.workspace = apackageDir
+            arcpy.ImportFromE00_conversion(interchangeF[0])
+            #for now, lets not delete. takes a while to download  os.remove(interchangeF[0])
         for afile in (f for f in contents if os.path.isfile(f)):
             if isShapefile(afile):
                 allPotentialFiles.append((afile,GeoNISDataType.SHAPEFILE))
@@ -215,11 +224,11 @@ class CheckSpatialData(ArcpyTool):
                 allPotentialFiles.append((afile,GeoNISDataType.TIF))
             elif isASCIIRaster(afile):
                 allPotentialFiles.append((afile, GeoNISDataType.ASCIIRASTER))
-            elif isEsriE00(afile):
-                allPotentialFiles.append((afile, GeoNISDataType.ESRIE00))
         for afolder in (f for f in contents if os.path.isdir(f)):
             if isFileGDB(afolder):
                 allPotentialFiles.append((afolder, GeoNISDataType.FILEGEODB))
+            if isRasterDS(afolder):
+                allPotentialFiles.append((afolder, GeoNISDataType.SPATIALRASTER))
         if len(allPotentialFiles) > 0:
             #in most cases we probably just had one hit
             if len(allPotentialFiles) == 1:
@@ -305,6 +314,7 @@ class CheckSpatialData(ArcpyTool):
                         notesfile.write("PackageId:%s\n" % (pkgId,))
                         notesfile.write("EntityNameFound:%s\n" % (entityName,))
                         hint = self.examineEMLforType(emldata)
+                        notesfile.write("TYPE(eml):%s\n" % (hint,))
                         foundFile, spatialType = self.acceptableDataType(dataDir, hint)
                         if spatialType == GeoNISDataType.NA:
                             notesfile.write("TYPE:NOT FOUND\n")
@@ -324,9 +334,11 @@ class CheckSpatialData(ArcpyTool):
                         if spatialType == GeoNISDataType.FILEGEODB:
                             self.logger.logMessage(INFO, "file gdb found")
                             notesfile.write('TYPE:file geodatabase\n')
+                            #need to examine file gdb to see what is there, or rely on EML?
                         if spatialType == GeoNISDataType.ESRIE00:
                             self.logger.logMessage(INFO, "arcinfo e00  found")
                             notesfile.write('TYPE:ArcInfo Exchange (e00)\n')
+                            #need to import this, and see what it is
                 except Exception as e:
                     with open(notesfilePath,'w') as notesfile:
                         notesfile.write("Exception:%s\n", (e.message,))
@@ -343,7 +355,7 @@ class CheckSpatialData(ArcpyTool):
             self.logger.logMessage(CRITICAL, crit.message)
             sys.exit(1)
 
-
+## *****************************************************************************
 class LoadVectorTypes(ArcpyTool):
     """Loads to geodatabase any vector types, then exports, amends, and imports metadata."""
     def __init__(self):
@@ -424,7 +436,7 @@ class LoadVectorTypes(ArcpyTool):
             return
         arcpy.env.workspace = workDir
         for fc in loadedFeatureClasses:
-            result = arcpy.XSLTransform_conversion(fc,r"C:\Users\ron\Documents\geonis_tests\metadataMerge.xsl","merged_metadata.xml",xmlSuppFile)
+            result = arcpy.XSLTransform_conversion(fc, pathToMetadataMerge, "merged_metadata.xml", xmlSuppFile)
             result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", fc)
 
 
@@ -469,9 +481,133 @@ class LoadVectorTypes(ArcpyTool):
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
+## *****************************************************************************
+class LoadRasterTypes(ArcpyTool):
+    """Expects some type or raster dataset, with its path and type saved to notes.
+       Calls addRasterToMosaicDataset for the mosaic dataset of the site."""
+    def __init__(self):
+        ArcpyTool.__init__(self)
+        self._description = "Loads to geodatabase any vector data types, then exports, amends, and imports metadata."
+        self._label = "S4. Load Vector"
+        self._alias = "loadvector"
+
+    def getParameterInfo(self):
+        params = super(LoadRasterTypes, self).getParameterInfo()
+        params.append(self.getMultiDirInputParameter())
+        params.append(self.getMultiDirOutputParameter())
+        return params
+
+    def updateParameters(self, parameters):
+        """called whenever user edits parameter in tool GUI. Can adjust other parameters here. """
+        super(LoadRasterTypes, self).updateParameters(parameters)
+
+    def updateMessages(self, parameters):
+        """called after all of the update parameter calls. Call attach messages to parameters, usually warnings."""
+        super(LoadRasterTypes, self).updateMessages(parameters)
+
+
+    @errHandledWorkflowTask(taskName="Check if raster we support")
+    def isSupported(self, datatype):
+        """ mostly to distinguish the vector folders that are passing through """
+        dtype = datatype.lower()
+        for t in self.supportedTypes:
+            if t in dtype:
+                return True
+        return False
+
+
+    @errHandledWorkflowTask(taskName="Prepare storage")
+    def prepareStorage(self, site, datapath, name):
+        """ Create the directories necessary for storing the raw data, and return path to location.
+            Also create mosaic dataset for site if needed.
+        """
+        siteStore = os.path.join(pathToRasterData,site)
+        #name, ext =  os.path.splitext( os.path.basename(datapath))
+        storageLoc = siteStore + os.sep + name
+        #if no site folder, make one
+        if not os.path.exists(siteStore):
+            os.mkdir(siteStore)
+        #if no mosaic geodataset, make it
+        if not arcpy.Exists(pathToRasterMosaicDatasets + os.sep + site):
+            result = arcpy.CreateMosaicDataset_management(pathToRasterMosaicDatasets, site, coordinate_system = self.spatialRef)
+        else:
+            #if mosaic dataset exists, delete it?
+            pass
+        i = 1
+        while os.path.isdir(storageLoc):
+            storageLoc = "%s_%s" % (storageLoc, i)
+            i += 1
+        return storageLoc
+
+
+    @errHandledWorkflowTask(taskName="Load raster")
+    def loadRaster(self, site, path, storageLoc):
+        """Copy raster data to permanent home. Path must lead to raster dataset of some type."""
+        self.logger.logMessage(INFO,"Copying %s to %s and loading to %s\n" % (path, storageLoc, site))
+        data = storageLoc + os.sep + os.path.basename(path)
+        name, ext = os.path.splitext(os.path.basename(path))
+        result = arcpy.Copy_management(path, data)
+        while result.status < 4:
+            time.sleep(.5)
+        arcpy.AddRastersToMosaicDataset_management(pathToRasterMosaicDatasets + os.sep + site, "Raster Dataset", data)
+        return pathToRasterMosaicDatasets + os.sep + site + os.sep + name
+
+
+    @errHandledWorkflowTask(taskName="Merge metadata")
+    def mergeMetadata(self, workDir, loadedRaster):
+        if not loadedRaster:
+            return
+        emldataObj = self.getEMLdata(workDir)
+        xmlSuppFile = os.path.join(workDir, "supp_metadata.xml")
+        createSuppXML(emldataObj, xmlSuppFile)
+        if not os.path.isfile(xmlSuppFile):
+            self.logger.logMessage(WARN, "Supplemental metadata file missing in %s" % (workDir,))
+            return
+        arcpy.env.workspace = workDir
+        result = arcpy.XSLTransform_conversion(loadedRaster, pathToMetadataMerge, "merged_metadata.xml", xmlSuppFile)
+        result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", loadedRaster)
 
 
 
+    def execute(self, parameters, messages):
+        super(LoadRasterTypes, self).execute(parameters, messages)
+        self.supportedTypes = ("tif", "ascii grid", "coverage", "jpeg", "raster dataset")
+        for dir in self.inputDirs:
+            datafilePath, pkgId, datatype, entityname = ("" for i in range(4))
+            loadedRaster = None
+            try:
+                with open(os.path.join(dir,"geonis_notes.txt"),'r') as notesfile:
+                    notes = notesfile.readlines()
+                for line in notes:
+                    if ':' in line:
+                        lineval = line[line.index(':') + 1 : -1]
+                        if line.startswith("PackageId"):
+                            pkgId = lineval
+                        elif line.startswith("DatafilePath"):
+                            datafilePath = lineval
+                        elif line.startswith("TYPE"):
+                            datatype = lineval
+                        elif line.startswith("EntityName"):
+                            entityname = lineval
+                #check for supported type
+                if not self.isSupported(datatype):
+                    self.outputDirs.append(dir)
+                    continue
+                siteId = siteFromId(pkgId)
+                rawDataLoc = self.prepareStorage(siteId, datafilePath, entityname)
+                os.mkdir(rawDataLoc)
+                loadedRaster = self.loadRaster(siteId, datafilePath, rawDataLoc)
+                # amend metadata
+                self.mergeMetadata(dir, loadedRaster)
+                # add dir for next tool, in any case except exception
+                self.outputDirs.append(dir)
+            except Exception as err:
+                self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
+        #pass the list on
+        arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
+
+
+## *****************************************************************************
 class Tool(ArcpyTool):
     """template for GEONIS tool"""
     def __init__(self):
@@ -517,6 +653,7 @@ class Tool(ArcpyTool):
 #this list is imported into Toolbox.pyt file and used to instantiate tools
 toolclasses =  [UnpackPackages,
                 CheckSpatialData,
-                LoadVectorTypes ]
+                LoadVectorTypes,
+                LoadRasterTypes ]
 
 

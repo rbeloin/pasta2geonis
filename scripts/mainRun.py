@@ -94,11 +94,22 @@ def testLoadVector():
     tool.execute(params,[])
     print params[3].value
 
+def testLoadRaster():
+    tool = lno_geonis_wf.LoadRasterTypes()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = True
+    params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
+    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1"
+    params[3].value = None
+    tool.execute(params,[])
+    print params[3].value
 
 
 if __name__ == '__main__':
     #testUnpack()
     #testCheckData()
-    testLoadVector()
+    #testLoadVector()
+    testLoadRaster()
     #testUnpackAsTool()
     #testChain()

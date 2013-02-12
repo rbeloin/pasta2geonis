@@ -43,6 +43,18 @@ def isASCIIRaster(pathToFile):
             line2 = txtfile.readline(64)
         return (len(line1) > 6 and line1[:5] == 'ncols' and len(line2) > 6 and line2[:5] == 'nrows')
 
+def isRasterDS(path):
+    '''Returns True if INFO dir found or *.adf found'''
+    if os.path.isdir(path):
+        parent = os.path.realpath(os.path.join(os.path.dirname(path),".."))
+        info = [d for d in os.listdir(parent) if d == "INFO"]
+        if len(info):
+            return True
+        adf = [a for a in os.listdir(path) if a.endswith(".adf")]
+        if len(adf):
+            return True
+    return False
+
 
 def siteFromId(packageId):
     """ returns the upper case site code part of the package id """
