@@ -25,7 +25,7 @@ pathToMetadataMerge = r"Z:\docs\local\git\pasta2geonis_sg\metadataMerge.xsl"
 #raster data storage
 pathToRasterData = r"C:\Users\ron\Documents\geonis_tests\raster_data"
 #raster mosaic datasets
-pathToRasterMosaicDatasets = r"C:\Users\ron\Documents\geonis_tests\raster_mosaic_ds.gdb"
+pathToRasterMosaicDatasets = r"C:\Users\ron\Documents\geonis_tests\mosaic_ds.gdb"
 
 class GeoNISDataType:
     """ members of this class serve as both enum type values for data types,

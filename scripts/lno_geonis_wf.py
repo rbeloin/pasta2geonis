@@ -527,11 +527,12 @@ class LoadRasterTypes(ArcpyTool):
         #if no site folder, make one
         if not os.path.exists(siteStore):
             os.mkdir(siteStore)
-        #if no mosaic geodataset, make it
-        if not arcpy.Exists(pathToRasterMosaicDatasets + os.sep + site):
-            result = arcpy.CreateMosaicDataset_management(pathToRasterMosaicDatasets, site, coordinate_system = self.spatialRef)
+        #if no mosaic dataset, make it
+        siteMosDS = pathToRasterMosaicDatasets + os.sep + site
+        if not arcpy.Exists(siteMosDS):
+            result = arcpy.Copy_management(pathToRasterMosaicDatasets + os.sep + "Template", siteMosDS)
         else:
-            #if mosaic dataset exists, delete it?
+            #if raster exists, delete it?
             pass
         i = 1
         while os.path.isdir(storageLoc):
@@ -540,32 +541,70 @@ class LoadRasterTypes(ArcpyTool):
         return storageLoc
 
 
-    @errHandledWorkflowTask(taskName="Load raster")
-    def loadRaster(self, site, path, storageLoc):
+    @errHandledWorkflowTask(taskName="Copy raster")
+    def copyRaster(self, path, storageLoc):
         """Copy raster data to permanent home. Path must lead to raster dataset of some type."""
-        self.logger.logMessage(INFO,"Copying %s to %s and loading to %s\n" % (path, storageLoc, site))
+        self.logger.logMessage(INFO,"Copying %s to %s\n" % (path, storageLoc))
         data = storageLoc + os.sep + os.path.basename(path)
-        name, ext = os.path.splitext(os.path.basename(path))
+        #name, ext = os.path.splitext(os.path.basename(path))
         result = arcpy.Copy_management(path, data)
         while result.status < 4:
-            time.sleep(.5)
-        arcpy.AddRastersToMosaicDataset_management(pathToRasterMosaicDatasets + os.sep + site, "Raster Dataset", data)
-        return pathToRasterMosaicDatasets + os.sep + site + os.sep + name
+            time.sleep(.5) #in case it's working in background
+        if result.status != 4:
+            raise Exception(WARN, "Copying %s to %s did not succeed. Status: %d\n" % (path, storageLoc, result.status))
+        return data
+
+    @errHandledWorkflowTask(taskName="Load raster")
+    def loadRaster(self, site, path, pId):
+        """Load raster to mosaic dataset. Path must lead to raster dataset in permanent home."""
+        self.logger.logMessage(INFO,"Loading raster %s to %s\n" % (path, site))
+        siteMosDS = pathToRasterMosaicDatasets + os.sep + site
+        rastype = "Raster Dataset"
+        updatecs = "UPDATE_CELL_SIZES"
+        updatebnd = "UPDATE_BOUNDARY"
+        updateovr = "UPDATE_OVERVIEWS"
+        maxlevel = "2"
+        maxcs = "#"
+        maxdim = "#"
+        spatialref = "#"
+        inputdatafilter = "#"
+        subfolder = "NO_SUBFOLDERS"
+        duplicate = "OVERWRITE_DUPLICATES"
+        buildpy = "BUILD_PYRAMIDS"
+        calcstats = "CALCULATE_STATISTICS"
+        buildthumb = "NO_THUMBNAILS"
+        comments = pId
+        forcesr = "#"
+        result = arcpy.AddRastersToMosaicDataset_management(
+                                            siteMosDS, rastype, path, updatecs,
+                                            updatebnd, updateovr, maxlevel, maxcs,
+                                            maxdim, spatialref, inputdatafilter,
+                                            subfolder, duplicate, buildpy, calcstats,
+                                            buildthumb, comments, forcesr)
+        return result.status
 
 
     @errHandledWorkflowTask(taskName="Merge metadata")
-    def mergeMetadata(self, workDir, loadedRaster):
-        if not loadedRaster:
-            return
+    def mergeMetadata(self, workDir, raster):
+        if not arcpy.Exists(raster):
+            return False
         emldataObj = self.getEMLdata(workDir)
         xmlSuppFile = os.path.join(workDir, "supp_metadata.xml")
         createSuppXML(emldataObj, xmlSuppFile)
         if not os.path.isfile(xmlSuppFile):
             self.logger.logMessage(WARN, "Supplemental metadata file missing in %s" % (workDir,))
-            return
+            return False
         arcpy.env.workspace = workDir
-        result = arcpy.XSLTransform_conversion(loadedRaster, pathToMetadataMerge, "merged_metadata.xml", xmlSuppFile)
-        result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", loadedRaster)
+        result = arcpy.XSLTransform_conversion(raster, pathToMetadataMerge, "merged_metadata.xml", xmlSuppFile)
+        if result.status == 4:
+            result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", raster)
+        else:
+            self.logger.logMessage(WARN, "XSLT failed with status %d" % (result.status,))
+            return False
+        if result2.status != 4:
+            self.logger.logMessage(WARN, "Reloading of metadata failed with code %d" % (result2.status,))
+            return False
+        return True
 
 
 
@@ -596,11 +635,17 @@ class LoadRasterTypes(ArcpyTool):
                 siteId = siteFromId(pkgId)
                 rawDataLoc = self.prepareStorage(siteId, datafilePath, entityname)
                 os.mkdir(rawDataLoc)
-                loadedRaster = self.loadRaster(siteId, datafilePath, rawDataLoc)
-                # amend metadata
-                self.mergeMetadata(dir, loadedRaster)
-                # add dir for next tool, in any case except exception
-                self.outputDirs.append(dir)
+                raster = self.copyRaster(datafilePath, rawDataLoc)
+                # amend metadata in place
+                if self.mergeMetadata(dir, raster):
+                    result = self.loadRaster(siteId, raster, pkgId)
+                    if result != 4:
+                        self.logger.logMessage(WARN, "Loading %s did not succeed, with code %d.\n" % (raster, result))
+                    else:
+                        # add dir for next tool, in any case except exception
+                        self.outputDirs.append(dir)
+                else:
+                    self.logger.logMessage(WARN, "Metadata function returned False.\n")
             except Exception as err:
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
         #pass the list on
