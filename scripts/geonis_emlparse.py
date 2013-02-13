@@ -10,6 +10,7 @@ Created on Jan 28, 2013
 @see https://nis.lternet.edu/NIS/
 """
 import os, re
+import time
 from copy import deepcopy
 from lxml import etree
 
@@ -19,7 +20,7 @@ unittest = True
 
 def main():
     """used for testing """
-    tmp = parseAndPopulateEMLDicts(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.1.1\tv06101a.xml")
+    tmp = parseAndPopulateEMLDicts(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\gi01001i.xml")
     if tmp is None:
         return
 ##    recoveredThing = eval(str(tmp))
@@ -31,9 +32,9 @@ def main():
 ##    for item in recoveredThing:
 ##        if 'applies_to' in item:
 ##            print "check ", item['applies_to']
-    with open(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.1.1\temp_meta.data", 'w') as tmpdat:
+    with open(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\temp_meta.data", 'w') as tmpdat:
         tmpdat.write(str(tmp))
-    #createSuppXML(tmp, r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.1.1\supp_metadata.xml")
+    createSuppXML(tmp, r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\supp_metadata.xml")
 
 emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
                 'stmml':"http://www.xml-cml.org/schema/stmml",
@@ -92,6 +93,7 @@ def parseAndPopulateEMLDicts(pathToEML, logger = None):
                 item['content'] = ';'.join(actualText)
             else:
                 item['content'] = None
+            item['content'] = re.sub(r"\s+"," ", item['content'])
     except etree.XPathError as x:
         if logger is not None:
             logger.logMessage("Error with xpath.  %s" % (x.message,))
@@ -128,15 +130,15 @@ def createSuppXML(emldata, outFilePath):
         suppX = etree.Element("supplemental")
         #break emldata list into different lists for different processing
         allMeta = [item for item in emldata if "xpath_metadata" in item]
-        otherCitDet = [item for item in allMeta if item["xpath_metadata"].endswith("otherCitDet")]
+        #otherCitDet = [item for item in allMeta if item["xpath_metadata"].endswith("otherCitDet")]
         keywds = [item for item in allMeta if item["xpath_metadata"].endswith("keyword")]
-        remains = [item for item in allMeta if item not in otherCitDet and item not in keywds]
-        if len(otherCitDet) > 0:
-            otherCitDetVal = ""
-            for item in otherCitDet:
-                #combine content and make one entry
-                otherCitDetVal = "%s %s: %s; " % (otherCitDetVal, item["name"], item["content"])
-            addToXML(suppX, otherCitDet[0]["xpath_metadata"], otherCitDetVal.strip("; "), overwrite = True)
+        remains = [item for item in allMeta if item not in keywds]
+##        if len(otherCitDet) > 0:
+##            otherCitDetVal = ""
+##            for item in otherCitDet:
+##                #combine content and make one entry
+##                otherCitDetVal = "%s %s: %s; " % (otherCitDetVal, item["name"], item["content"])
+##            addToXML(suppX, otherCitDet[0]["xpath_metadata"], otherCitDetVal.strip("; "), overwrite = True)
         if len(keywds) > 0:
             # make entry for each keyword
             keywords = keywds[0]["content"].split(";")
@@ -144,6 +146,9 @@ def createSuppXML(emldata, outFilePath):
                 addToXML(suppX, keywds[0]["xpath_metadata"], kw, overwrite = False)
         for item in remains:
             addToXML(suppX, item["xpath_metadata"], item["content"], overwrite = True)
+        #finally add a date
+        datepath = [item for item in allMeta if item["name"] == "loadDate"][0]["xpath_metadata"]
+        addToXML(suppX, datepath, time.strftime("%Y-%m-%dT%H:%M:%S"), overwrite = True)
         with open(outFilePath,'w') as outfile:
             outfile.write(etree.tostring(suppX, xml_declaration = True))
     except Exception as err:
@@ -166,7 +171,7 @@ parseEMLdata = [
             {"name": "packageId",
             "xpath": "/eml:eml/@packageId",
             "content": "",
-            "xpath_metadata": "/supplemental/dataIdInfo/idCitation/otherCitDet"},
+            "xpath_metadata": "/supplemental/dataIdInfo/aggrInfo/aggrDSName/citId/identCode"},
             {"name": "messages",
             "content": []},
             {"name": "title",
@@ -189,7 +194,7 @@ parseEMLdata = [
             "xpath": "//physical/descendant::url/text()",
             "content": None,
             "applies_to": ("vector","raster"),
-            "xpath_metadata": "/supplemental/dataIdInfo/idCitation/otherCitDet" },
+            "xpath_metadata": "/supplemental/dataIdInfo/aggrInfo/aggrDSName/citOnlineRes/linkage" },
             {"name": "entityName",
             "xpath": "dataset/*/entityName/text()",
             "content": None,
@@ -198,10 +203,9 @@ parseEMLdata = [
             "xpath": "dataset/*/entityDescription/text()",
             "content": None,
             "applies_to": ("vector","raster") },
-            {"name": "oops",
-            "xpath": "road/to/nowhere",
-            "content": None },
-            ]
+            {"name": "loadDate",
+            "content": None,
+            "xpath_metadata": "/supplemental/dataIdInfo/aggrInfo/aggrDSName/date/pubDate" },            ]
 
 if __name__ == '__main__':
     unittest = True
