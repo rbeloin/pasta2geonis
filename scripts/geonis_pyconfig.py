@@ -9,6 +9,7 @@ Created on Jan 28, 2013
 @copyright: 2013 LTER Network Office, University of New Mexico
 @see https://nis.lternet.edu/NIS/
 '''
+import platform
 from logging import DEBUG, INFO, WARN
 
 defaultLoggingLevel = INFO
@@ -16,16 +17,32 @@ defaultLoggingLevel = INFO
 defaultVerboseValue = True
 #set name of metadata temp file used in workflow
 tempMetadataFilename = "temp_meta.data"
-#path to env settings file. settings loaded by base execute method
-envSettingsPath = r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml"
-#file gdb for dev
-myFileGDB = r"C:\Users\ron\Documents\geonis_tests\geonis.gdb"
-#metadata stylesheet
-pathToMetadataMerge = r"Z:\docs\local\git\pasta2geonis_sg\metadataMerge.xsl"
-#raster data storage
-pathToRasterData = r"C:\Users\ron\Documents\geonis_tests\raster_data"
-#raster mosaic datasets
-pathToRasterMosaicDatasets = r"C:\Users\ron\Documents\geonis_tests\mosaic_ds.gdb"
+
+# *********** Machine dependent paths *************
+if platform.node() == "Maps3":
+    #path to env settings file. settings loaded by base execute method
+    envSettingsPath = r"C:\pasta2geonis\savedEnv.xml"
+    #metadata stylesheet
+    pathToMetadataMerge = r"C:\pasta2geonis\metadataMerge.xsl"
+    #raster data storage
+    pathToRasterData = r"C:\pasta2geonis\Gis_data\Raster_raw"
+    #raster mosaic datasets
+    pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.gdb"
+    #geodatabase connection
+    geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
+else:
+    #path to env settings file. settings loaded by base execute method
+    envSettingsPath = r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml"
+    #file gdb for dev
+    geodatabase = r"C:\Users\ron\Documents\geonis_tests\geonis.gdb"
+    #metadata stylesheet
+    pathToMetadataMerge = r"Z:\docs\local\git\pasta2geonis_sg\metadataMerge.xsl"
+    #raster data storage
+    pathToRasterData = r"C:\Users\ron\Documents\geonis_tests\raster_data"
+    #raster mosaic datasets
+    pathToRasterMosaicDatasets = r"C:\Users\ron\Documents\geonis_tests\mosaic_ds.gdb"
+
+
 
 class GeoNISDataType:
     """ members of this class serve as both enum type values for data types,

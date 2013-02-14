@@ -19,7 +19,7 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
-from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, myFileGDB, pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets
+from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase, pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId
 from geonis_emlparse import parseAndPopulateEMLDicts, createSuppXML
@@ -390,17 +390,17 @@ class LoadVectorTypes(ArcpyTool):
     @errHandledWorkflowTask(taskName="Load shapefile")
     def loadShapefile(self, site, name, path):
         """call feature class to feature class to copy shapefile to geodatabase"""
-        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, myFileGDB, site, name))
+        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, site, name))
         addedFC = []
         #if no dataset, make one
-        if not arcpy.Exists(os.path.join(myFileGDB,site)):
-            arcpy.CreateFeatureDataset_management(out_dataset_path = myFileGDB,
+        if not arcpy.Exists(os.path.join(geodatabase,site)):
+            arcpy.CreateFeatureDataset_management(out_dataset_path = geodatabase,
                                                 out_name = site,
                                                 spatial_reference = self.spatialRef)
         arcpy.FeatureClassToFeatureClass_conversion(in_features = path,
-                                    out_path = os.path.join(myFileGDB,site),
+                                    out_path = os.path.join(geodatabase,site),
                                     out_name = name)
-        addedFC.append(myFileGDB + os.sep + site + os.sep + name)
+        addedFC.append(geodatabase + os.sep + site + os.sep + name)
         return addedFC
 
 
@@ -408,11 +408,11 @@ class LoadVectorTypes(ArcpyTool):
     def loadKml(self, site, name, path):
         """call KML to Layer tool to copy kml contents to file gdb, then loop over features
         and load each to geodatabase"""
-        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, myFileGDB, site, name))
+        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, site, name))
         addedFC = []
         #if no dataset, make one
-        if not arcpy.Exists(os.path.join(myFileGDB,site)):
-            arcpy.CreateFeatureDataset_management(out_dataset_path = myFileGDB,
+        if not arcpy.Exists(os.path.join(geodatabase,site)):
+            arcpy.CreateFeatureDataset_management(out_dataset_path = geodatabase,
                                                 out_name = site,
                                                 spatial_reference = self.spatialRef)
         arcpy.KMLToLayer_conversion( in_kml_file = path,
@@ -424,7 +424,7 @@ class LoadVectorTypes(ArcpyTool):
         fclasses = arcpy.ListFeatureClasses(wild_card = '*', feature_type = '', feature_dataset = "Placemarks")
         for feature in fclasses:
             fcpath = fgdb + os.sep + "Placemarks" + os.sep + feature
-            outDS = os.path.join(myFileGDB, site)
+            outDS = os.path.join(geodatabase, site)
             outF = name + '_' + feature
             arcpy.FeatureClassToFeatureClass_conversion(in_features = fcpath,
                                                         out_path = outDS,
