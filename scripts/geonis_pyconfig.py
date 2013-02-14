@@ -43,5 +43,6 @@ class GeoNISDataType:
     JPEG = ('.jpg', '.jpeg', '.jpc', '.jpe')
     JPGW = ('.jgw',)
     ESRIE00 = ('.e00',)
+    PRJ = ('.prj',)
 
 

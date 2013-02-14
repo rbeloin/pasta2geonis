@@ -19,6 +19,22 @@
 	<xsl:template match="/">
 		<xsl:apply-templates select="node()|@*"/>
 	</xsl:template>
+	
+	<!-- if no dataIdInfo tag, make one and populate it after copying metadata and processing other nodes -->
+	<xsl:template match="/metadata[not(dataIdInfo)]" >
+		<xsl:copy>
+			<xsl:apply-templates select="node()|@*"/>	
+			<xsl:element name="dataIdInfo">
+				<xsl:element name="idCitation">
+					<xsl:copy-of select="$title" />
+				</xsl:element>
+				<xsl:copy-of select="$abstract" />
+				<xsl:copy-of select="$keywords" />	
+				<xsl:copy-of select="$purpose" />	
+				<xsl:call-template name="makeAggrInfo" />		
+			</xsl:element>	
+		</xsl:copy>
+	</xsl:template>
 
 	<!-- remove white space while we're at it -->
 	<xsl:template match="text()">

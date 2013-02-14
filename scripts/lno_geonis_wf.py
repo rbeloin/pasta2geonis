@@ -20,7 +20,7 @@ from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, myFileGDB, pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets
-from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS
+from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId
 from geonis_emlparse import parseAndPopulateEMLDicts, createSuppXML
 
@@ -222,8 +222,16 @@ class CheckSpatialData(ArcpyTool):
                 allPotentialFiles.append((afile,GeoNISDataType.KML))
             elif isTif(afile):
                 allPotentialFiles.append((afile,GeoNISDataType.TIF))
+            elif isTifWorld(afile):
+                allPotentialFiles.append((afile,GeoNISDataType.TFW))
+            elif isJpeg(afile):
+                allPotentialFiles.append((afile,GeoNISDataType.JPEG))
+            elif isJpegWorld(afile):
+                allPotentialFiles.append((afile,GeoNISDataType.JPGW))
             elif isASCIIRaster(afile):
                 allPotentialFiles.append((afile, GeoNISDataType.ASCIIRASTER))
+            elif isProjection(afile):
+                allPotentialFiles.append((afile, GeoNISDataType.PRJ))
         for afolder in (f for f in contents if os.path.isdir(f)):
             if isFileGDB(afolder):
                 allPotentialFiles.append((afolder, GeoNISDataType.FILEGEODB))
@@ -243,11 +251,11 @@ class CheckSpatialData(ArcpyTool):
                     return found
             #list of all types found for easy checking
             allTypesFound = [item[1] for item in allPotentialFiles]
-            #files with world files are good bets
-            if GeoNISDataType.TFW in allTypesFound and GeoNISDataType.TIF in allTypesFound:
+            #files with world files or projections are good bets
+            if (GeoNISDataType.TFW in allTypesFound or GeoNISDataType.PRJ in allTypesFound) and GeoNISDataType.TIF in allTypesFound:
                 fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.TIF)
                 return (fileHit[0], GeoNISDataType.TIF)
-            if GeoNISDataType.JPGW in allTypesFound and GeoNISDataType.JPEG in allTypesFound:
+            if (GeoNISDataType.JPGW in allTypesFound or GeoNISDataType.PRJ in allTypesFound) and GeoNISDataType.JPEG in allTypesFound:
                 fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.JPEG)
                 return (fileHit[0], GeoNISDataType.JPEG)
             if GeoNISDataType.FILEGEODB in allTypesFound:
@@ -263,8 +271,9 @@ class CheckSpatialData(ArcpyTool):
                 fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.ASCIIRASTER)
                 return (fileHit[0], GeoNISDataType.ASCIIRASTER)
             if GeoNISDataType.TIF in allTypesFound:
-                # Tif without world file. Are geotags enough?
+                # Tif without world file or prj file?
                 fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.TIF)
+                self.logger.logMessage(WARN, "%s seems to be tif with no prj or tfw." % (filehit[0],))
                 return (fileHit[0], GeoNISDataType.TIF)
             return (None, GeoNISDataType.NA)
         else:
@@ -280,7 +289,7 @@ class CheckSpatialData(ArcpyTool):
             if entityName.lower() == name:
                 return True
             else:
-                self.logger.logMessage(WARN, "entityName s% did not match data name %s" % (entityName, dataFileName))
+                self.logger.logMessage(WARN, "entityName %s did not match data name %s" % (entityName, dataFileName))
                 return False
 
 
@@ -487,9 +496,9 @@ class LoadRasterTypes(ArcpyTool):
        Calls addRasterToMosaicDataset for the mosaic dataset of the site."""
     def __init__(self):
         ArcpyTool.__init__(self)
-        self._description = "Loads to geodatabase any vector data types, then exports, amends, and imports metadata."
-        self._label = "S4. Load Vector"
-        self._alias = "loadvector"
+        self._description = "For any raster data type, copies raster data entity, updates metadata, then loads to mosaic dataset of site."
+        self._label = "S5. Load Raster"
+        self._alias = "loadraster"
 
     def getParameterInfo(self):
         params = super(LoadRasterTypes, self).getParameterInfo()

@@ -25,6 +25,7 @@ isTifWorld = partial(fileExtensionMatch, GeoNISDataType.TFW)
 isJpeg = partial(fileExtensionMatch, GeoNISDataType.JPEG)
 isJpegWorld = partial(fileExtensionMatch, GeoNISDataType.JPGW)
 isEsriE00 = partial(fileExtensionMatch, GeoNISDataType.ESRIE00)
+isProjection = partial(fileExtensionMatch, GeoNISDataType.PRJ)
 
 '''
 Bit more work needed for some
