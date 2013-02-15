@@ -206,6 +206,14 @@ class CheckSpatialData(ArcpyTool):
             self.logger.logMessage(WARN,"Parameter not a directory.")
             return (None, GeoNISDataType.NA)
         contents = [os.path.join(apackageDir,item) for item in os.listdir(apackageDir)]
+        if len(contents) == 0:
+            self.logger.logMessage(WARN,"Directory empty.")
+            return (None, GeoNISDataType.NA)
+        spatialTypeItem = [item for item in self.getEMLdata(apackageDir) if item["name"] == "spatialType"][0]
+        if spatialTypeItem["content"] == "vector":
+            emlNode = GeoNISDataType.SPATIALVECTOR
+        elif spatialTypeItem["content"] == "raster":
+            emlNode = GeoNISDataType.SPATIALRASTER
         #self.logger.logMessage(DEBUG, str(contents))
         #array of tuples, one of which we will return
         allPotentialFiles = []
@@ -214,11 +222,7 @@ class CheckSpatialData(ArcpyTool):
         if len(interchangeF):
             #reset the hint
             if hint == GeoNISDataType.ESRIE00:
-                spatialTypeItem = [item for item in self.getEMLdata(apackageDir) if item["name"] == "spatialType"][0]
-                if spatialTypeItem["content"] == "vector":
-                    hint = GeoNISDataType.SPATIALVECTOR
-                elif spatialTypeItem["content"] == "raster":
-                    hint = GeoNISDataType.SPATIALRASTER
+                hint = emlNode
             arcpy.env.workspace = apackageDir
             exchangeFile = interchangeF[0]
             fileName, ext = os.path.splitext(os.path.basename(exchangeFile))
@@ -226,6 +230,7 @@ class CheckSpatialData(ArcpyTool):
             #for now, lets not delete. takes a while to download  os.remove(exchangeFile)
             #redo our contents list
             contents = [os.path.join(apackageDir,item) for item in os.listdir(apackageDir)]
+        #gather up all files and folders that fit some description of spatial data
         for afile in (f for f in contents if os.path.isfile(f)):
             if isShapefile(afile):
                 allPotentialFiles.append((afile,GeoNISDataType.SHAPEFILE))
@@ -264,27 +269,38 @@ class CheckSpatialData(ArcpyTool):
                 if hint is not None and hint in found:
                     self.logger.logMessage(INFO, "Found hint %s matches %s, %s." % (hint, found[0], found[1]))
                     return found
+            #we have more than one possibility, and it didn't match the hint
             #list of all types found for easy checking
             allTypesFound = [item[1] for item in allPotentialFiles]
+            #seperate checking based on node in EML file, since that is the best indication we have
+            if emlNode == GeoNISDataType.SPATIALRASTER:
+                #files with world files or projections are good bets
+                if (GeoNISDataType.TFW in allTypesFound or GeoNISDataType.PRJ in allTypesFound) and GeoNISDataType.TIF in allTypesFound:
+                    fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.TIF).next()
+                elif (GeoNISDataType.JPGW in allTypesFound or GeoNISDataType.PRJ in allTypesFound) and GeoNISDataType.JPEG in allTypesFound:
+                    fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.JPEG).next()
+                elif GeoNISDataType.FILEGEODB in allTypesFound:
+                    fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.FILEGEODB).next()
+                elif GeoNISDataType.ASCIIRASTER in allTypesFound:
+                    fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.ASCIIRASTER).next()
+                elif GeoNISDataType.TIF in allTypesFound:
+                    # Tif without world file or prj file?
+                    fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.TIF).next()
+                    self.logger.logMessage(WARN, "%s seems to be tif with no prj or tfw." % (fileHit,))
+                else:
+                    fileHit, itsType = (None, GeoNISDataType.NA)
+            elif emlNode == GeoNISDataType.SPATIALVECTOR:
             #files with world files or projections are good bets
-            if (GeoNISDataType.TFW in allTypesFound or GeoNISDataType.PRJ in allTypesFound) and GeoNISDataType.TIF in allTypesFound:
-                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.TIF).next()
-            elif (GeoNISDataType.JPGW in allTypesFound or GeoNISDataType.PRJ in allTypesFound) and GeoNISDataType.JPEG in allTypesFound:
-                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.JPEG).next()
-            elif GeoNISDataType.FILEGEODB in allTypesFound:
-                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.FILEGEODB).next()
-            elif GeoNISDataType.SHAPEFILE in allTypesFound:
-                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.SHAPEFILE).next()
-            elif GeoNISDataType.KML in allTypesFound:
-                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.KML).next()
-            elif GeoNISDataType.ASCIIRASTER in allTypesFound:
-                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.ASCIIRASTER).next()
-            elif GeoNISDataType.TIF in allTypesFound:
-                # Tif without world file or prj file?
-                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.TIF).next()
-                self.logger.logMessage(WARN, "%s seems to be tif with no prj or tfw." % (fileHit,))
+                if GeoNISDataType.FILEGEODB in allTypesFound:
+                    fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.FILEGEODB).next()
+                elif GeoNISDataType.SHAPEFILE in allTypesFound:
+                    fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.SHAPEFILE).next()
+                elif GeoNISDataType.KML in allTypesFound:
+                    fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.KML).next()
+                else:
+                    fileHit, itsType = (None, GeoNISDataType.NA)
             else:
-                fileHit, itsType = (None, GeoNISDataType.NA)
+                return (None, GeoNISDataType.NA)
             return (fileHit, itsType)
         else:
             return (None, GeoNISDataType.NA)
@@ -484,7 +500,7 @@ class LoadVectorTypes(ArcpyTool):
                             pkgId = lineval
                         elif line.startswith("DatafilePath"):
                             datafilePath = lineval
-                        elif line.startswith("TYPE"):
+                        elif line.startswith("TYPE:"):
                             datatype = lineval
                         elif line.startswith("EntityName"):
                             entityname = lineval
@@ -493,6 +509,9 @@ class LoadVectorTypes(ArcpyTool):
                     loadedFeatureClasses = self.loadShapefile(siteId, entityname, datafilePath)
                 elif 'kml' in datatype:
                     loadedFeatureClasses = self.loadKml(siteId, entityname, datafilePath)
+                elif 'geodatabase' in datatype:
+                    #TODO: copy vector from file geodatabase, for now, leave dir behind
+                    continue
                 else:
                     # no vector data here; continue to next dir, placing this one into the output set
                     self.outputDirs.append(dir)
@@ -635,7 +654,8 @@ class LoadRasterTypes(ArcpyTool):
 
     def execute(self, parameters, messages):
         super(LoadRasterTypes, self).execute(parameters, messages)
-        self.supportedTypes = ("tif", "ascii grid", "coverage", "jpeg", "raster dataset")
+        #TODO: add file gdb to list, and handle. Could be mosaic ds in file gdb, e.g.
+        self.supportedTypes = ("tif", "ascii raster", "coverage", "jpg", "raster dataset")
         for dir in self.inputDirs:
             datafilePath, pkgId, datatype, entityname = ("" for i in range(4))
             loadedRaster = None

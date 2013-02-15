@@ -40,7 +40,7 @@ else:
     #raster data storage
     pathToRasterData = r"C:\Users\ron\Documents\geonis_tests\raster_data"
     #raster mosaic datasets
-    pathToRasterMosaicDatasets = r"C:\Users\ron\Documents\geonis_tests\mosaic_ds.gdb"
+    pathToRasterMosaicDatasets = r"C:\Users\ron\Documents\geonis_tests\raster_md.gdb"
 
 
 

@@ -60,6 +60,6 @@ def isRasterDS(path):
 def siteFromId(packageId):
     """ returns the upper case site code part of the package id """
     if packageId.lower().startswith("knb-lter-"):
-        return packageId[9:12].upper()
+        return packageId[9:12].lower()
     else:
         return "unrecognized package id"
