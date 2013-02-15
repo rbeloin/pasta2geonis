@@ -355,9 +355,15 @@ class CheckSpatialData(ArcpyTool):
                             notesfile.write('TYPE:file geodatabase\n')
                             #need to examine file gdb to see what is there, or rely on EML?
                         if spatialType == GeoNISDataType.ESRIE00:
-                            self.logger.logMessage(INFO, "arcinfo e00  found")
-                            notesfile.write('TYPE:ArcInfo Exchange (e00)\n')
-                            #need to import this, and see what it is
+                            self.logger.logMessage(WARN, "arcinfo e00  reported. Should have been unpacked.")
+                        if spatialType == GeoNISDataType.TIF:
+                            notesfile.write('TYPE:tif\n')
+                        if spatialType == GeoNISDataType.JPEG:
+                            notesfile.write('TYPE:jpg\n')
+                        if spatialType == GeoNISDataType.SPATIALRASTER:
+                            notesfile.write('TYPE:raster dataset\n')
+                        if spatialType == GeoNISDataType.SPATIALVECTOR:
+                            notesfile.write('TYPE:vector\n')
                 except Exception as e:
                     with open(notesfilePath,'w') as notesfile:
                         notesfile.write("Exception:%s\n", (e.message,))
