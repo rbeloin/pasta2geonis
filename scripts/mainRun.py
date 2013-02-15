@@ -11,6 +11,7 @@ import os, sys
 import arcpy
 from arcpy import Parameter
 import lno_geonis_wf
+from geonis_pyconfig import envSettingsPath
 
 def testChain():
     mytoolspath = arcpy.gp.getMyToolboxesPath()
@@ -105,11 +106,17 @@ def testLoadRaster():
     tool.execute(params,[])
     print params[3].value
 
+def makeSettingsfile():
+    arcpy.env.overwriteOutput = True
+    arcpy.env.scratchWorkspace = r"C:\Temp\scratch"
+    arcpy.SaveSettings(envSettingsPath)
+
 
 if __name__ == '__main__':
     #testUnpack()
     #testCheckData()
     #testLoadVector()
-    testLoadRaster()
+    #testLoadRaster()
     #testUnpackAsTool()
     #testChain()
+    makeSettingsfile()

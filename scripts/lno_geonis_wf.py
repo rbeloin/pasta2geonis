@@ -213,7 +213,9 @@ class CheckSpatialData(ArcpyTool):
         interchangeF = [f for f in contents if isEsriE00(f)]
         if len(interchangeF):
             arcpy.env.workspace = apackageDir
-            arcpy.ImportFromE00_conversion(interchangeF[0])
+            exchangeFile = interchangeF[0]
+            fileName, ext = os.path.splitext(os.path.basename(exchangeFile))
+            arcpy.ImportFromE00_conversion(exchangeFile, apackageDir, fileName)
             #for now, lets not delete. takes a while to download  os.remove(interchangeF[0])
         for afile in (f for f in contents if os.path.isfile(f)):
             if isShapefile(afile):
@@ -248,34 +250,30 @@ class CheckSpatialData(ArcpyTool):
             #if we have a hint, use it
             for found in allPotentialFiles:
                 if hint is not None and hint in found:
+                    self.logger.logMessage(INFO, "Found hint %s matches %s, %s." % (hint, found[0][1], found[0][0]))
                     return found
             #list of all types found for easy checking
             allTypesFound = [item[1] for item in allPotentialFiles]
             #files with world files or projections are good bets
             if (GeoNISDataType.TFW in allTypesFound or GeoNISDataType.PRJ in allTypesFound) and GeoNISDataType.TIF in allTypesFound:
-                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.TIF)
-                return (fileHit[0], GeoNISDataType.TIF)
-            if (GeoNISDataType.JPGW in allTypesFound or GeoNISDataType.PRJ in allTypesFound) and GeoNISDataType.JPEG in allTypesFound:
-                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.JPEG)
-                return (fileHit[0], GeoNISDataType.JPEG)
-            if GeoNISDataType.FILEGEODB in allTypesFound:
-                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.FILEGEODB)
-                return (fileHit[0], GeoNISDataType.FILEGEODB)
-            if GeoNISDataType.SHAPEFILE in allTypesFound:
-                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.SHAPEFILE)
-                return (fileHit[0], GeoNISDataType.SHAPEFILE)
-            if GeoNISDataType.KML in allTypesFound:
-                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.KML)
-                return (fileHit[0], GeoNISDataType.KML)
-            if GeoNISDataType.ASCIIRASTER in allTypesFound:
-                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.ASCIIRASTER)
-                return (fileHit[0], GeoNISDataType.ASCIIRASTER)
-            if GeoNISDataType.TIF in allTypesFound:
+                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.TIF).next()
+            elif (GeoNISDataType.JPGW in allTypesFound or GeoNISDataType.PRJ in allTypesFound) and GeoNISDataType.JPEG in allTypesFound:
+                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.JPEG).next()
+            elif GeoNISDataType.FILEGEODB in allTypesFound:
+                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.FILEGEODB).next()
+            elif GeoNISDataType.SHAPEFILE in allTypesFound:
+                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.SHAPEFILE).next()
+            elif GeoNISDataType.KML in allTypesFound:
+                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.KML).next()
+            elif GeoNISDataType.ASCIIRASTER in allTypesFound:
+                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.ASCIIRASTER).next()
+            elif GeoNISDataType.TIF in allTypesFound:
                 # Tif without world file or prj file?
-                fileHit = (item[0] for item in allPotentialFiles if item[1] == GeoNISDataType.TIF)
-                self.logger.logMessage(WARN, "%s seems to be tif with no prj or tfw." % (filehit[0],))
-                return (fileHit[0], GeoNISDataType.TIF)
-            return (None, GeoNISDataType.NA)
+                fileHit, itsType = (item for item in allPotentialFiles if item[1] == GeoNISDataType.TIF).next()
+                self.logger.logMessage(WARN, "%s seems to be tif with no prj or tfw." % (fileHit,))
+            else:
+                fileHit, itsType = (None, GeoNISDataType.NA)
+            return (fileHit, itsType)
         else:
             return (None, GeoNISDataType.NA)
 
