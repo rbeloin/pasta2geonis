@@ -209,14 +209,23 @@ class CheckSpatialData(ArcpyTool):
         #self.logger.logMessage(DEBUG, str(contents))
         #array of tuples, one of which we will return
         allPotentialFiles = []
-        #special handling - if we have interchange file, E00, then import it and continue
+        #special handling - if we have interchange file, E00, then import it, reset the hint, and continue
         interchangeF = [f for f in contents if isEsriE00(f)]
         if len(interchangeF):
+            #reset the hint
+            if hint == GeoNISDataType.ESRIE00:
+                spatialTypeItem = [item for item in self.getEMLdata(apackageDir) if item["name"] == "spatialType"][0]
+                if spatialTypeItem["content"] == "vector":
+                    hint = GeoNISDataType.SPATIALVECTOR
+                elif spatialTypeItem["content"] == "raster":
+                    hint = GeoNISDataType.SPATIALRASTER
             arcpy.env.workspace = apackageDir
             exchangeFile = interchangeF[0]
             fileName, ext = os.path.splitext(os.path.basename(exchangeFile))
             arcpy.ImportFromE00_conversion(exchangeFile, apackageDir, fileName)
-            #for now, lets not delete. takes a while to download  os.remove(interchangeF[0])
+            #for now, lets not delete. takes a while to download  os.remove(exchangeFile)
+            #redo our contents list
+            contents = [os.path.join(apackageDir,item) for item in os.listdir(apackageDir)]
         for afile in (f for f in contents if os.path.isfile(f)):
             if isShapefile(afile):
                 allPotentialFiles.append((afile,GeoNISDataType.SHAPEFILE))
@@ -242,6 +251,9 @@ class CheckSpatialData(ArcpyTool):
         if len(allPotentialFiles) > 0:
             #in most cases we probably just had one hit
             if len(allPotentialFiles) == 1:
+                if allPotentialFiles[0][1] == GeoNISDataType.PRJ:
+                    self.logger.logMessage(WARN, "Only a projection file, %s, was found." % (allPotentialFiles[0][0],))
+                    return (None, GeoNISDataType.NA)
                 if hint is not None and hint not in allPotentialFiles[0]:
                     self.logger.logMessage(WARN, "Expected data type %s is not exactly found data type %s for %s" % (hint, allPotentialFiles[0][1], allPotentialFiles[0][0]))
                 return allPotentialFiles[0]
@@ -250,7 +262,7 @@ class CheckSpatialData(ArcpyTool):
             #if we have a hint, use it
             for found in allPotentialFiles:
                 if hint is not None and hint in found:
-                    self.logger.logMessage(INFO, "Found hint %s matches %s, %s." % (hint, found[0][1], found[0][0]))
+                    self.logger.logMessage(INFO, "Found hint %s matches %s, %s." % (hint, found[0], found[1]))
                     return found
             #list of all types found for easy checking
             allTypesFound = [item[1] for item in allPotentialFiles]

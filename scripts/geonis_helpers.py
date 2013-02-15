@@ -47,8 +47,8 @@ def isASCIIRaster(pathToFile):
 def isRasterDS(path):
     '''Returns True if INFO dir found or *.adf found'''
     if os.path.isdir(path):
-        parent = os.path.realpath(os.path.join(os.path.dirname(path),".."))
-        info = [d for d in os.listdir(parent) if d == "INFO"]
+        parent = os.path.dirname(path)
+        info = [d for d in os.listdir(parent) if d.lower() == "info"]
         if len(info):
             return True
         adf = [a for a in os.listdir(path) if a.endswith(".adf")]

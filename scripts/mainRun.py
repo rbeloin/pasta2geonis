@@ -78,7 +78,7 @@ def testCheckData():
     params = tool.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
-    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-rmb.1.1"
+    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1"
     params[3].value = None
     tool.execute(params,[])
     print params[3].value
@@ -114,9 +114,9 @@ def makeSettingsfile():
 
 if __name__ == '__main__':
     #testUnpack()
-    #testCheckData()
+    testCheckData()
     #testLoadVector()
     #testLoadRaster()
     #testUnpackAsTool()
     #testChain()
-    makeSettingsfile()
+    #makeSettingsfile()
