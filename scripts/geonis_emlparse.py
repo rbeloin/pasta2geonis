@@ -10,9 +10,10 @@ Created on Jan 28, 2013
 @see https://nis.lternet.edu/NIS/
 """
 import os, re
-import time
+import time, datetime
 from copy import deepcopy
 from lxml import etree
+from geonis_helpers import siteFromId
 
 
 unittest = True
@@ -20,9 +21,9 @@ unittest = True
 
 def main():
     """used for testing """
-    tmp = parseAndPopulateEMLDicts(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\gi01001i.xml")
-    if tmp is None:
-        return
+##    tmp = parseAndPopulateEMLDicts(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\gi01001i.xml")
+##    if tmp is None:
+##        return
 ##    recoveredThing = eval(str(tmp))
 ##    for item in recoveredThing:
 ##        if item['name'] == 'spatialType':
@@ -32,9 +33,14 @@ def main():
 ##    for item in recoveredThing:
 ##        if 'applies_to' in item:
 ##            print "check ", item['applies_to']
-    with open(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\temp_meta.data", 'w') as tmpdat:
-        tmpdat.write(str(tmp))
-    createSuppXML(tmp, r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\supp_metadata.xml")
+##    with open(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\temp_meta.data", 'w') as tmpdat:
+##        tmpdat.write(str(tmp))
+##    createSuppXML(tmp, r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\supp_metadata.xml")
+    with open(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-rmb.1.1\temp_meta.data", 'r') as tmpdat:
+        emldat = eval(" ".join(tmpdat.readlines()))
+    print str(emldat)
+    print str(createInsertObj(emldat))
+
 
 emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
                 'stmml':"http://www.xml-cml.org/schema/stmml",
@@ -154,6 +160,36 @@ def createSuppXML(emldata, outFilePath):
     except Exception as err:
         raise Exception("Error creating supplemental metadata XML in %s. %s" % (outFilePath, err.message))
     #print (etree.tostring(suppX, pretty_print = True))
+
+def createInsertObj(emldata):
+    retval = {}
+    pkgId = getContentFromEmldataByName(emldata,"packageId")
+    site, numId, rev = siteFromId(pkgId)
+    if site == "error":
+        retval["error"] = "bad package id"
+        return retval
+    retval["packageid"] = pkgId
+    retval["site"] = site
+    retval["numericid"] = numId
+    retval["revision"] = rev
+    retval["title"] = getContentFromEmldataByName(emldata,"title")
+    retval["keywords"] = getContentFromEmldataByName(emldata,"keywords")
+    retval["entity"] = getContentFromEmldataByName(emldata,"entityName")
+    spatialType = getContentFromEmldataByName(emldata,"spatialType")
+    retval["raster"] = spatialType == "raster"
+    retval["featureclass"] = spatialType == "vector"
+    retval["added"] = datetime.datetime.now()
+    #this filled in when data loaded
+    retval["layerName"] = ""
+    #this recovered by query on map
+    retval["servId"] = None
+    return retval
+
+def getContentFromEmldataByName(emldata, name):
+    try:
+        return [item for item in emldata if item["name"] == name][0]["content"]
+    except Exception:
+        return ""
 
 
 

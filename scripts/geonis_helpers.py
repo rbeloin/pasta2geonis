@@ -58,8 +58,13 @@ def isRasterDS(path):
 
 
 def siteFromId(packageId):
-    """ returns the upper case site code part of the package id """
+    """ returns the lower case site code part of the package id """
+    #TODO: mod so that it returns tuple, (site, id, rev)
     if packageId.lower().startswith("knb-lter-"):
-        return packageId[9:12].lower()
+        parts = packageId.lower().split('.')
+        if len(parts) == 3:
+            return (parts[0][9:], parts[1], parts[2])
+        else:
+            return ("error",parts[0],"incorrect format")
     else:
-        return "unrecognized package id"
+        return ("error",packageId,"unrecognized")

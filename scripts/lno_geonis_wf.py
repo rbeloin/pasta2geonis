@@ -22,7 +22,7 @@ from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase, pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId
-from geonis_emlparse import parseAndPopulateEMLDicts, createSuppXML
+from geonis_emlparse import parseAndPopulateEMLDicts, createSuppXML, createInsertObj
 
 ## *****************************************************************************
 class UnpackPackages(ArcpyTool):
@@ -481,6 +481,20 @@ class LoadVectorTypes(ArcpyTool):
             result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", fc)
 
 
+    @errHandledWorkflowTask(taskName="Insert to table")
+    def insertIntoTable(self, workDir, loadedFeatureClasses):
+        if not loadedFeatureClasses:
+            return
+        emldataObj = self.getEMLdata(workDir)
+        valuesObj = createInsertObj(emldataObj)
+        for fc in loadedFeatureClasses:
+            valuesObj["layerName"] = valuesObj["site"] + os.path.basename(fc)
+            stmt = """INSERT INTO geonis.featurelookup
+                   ()
+            values (%(packageid)s, %(site)s,    );
+            """
+            #execute insert
+
 
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
@@ -504,7 +518,7 @@ class LoadVectorTypes(ArcpyTool):
                             datatype = lineval
                         elif line.startswith("EntityName"):
                             entityname = lineval
-                siteId = siteFromId(pkgId)
+                siteId, n, m = siteFromId(pkgId)
                 if 'shapefile' in datatype:
                     loadedFeatureClasses = self.loadShapefile(siteId, entityname, datafilePath)
                 elif 'kml' in datatype:
@@ -519,6 +533,8 @@ class LoadVectorTypes(ArcpyTool):
                 # amend metadata
                 self.mergeMetadata(dir, loadedFeatureClasses)
                 # add dir for next tool, in any case except exception
+                # update table in geonis db
+                self.insertIntoTable(dir, loadedFeatureClasses)
                 self.outputDirs.append(dir)
             except Exception as err:
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
@@ -677,7 +693,7 @@ class LoadRasterTypes(ArcpyTool):
                 if not self.isSupported(datatype):
                     self.outputDirs.append(dir)
                     continue
-                siteId = siteFromId(pkgId)
+                siteId, n, m = siteFromId(pkgId)
                 rawDataLoc = self.prepareStorage(siteId, datafilePath, entityname)
                 os.mkdir(rawDataLoc)
                 raster = self.copyRaster(datafilePath, rawDataLoc)
