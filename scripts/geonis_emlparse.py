@@ -184,9 +184,9 @@ def createInsertObj(emldata):
     #this recovered by query on map
     retval["servId"] = None
     return (getInsertStmt(),retval)
-	
+
 def getInsertStmt():
-	return  """INSERT INTO geonis.processed_items (packageid,sitecode,entity,packagenum,packagerev,title,keywords,featureclass,raster,procdate,layername,serviceid) VALUES(%(packageid)s,%(site)s,%(entity)s,%(numericid)s,%(revision)s,%(title)s,%(keywords)s,%(featureclass)s,%(raster)s,%(added)s,%(layerName)s,%(servId)s);"""
+    return  """INSERT INTO geonis.processed_items (packageid,sitecode,entity,packagenum,packagerev,title,keywords,featureclass,raster,procdate,layername,serviceid) VALUES(%(packageid)s,%(site)s,%(entity)s,%(numericid)s,%(revision)s,%(title)s,%(keywords)s,%(featureclass)s,%(raster)s,%(added)s,%(layerName)s,%(servId)s);"""
 
 def getContentFromEmldataByName(emldata, name):
     try:

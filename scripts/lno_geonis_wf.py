@@ -488,16 +488,16 @@ class LoadVectorTypes(ArcpyTool):
             return
         emldataObj = self.getEMLdata(workDir)
         stmt, valuesObj = createInsertObj(emldataObj)
-		with open(dsnfile) as dsnf:
-			dsnStr = dsnf.readline()
-		with psycopg2.connect(dsn = dsnStr) as conn:
-			with conn.cursor() as cur:
-				for fc in loadedFeatureClasses:
-					valuesObj["layerName"] = valuesObj["site"] + os.path.basename(fc)
-					#execute insert
-					self.logger.logMessage(DEBUG,cur.mogrify(stmt,valuesObj))
-					cur.execute(stmt,valuesObj)
-		conn.close()
+        with open(dsnfile) as dsnf:
+            dsnStr = dsnf.readline()
+        with psycopg2.connect(dsn = dsnStr) as conn:
+            with conn.cursor() as cur:
+                for fc in loadedFeatureClasses:
+                    valuesObj["layerName"] = valuesObj["site"] + os.path.basename(fc)
+                    #execute insert
+                    self.logger.logMessage(DEBUG,cur.mogrify(stmt,valuesObj))
+                    cur.execute(stmt,valuesObj)
+        conn.close()
 
 
     def execute(self, parameters, messages):
