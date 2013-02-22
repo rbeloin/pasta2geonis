@@ -488,16 +488,26 @@ class LoadVectorTypes(ArcpyTool):
             return
         emldataObj = self.getEMLdata(workDir)
         stmt, valuesObj = createInsertObj(emldataObj)
+        self.logger.logMessage(INFO,stmt)
+        self.logger.logMessage(INFO,repr(valuesObj))        
         with open(dsnfile) as dsnf:
             dsnStr = dsnf.readline()
-        with psycopg2.connect(dsn = dsnStr) as conn:
-            with conn.cursor() as cur:
-                for fc in loadedFeatureClasses:
-                    valuesObj["layerName"] = valuesObj["site"] + os.path.basename(fc)
-                    #execute insert
-                    self.logger.logMessage(DEBUG,cur.mogrify(stmt,valuesObj))
-                    cur.execute(stmt,valuesObj)
-        conn.close()
+        self.logger.logMessage(INFO,dsnStr)
+        conn = psycopg2.connect(dsn = dsnStr)
+        try:
+            cur = conn.cursor()
+            for fc in loadedFeatureClasses:
+                valuesObj["layerName"] = valuesObj["site"] + os.path.basename(fc)
+                #execute insert
+                self.logger.logMessage(DEBUG,cur.mogrify(stmt,valuesObj))
+                cur.execute(stmt,valuesObj)
+            conn.commit()
+            del cur
+        except Exception as err:
+            conn.rollback()
+            self.logger.logMessage(WARN, err.message)
+        finally:
+            conn.close()
 
 
     def execute(self, parameters, messages):
@@ -765,5 +775,4 @@ toolclasses =  [UnpackPackages,
                 CheckSpatialData,
                 LoadVectorTypes,
                 LoadRasterTypes ]
-
 
