@@ -11,6 +11,7 @@ Created on Jan 14, 2013
 import sys, os, re
 import time
 import urllib2
+import psycopg2
 from shutil import copyfileobj
 from zipfile import ZipFile
 import arcpy
@@ -19,7 +20,7 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
-from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase, pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets
+from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase, pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets, dsnfile
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId
 from geonis_emlparse import parseAndPopulateEMLDicts, createSuppXML, createInsertObj
@@ -483,17 +484,20 @@ class LoadVectorTypes(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Insert to table")
     def insertIntoTable(self, workDir, loadedFeatureClasses):
-        if not loadedFeatureClasses:
+        if not loadedFeatureClasses or dsnfile is None:
             return
         emldataObj = self.getEMLdata(workDir)
-        valuesObj = createInsertObj(emldataObj)
-        for fc in loadedFeatureClasses:
-            valuesObj["layerName"] = valuesObj["site"] + os.path.basename(fc)
-            stmt = """INSERT INTO geonis.featurelookup
-                   ()
-            values (%(packageid)s, %(site)s,    );
-            """
-            #execute insert
+        stmt, valuesObj = createInsertObj(emldataObj)
+		with open(dsnfile) as dsnf:
+			dsnStr = dsnf.readline()
+		with psycopg2.connect(dsn = dsnStr) as conn:
+			with conn.cursor() as cur:
+				for fc in loadedFeatureClasses:
+					valuesObj["layerName"] = valuesObj["site"] + os.path.basename(fc)
+					#execute insert
+					self.logger.logMessage(DEBUG,cur.mogrify(stmt,valuesObj))
+					cur.execute(stmt,valuesObj)
+		conn.close()
 
 
     def execute(self, parameters, messages):

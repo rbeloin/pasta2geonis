@@ -30,6 +30,8 @@ if platform.node() == "Maps3":
     pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.gdb"
     #geodatabase connection
     geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
+	#DSN file
+	dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
 else:
     #path to env settings file. settings loaded by base execute method
     envSettingsPath = r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml"
@@ -41,6 +43,8 @@ else:
     pathToRasterData = r"C:\Users\ron\Documents\geonis_tests\raster_data"
     #raster mosaic datasets
     pathToRasterMosaicDatasets = r"C:\Users\ron\Documents\geonis_tests\raster_md.gdb"
+	#no dsn
+	dsnfile = None
 
 
 

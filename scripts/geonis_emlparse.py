@@ -167,7 +167,7 @@ def createInsertObj(emldata):
     site, numId, rev = siteFromId(pkgId)
     if site == "error":
         retval["error"] = "bad package id"
-        return retval
+        return ("error",retval)
     retval["packageid"] = pkgId
     retval["site"] = site
     retval["numericid"] = numId
@@ -183,7 +183,10 @@ def createInsertObj(emldata):
     retval["layerName"] = ""
     #this recovered by query on map
     retval["servId"] = None
-    return retval
+    return (getInsertStmt(),retval)
+	
+def getInsertStmt():
+	return  """INSERT INTO geonis.processed_items (packageid,sitecode,entity,packagenum,packagerev,title,keywords,featureclass,raster,procdate,layername,serviceid) VALUES(%(packageid)s,%(site)s,%(entity)s,%(numericid)s,%(revision)s,%(title)s,%(keywords)s,%(featureclass)s,%(raster)s,%(added)s,%(layerName)s,%(servId)s);"""
 
 def getContentFromEmldataByName(emldata, name):
     try:
