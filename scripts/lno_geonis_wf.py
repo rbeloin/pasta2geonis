@@ -15,6 +15,7 @@ import urllib2
 import psycopg2
 from shutil import copyfileobj
 from zipfile import ZipFile
+from lxml import etree
 import arcpy
 from geonis_log import EvtLog, errHandledWorkflowTask
 from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as arcAddWarn
@@ -754,11 +755,11 @@ class RefreshMapService(ArcpyTool):
         """Checks table and compares to layer list, adds vectors not in layer list"""
         retval = []
         #bypass
-        rows = [ (2, 'tjv', 'hjaveg', 'tjvhjaveg'), (3, 'rmb', 'someKML_Points', 'rmbsomeKML_Points'), (4, 'rmb', 'someKML_Polylines', 'rmbsomeKML_Polylines')]
-##        curs = dbconn.cursor()
-##        stmt = "SELECT id, sitecode, entity, layername FROM geonis.processed_items t1 WHERE t1.featureclass AND t1.serviceid is null;"
-##        curs.execute(stmt)
-##        rows = curs.fetchall()
+        #rows = [ (2, 'tjv', 'hjaveg', 'tjvhjaveg'), (3, 'rmb', 'someKML_Points', 'rmbsomeKML_Points'), (4, 'rmb', 'someKML_Polylines', 'rmbsomeKML_Polylines')]
+        curs = dbconn.cursor()
+        stmt = "SELECT id, sitecode, entity, layername FROM geonis.processed_items  WHERE featureclass AND serviceid is null;"
+        curs.execute(stmt)
+        rows = curs.fetchall()
         if rows:
             addToMap = []
             #get list of layer names from service
@@ -791,48 +792,115 @@ class RefreshMapService(ArcpyTool):
             return retval
 
 
-    @errHandledWorkflowTask(taskName="Refresh service")
-    def refreshService(self):
-        """Creates SD draft, modifies it, creates SD, uploads to server"""
+    @errHandledWorkflowTask(taskName="Create service draft")
+    def draftSD(self):
+        """Creates SD draft, modifies it"""
         arcpy.env.workspace = os.path.dirname(pathToMapDoc)
         wksp = arcpy.env.workspace
         mxd = arcpy.mapping.MapDocument(pathToMapDoc)
-        sdDraft = "mapservice.sddraft"
-        arcpy.mapping.CreateMapSDDraft(mxd, wksp + os.sep + sdDraft, mapServInfo['service_name'],
-        "ARCGIS_SERVER", pubConnection, False, None, mapServInfo['summary'], mapServInfo['tags'])
+        sdDraft = wksp + os.sep + mapServInfo['service_name'] + ".sddraft"
+        arcpy.mapping.CreateMapSDDraft(mxd, sdDraft, mapServInfo['service_name'],
+        "ARCGIS_SERVER", pubConnection, False, pathToMapDoc, mapServInfo['summary'], mapServInfo['tags'])
+        del mxd
         #now we need to change one tag in the draft to indicate this is a replacement service
+        draftXml = etree.parse(sdDraft)
+        typeNode = draftXml.xpath("/SVCManifest/Type")
+        if typeNode and etree.iselement(typeNode[0]):
+            typeNode[0].text = "esriServiceDefinitionType_Replacement"
+            with open(sdDraft,'w') as outfile:
+                outfile.write(etree.tostring(draftXml, xml_declaration = False))
+            #save backup for debug
+            with open(sdDraft + '.bak', 'w') as bakfile:
+                bakfile.write(etree.tostring(draftXml, xml_declaration = False))
+        del typeNode, draftXml
 
+    @errHandledWorkflowTask(taskName="Replace service")
+    def replaceService(self):
+        """Creates SD, uploads to server"""
+        arcpy.env.workspace = os.path.dirname(pathToMapDoc)
+        wksp = arcpy.env.workspace
+        mxd = arcpy.mapping.MapDocument(pathToMapDoc)
+        sdDraft = wksp + os.sep + mapServInfo['service_name'] + ".sddraft"
+        sdFile =  wksp + os.sep + mapServInfo['service_name'] + ".sd"
+        if os.path.exists(sdFile):
+            os.remove(sdFile)
+        #by default, writes SD file to same loc as draft, then DELETES DRAFT
+        arcpy.StageService_server(sdDraft)
+        if os.path.exists(sdFile):
+            arcpy.UploadServiceDefinition_server(inSdFile = sdFile, inServer = pubConnection, inStartup = 'STARTED')
+        else:
+            raise Exception("Staging failed to create %s" % (sdFile,))
 
 
     @errHandledWorkflowTask(taskName="Update search table")
-    def updateLayerIds(self, dbconn):
+    def updateLayerIds(self, dbconn, addedLayerNames):
         """Updates layer ids in search table with service info query"""
-        pass
+            #get list of layer names from service
+        available = False
+        tries = 0
+        layerInfoJson = urllib2.urlopen(layerQueryURI)
+        layerInfo = json.loads(layerInfoJson.readline())
+        del layerInfoJson
+        available = "error" not in layerInfo
+        while not available and tries < 10:
+            time.sleep(5)
+            tries += 1
+            layerInfoJson = urllib2.urlopen(layerQueryURI)
+            layerInfo = json.loads(layerInfoJson.readline())
+            available = "error" not in layerInfo
+        self.logger.logMessage(DEBUG, "service conn attemps %d" % (tries,))
+        # make list of dict with just name and id of feature layers
+        layers = [{'name':lyr["name"],'id':lyr['id']} for lyr in layerInfo["layers"] if lyr["type"] == "Feature Layer"]
+        # shorten names that have db and schema in the name
+        for lyr in layers:
+            while lyr['name'].startswith("geonis."):
+                lyr['name'] = lyr['name'][7:]
+        # update table with ids of layers
+        # To completely refresh table, set all ids to null before using tool
+        curs = dbconn.cursor()
+        stmt = "SELECT id, layername FROM geonis.processed_items t1 WHERE t1.featureclass AND t1.serviceid is null;"
+        curs.execute(stmt)
+        rows = curs.fetchall()
+        dbconn.commit()
+        updateParams = []
+        if rows:
+            for row in rows:
+                rowid, layername = row
+                search = [lyr['id'] for lyr in layers if lyr['name'] == layername]
+                if search:
+                    updateParams.append((int(search[0]), int(rowid)))
+        del rows
+        # updateParams now has 0 or more tuples (layer id, db id)
+        stmt2 = "UPDATE geonis.processed_items SET serviceid = %s WHERE id = %s;"
+        for params in updateParams:
+            curs.execute(stmt2, params)
+        dbconn.commit()
+        del curs
+
 
     def execute(self, parameters, messages):
         super(RefreshMapService, self).execute(parameters, messages)
         #bypass
         conn = None
-##        try:
-##            with open(dsnfile) as dsnf:
-##                dsnStr = dsnf.readline()
-##            conn = psycopg2.connect(dsn = dsnStr)
-##        except Exception as connerr:
-##            self.logger.logMessage(ERROR, connerr.message)
-##            exit(1)
+        try:
+            with open(dsnfile) as dsnf:
+                dsnStr = dsnf.readline()
+            conn = psycopg2.connect(dsn = dsnStr)
+        except Exception as connerr:
+            self.logger.logMessage(ERROR, connerr.message)
+            exit(1)
         try:
             addedLayers = self.addVectorData(conn)
-            self.refreshService()
-            #wait for service to start, get layer info
-            time.sleep(30)
-            self.updateLayerIds(conn)
+            self.draftSD()
+            self.replaceService()
+            #delay for service to start, get layer info
+            time.sleep(20)
+            self.updateLayerIds(conn, addedLayers)
         except Exception as err:
             conn.rollback()
             self.logger.logMessage(ERROR, err.message)
-            exit(1)
         finally:
-            pass
-            #conn.close()
+            conn.close()
 
 
 
