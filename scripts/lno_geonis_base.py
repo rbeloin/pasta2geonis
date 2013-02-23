@@ -13,7 +13,7 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from geonis_log import EvtLog
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from arcpy import Parameter
-from geonis_pyconfig import defaultVerboseValue, tempMetadataFilename, envSettingsPath
+from geonis_pyconfig import defaultVerboseValue, tempMetadataFilename, envSettingsPath, scratchWS
 
 class ArcpyTool(object):
     """
@@ -31,6 +31,7 @@ class ArcpyTool(object):
         self.logger = None
         self._isRunningAsTool = True
         arcpy.LoadSettings(envSettingsPath)
+        arcpy.env.scratchWorkspace = scratchWS
 
     @property
     def isRunningAsTool(self):

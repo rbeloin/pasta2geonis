@@ -32,6 +32,14 @@ if platform.node() == "Maps3":
     geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
     #DSN file
     dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
+    #map doc
+    pathToMapDoc = r"C:\pasta2geonis\MapTest.mxd"
+    #map service layer query
+    layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/Test/VectorData/MapServer/layers?f=json"
+    #scratchWorkspace is NOT saved in settings
+    scratchWS = r"C:\Temp"
+    #publisher conn
+    pubConnection = r"C:\pasta2geonis\Maps3.lternet.edu_6080(publisher).ags"
 else:
     #path to env settings file. settings loaded by base execute method
     envSettingsPath = r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml"
@@ -45,8 +53,16 @@ else:
     pathToRasterMosaicDatasets = r"C:\Users\ron\Documents\geonis_tests\raster_md.gdb"
     #no dsn
     dsnfile = None
-
-
+    #map doc
+    pathToMapDoc = r"Z:\docs\local\mapserve.mxd"
+    #map service layer query
+    layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/Test/VectorData/MapServer/layers?f=json"
+    #scratchWorkspace is NOT saved in settings
+    scratchWS = r"C:\Users\ron\AppData\Local\Temp"
+    #publisher conn
+    pubConnection = None
+    #map service info
+    mapServInfo = {'service_name':"VectorData",'tags':"GEONIS",'summary':"Testing vector data map service."}
 
 class GeoNISDataType:
     """ members of this class serve as both enum type values for data types,

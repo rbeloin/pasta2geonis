@@ -10,6 +10,7 @@ Created on Jan 14, 2013
 '''
 import sys, os, re
 import time
+import json
 import urllib2
 import psycopg2
 from shutil import copyfileobj
@@ -20,7 +21,8 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
-from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase, pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets, dsnfile
+from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase
+from geonis_pyconfig import pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets, dsnfile, pathToMapDoc, layerQueryURI, pubConnection, mapServInfo
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId
 from geonis_emlparse import parseAndPopulateEMLDicts, createSuppXML, createInsertObj
@@ -489,7 +491,7 @@ class LoadVectorTypes(ArcpyTool):
         emldataObj = self.getEMLdata(workDir)
         stmt, valuesObj = createInsertObj(emldataObj)
         self.logger.logMessage(INFO,stmt)
-        self.logger.logMessage(INFO,repr(valuesObj))        
+        self.logger.logMessage(INFO,repr(valuesObj))
         with open(dsnfile) as dsnf:
             dsnStr = dsnf.readline()
         self.logger.logMessage(INFO,dsnStr)
@@ -725,6 +727,113 @@ class LoadRasterTypes(ArcpyTool):
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
+
+## *****************************************************************************
+class RefreshMapService(ArcpyTool):
+    """Adds new vector data to map, creates service def draft, modifies it to replace, uploads and starts service,
+       waits for service to start, gets list of layers, updates table with layer IDs. """
+    def __init__(self):
+        ArcpyTool.__init__(self)
+        self._description = "Adds new vector data to map, creates service def draft, modifies it to replace, uploads and starts service, waits for service to start, gets list of layers, updates table with layer IDs."
+        self._label = "Refresh Map Service"
+        self._alias = "refreshMapServ"
+
+    def getParameterInfo(self):
+        return super(RefreshMapService, self).getParameterInfo()
+
+    def updateParameters(self, parameters):
+        """called whenever user edits parameter in tool GUI. Can adjust other parameters here. """
+        super(RefreshMapService, self).updateParameters(parameters)
+
+    def updateMessages(self, parameters):
+        """called after all of the update parameter calls. Call attach messages to parameters, usually warnings."""
+        super(RefreshMapService, self).updateMessages(parameters)
+
+    @errHandledWorkflowTask(taskName="Add vector data to map")
+    def addVectorData(self, dbconn):
+        """Checks table and compares to layer list, adds vectors not in layer list"""
+        retval = []
+        #bypass
+        rows = [ (2, 'tjv', 'hjaveg', 'tjvhjaveg'), (3, 'rmb', 'someKML_Points', 'rmbsomeKML_Points'), (4, 'rmb', 'someKML_Polylines', 'rmbsomeKML_Polylines')]
+##        curs = dbconn.cursor()
+##        stmt = "SELECT id, sitecode, entity, layername FROM geonis.processed_items t1 WHERE t1.featureclass AND t1.serviceid is null;"
+##        curs.execute(stmt)
+##        rows = curs.fetchall()
+        if rows:
+            addToMap = []
+            #get list of layer names from service
+            layerInfoJson = urllib2.urlopen(layerQueryURI)
+            layerInfo = json.loads(layerInfoJson.readline())
+            layerNamesLong = [lyr["name"] for lyr in layerInfo["layers"] if lyr["type"] == "Feature Layer"]
+            layerNames = []
+            for name in layerNamesLong:
+                while name.startswith("geonis."):
+                    name = name[7:]
+                layerNames.append(name)
+            for row in rows:
+                id, site, entity, layerNm = row
+                if not layerNm in layerNames:
+                    addToMap.append((geodatabase + os.sep + site + os.sep + entity, layerNm))
+            if addToMap:
+                scratchFld = arcpy.env.scratchFolder
+                mxd = arcpy.mapping.MapDocument(pathToMapDoc)
+                layersFrame = arcpy.mapping.ListDataFrames(mxd, "layers")[0]
+                for feature, lname in addToMap:
+                    arcpy.MakeFeatureLayer_management(in_features = feature, out_layer = lname)
+                    lyrFile = scratchFld + os.sep + lname + ".lyr"
+                    arcpy.SaveToLayerFile_management(lname, lyrFile)
+                    arcpy.mapping.AddLayer(layersFrame, arcpy.mapping.Layer(lyrFile))
+                    mxd.save()
+                    os.remove(lyrFile)
+                    retval.append(lname)
+                del mxd, layersFrame
+        else:
+            return retval
+
+
+    @errHandledWorkflowTask(taskName="Refresh service")
+    def refreshService(self):
+        """Creates SD draft, modifies it, creates SD, uploads to server"""
+        arcpy.env.workspace = os.path.dirname(pathToMapDoc)
+        wksp = arcpy.env.workspace
+        mxd = arcpy.mapping.MapDocument(pathToMapDoc)
+        sdDraft = "mapservice.sddraft"
+        arcpy.mapping.CreateMapSDDraft(mxd, wksp + os.sep + sdDraft, mapServInfo['service_name'],
+        "ARCGIS_SERVER", pubConnection, False, None, mapServInfo['summary'], mapServInfo['tags'])
+        #now we need to change one tag in the draft to indicate this is a replacement service
+
+
+
+    @errHandledWorkflowTask(taskName="Update search table")
+    def updateLayerIds(self, dbconn):
+        """Updates layer ids in search table with service info query"""
+        pass
+
+    def execute(self, parameters, messages):
+        super(RefreshMapService, self).execute(parameters, messages)
+        #bypass
+        conn = None
+##        try:
+##            with open(dsnfile) as dsnf:
+##                dsnStr = dsnf.readline()
+##            conn = psycopg2.connect(dsn = dsnStr)
+##        except Exception as connerr:
+##            self.logger.logMessage(ERROR, connerr.message)
+##            exit(1)
+        try:
+            addedLayers = self.addVectorData(conn)
+            self.refreshService()
+            #wait for service to start, get layer info
+            time.sleep(30)
+            self.updateLayerIds(conn)
+        except Exception as err:
+            conn.rollback()
+            self.logger.logMessage(ERROR, err.message)
+            exit(1)
+        finally:
+            pass
+            #conn.close()
+
 
 
 ## *****************************************************************************

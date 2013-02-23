@@ -11,7 +11,7 @@ import os, sys
 import arcpy
 from arcpy import Parameter
 import lno_geonis_wf
-from geonis_pyconfig import envSettingsPath
+from geonis_pyconfig import envSettingsPath, scratchWS
 
 def testChain():
     mytoolspath = arcpy.gp.getMyToolboxesPath()
@@ -108,15 +108,26 @@ def testLoadRaster():
 
 def makeSettingsfile():
     arcpy.env.overwriteOutput = True
-    arcpy.env.scratchWorkspace = r"C:\Temp\scratch"
+    #arcpy.env.scratchWorkspace = r"C:\Users\ron\AppData\Local\Temp"
+    #arcpy.env.scratchWorkspace = r"C:\Temp\scratch"
     arcpy.SaveSettings(envSettingsPath)
+
+def testRefresh():
+    tool = lno_geonis_wf.RefreshMapService()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = True
+    params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
+    tool.execute(params,[])
 
 
 if __name__ == '__main__':
+    arcpy.env.scratchWorkspace = scratchWS
     #testUnpack()
-    testCheckData()
+    #testCheckData()
     #testLoadVector()
     #testLoadRaster()
     #testUnpackAsTool()
     #testChain()
     #makeSettingsfile()
+    testRefresh()
