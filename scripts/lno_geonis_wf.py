@@ -11,7 +11,7 @@ Created on Jan 14, 2013
 import sys, os, re
 import time
 import json
-import urllib2
+import httplib, urllib, urllib2
 import psycopg2
 from shutil import copyfileobj
 from zipfile import ZipFile
@@ -25,7 +25,7 @@ from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase
 from geonis_pyconfig import pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets, dsnfile, pathToMapDoc, layerQueryURI, pubConnection, mapServInfo
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
-from geonis_helpers import siteFromId
+from geonis_helpers import siteFromId, getToken
 from geonis_emlparse import parseAndPopulateEMLDicts, createSuppXML, createInsertObj
 
 ## *****************************************************************************
@@ -784,23 +784,43 @@ class RefreshMapService(ArcpyTool):
                     lyrFile = scratchFld + os.sep + lname + ".lyr"
                     arcpy.SaveToLayerFile_management(lname, lyrFile)
                     arcpy.mapping.AddLayer(layersFrame, arcpy.mapping.Layer(lyrFile))
-                    mxd.save()
                     os.remove(lyrFile)
                     retval.append(lname)
-                del mxd, layersFrame
+                mxd.save()
+                del layersFrame, mxd
+                return retval
         else:
             return retval
 
 
     @errHandledWorkflowTask(taskName="Create service draft")
     def draftSD(self):
-        """Creates SD draft, modifies it"""
+        """Stops service, creates SD draft, modifies it"""
+        """http://maps3.lternet.edu:6080/arcgis/admin/services/Test/VectorData.MapServer/stop"""
         arcpy.env.workspace = os.path.dirname(pathToMapDoc)
         wksp = arcpy.env.workspace
+        #stop service first
+        with open(r"C:\pasta2geonis\arcgis_cred.txt") as f:
+            cred = eval(f.readline())
+        token = getToken(cred['username'], cred['password'])
+        if token:
+            serviceStopURL = "/arcgis/admin/services/Test/VectorData.MapServer/stop"
+            # This request only needs the token and the response formatting parameter
+            params = urllib.urlencode({'token': token, 'f': 'json'})
+            headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+            # Connect to URL and post parameters
+            httpConn = httplib.HTTPConnection("localhost", "6080")
+            httpConn.request("POST", serviceStopURL, params, headers)
+            response = httpConn.getresponse()
+            if (response.status != 200):
+                self.logger.logMessage(WARN, "Error while attempting to stop service.")
+            httpConn.close()
+        else:
+             self.logger.logMessage(WARN, "Error while attempting to get admin token.")
         mxd = arcpy.mapping.MapDocument(pathToMapDoc)
         sdDraft = wksp + os.sep + mapServInfo['service_name'] + ".sddraft"
         arcpy.mapping.CreateMapSDDraft(mxd, sdDraft, mapServInfo['service_name'],
-        "ARCGIS_SERVER", pubConnection, False, pathToMapDoc, mapServInfo['summary'], mapServInfo['tags'])
+        "ARCGIS_SERVER", pubConnection, False, "Test", mapServInfo['summary'], mapServInfo['tags'])
         del mxd
         #now we need to change one tag in the draft to indicate this is a replacement service
         draftXml = etree.parse(sdDraft)
@@ -827,7 +847,7 @@ class RefreshMapService(ArcpyTool):
         #by default, writes SD file to same loc as draft, then DELETES DRAFT
         arcpy.StageService_server(sdDraft)
         if os.path.exists(sdFile):
-            arcpy.UploadServiceDefinition_server(inSdFile = sdFile, inServer = pubConnection, inStartup = 'STARTED')
+            arcpy.UploadServiceDefinition_server(in_sd_file = sdFile, in_server = pubConnection, in_startupType = 'STARTED')
         else:
             raise Exception("Staging failed to create %s" % (sdFile,))
 
@@ -890,7 +910,7 @@ class RefreshMapService(ArcpyTool):
             self.logger.logMessage(ERROR, connerr.message)
             exit(1)
         try:
-            addedLayers = self.addVectorData(conn)
+            addedLayers = None #self.addVectorData(conn)
             self.draftSD()
             self.replaceService()
             #delay for service to start, get layer info

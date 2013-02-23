@@ -10,6 +10,7 @@ Created on Jan 28, 2013
 import os
 from geonis_pyconfig import GeoNISDataType
 from functools import partial
+import httplib, urllib, json
 
 def fileExtensionMatch(extensions, pathToFile):
     name, ext = os.path.splitext(pathToFile)
@@ -68,3 +69,27 @@ def siteFromId(packageId):
             return ("error",parts[0],"incorrect format")
     else:
         return ("error",packageId,"unrecognized")
+
+
+def getToken(username, password, serverName = "localhost", serverPort = "6080"):
+    # Token URL is typically http://server[:port]/arcgis/admin/generateToken
+    tokenURL = "/arcgis/admin/generateToken"
+    # URL-encode the token parameters:-
+    params = urllib.urlencode({'username': username, 'password': password, 'client': 'requestip', 'f': 'json'})
+    headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+    # Connect to URL and post parameters
+    httpConn = httplib.HTTPConnection(serverName, serverPort)
+    httpConn.request("POST", tokenURL, params, headers)
+    # Read response
+    response = httpConn.getresponse()
+    if (response.status != 200):
+        httpConn.close()
+        raise Exception("Error getting tokens from admin URL." )
+    else:
+        data = response.read()
+        httpConn.close()
+        # Extract the token from it
+        token = json.loads(data)
+        return token['token']
+
+
