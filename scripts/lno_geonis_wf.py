@@ -910,12 +910,16 @@ class RefreshMapService(ArcpyTool):
             self.logger.logMessage(ERROR, connerr.message)
             exit(1)
         try:
-            addedLayers = None #self.addVectorData(conn)
-            self.draftSD()
-            self.replaceService()
-            #delay for service to start, get layer info
-            time.sleep(20)
-            self.updateLayerIds(conn, addedLayers)
+            addedLayers = self.addVectorData(conn)
+            if addedLayers:
+                self.logger.logMessage(INFO, "The following added to map: %s" % (str(addedLayers),))
+                self.draftSD()
+                self.replaceService()
+                #delay for service to start, get layer info
+                time.sleep(20)
+                self.updateLayerIds(conn, addedLayers)
+            else:
+                self.logger.logMessage(INFO, "No new vector data added to map.")
         except Exception as err:
             conn.rollback()
             self.logger.logMessage(ERROR, err.message)
@@ -971,5 +975,6 @@ class Tool(ArcpyTool):
 toolclasses =  [UnpackPackages,
                 CheckSpatialData,
                 LoadVectorTypes,
-                LoadRasterTypes ]
+                LoadRasterTypes,
+                RefreshMapService ]
 
