@@ -36,10 +36,13 @@ def main():
 ##    with open(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\temp_meta.data", 'w') as tmpdat:
 ##        tmpdat.write(str(tmp))
 ##    createSuppXML(tmp, r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1\supp_metadata.xml")
-    with open(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-rmb.1.1\temp_meta.data", 'r') as tmpdat:
-        emldat = eval(" ".join(tmpdat.readlines()))
-    print str(emldat)
-    print str(createInsertObj(emldat))
+##    with open(r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-rmb.1.1\temp_meta.data", 'r') as tmpdat:
+##        emldat = eval(" ".join(tmpdat.readlines()))
+##    print str(emldat)
+##    print str(createInsertObj(emldat))
+    #dat = {"entityName":"water","type":"raster","hello":["my","world"]}
+    #writeWorkingDataToXML(r"Z:\docs\local\git\pasta2geonis_sg\emlSubset.xml",dat)
+    print str(readWorkingData(r"Z:\docs\local\git\pasta2geonis_sg\emlSubset.xml", None))
 
 
 emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
@@ -193,6 +196,68 @@ def getContentFromEmldataByName(emldata, name):
         return [item for item in emldata if item["name"] == name][0]["content"]
     except Exception:
         return ""
+
+
+def writeWorkingDataToXML(pathToXML, data, logger = None):
+    try:
+        treeObj = etree.parse(pathToXML)
+        root = treeObj.getroot()
+    except etree.ParseError as e:
+        if logger:
+            logger.logMessage("Error parsing %s with message %s" % (pathToXML, e.message))
+        else:
+            print e.message
+        raise Exception("Parsing error.")
+    if not root.tag == "emlSubset":
+        msg = "%s does not appear to be emlSubset doc." % (pathToXML,)
+        if logger is not None:
+            logger.logMessage(msg)
+        raise Exception(msg)
+    # get workingData node, clear it
+    wdnode = root.xpath("workingData")[0]
+    if len(wdnode):
+        wdnode.clear()
+    for item in data:
+        child = etree.SubElement(wdnode,"item")
+        child.set("name", item)
+        if isinstance(data[item],list):
+            child.set("separator",';')
+            child.text = ';'.join(data[item])
+        else:
+            child.text = str(data[item])
+    #print etree.tostring(treeObj)
+    treeObj.write(pathToXML, xml_declaration = 'yes')
+
+
+
+def readWorkingData(pathToXML, logger = None):
+    try:
+        treeObj = etree.parse(pathToXML)
+        root =  treeObj.getroot()
+    except etree.ParseError as e:
+        if logger:
+            logger.logMessage("Error parsing %s with message %s" % (pathToXML, e.message))
+        else:
+            print e.message
+        raise Exception("Parsing error.")
+    if not root.tag == "emlSubset":
+        msg = "%s does not appear to be emlSubset doc." % (pathToXML,)
+        if logger is not None:
+            logger.logMessage(msg)
+        raise Exception(msg)
+    # get workingData item nodes
+    wdnodes = root.xpath("workingData/item")
+    retval = {}
+    for item in wdnodes:
+        if item.get("name") is not None:
+            if item.get("separator") is not None:
+                retval[item.get("name")] = item.text.split(item.get("separator"))
+            else:
+                retval[item.get("name")] = item.text
+    return retval
+
+
+
 
 
 
