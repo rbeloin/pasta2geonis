@@ -14,6 +14,7 @@ import time, datetime
 from copy import deepcopy
 from lxml import etree
 from geonis_helpers import siteFromId
+from geonis_pyconfig import pathToStylesheets
 
 
 unittest = True
@@ -42,7 +43,9 @@ def main():
 ##    print str(createInsertObj(emldat))
     #dat = {"entityName":"water","type":"raster","hello":["my","world"]}
     #writeWorkingDataToXML(r"Z:\docs\local\git\pasta2geonis_sg\emlSubset.xml",dat)
-    print str(readWorkingData(r"Z:\docs\local\git\pasta2geonis_sg\emlSubset.xml", None))
+    #print str(readWorkingData(r"Z:\docs\local\git\pasta2geonis_sg\emlSubset.xml", None))
+    #createEmlSubset(r"Z:\docs\local\git\pasta2geonis_sg",r"Z:\docs\local\geonis_testdata\downloaded_pkgs\gi01001.xml")
+    print(readFromEmlSubset(r"Z:\docs\local\git\pasta2geonis_sg","//physical/distribution/online/url"))
 
 
 emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
@@ -57,149 +60,199 @@ emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
                 'xsi':"http://www.w3.org/2001/XMLSchema-instance"}
 
 
-def parseAndPopulateEMLDicts(pathToEML, logger = None):
-    global emlnamespaces, unittest
-    try:
-        treeObj = etree.parse(pathToEML)
-    except etree.ParseError as e:
-        if logger:
-            logger.logMessage("Error parsing %s with message %s" % (pathToEML, e.message))
-        else:
-            print e.message
-        raise Exception("Parsing error.")
-    if not treeObj.getroot().tag == ( "{%s}eml" % (emlnamespaces['eml'],) ):
-        msg = "%s does not appear to be valid EML doc." % (pathToEML,)
-        if logger is not None:
-            logger.logMessage(msg)
-        raise Exception(msg)
-    if False:
-        results = treeObj.xpath('dataset/abstract/descendant::text()', namespaces = emlnamespaces)
-        if results is not None:
-            for kw in [s for s in results if re.search(r"[\S]",s) is not None]:
-                print str(kw)
-            #print ';'.join(results)
-        else:
-            print "no results"
-        return treeObj
-    temp = deepcopy(parseEMLdata)
-    try:
-        spatialNod = treeObj.xpath('//spatialVector')
-        stype = [item for item in temp if item["name"] == "spatialType"]
-        if spatialNod and etree.iselement(spatialNod[0]):
-            stype[0]["content"] = "vector"
-        else:
-            spatialNod = treeObj.xpath('//spatialRaster')
-            if spatialNod and etree.iselement(spatialNod[0]):
-                stype[0]["content"] = "raster"
-            else:
-                print "problem, no spatial node seen"
-        for item in [d for d in temp if 'xpath' in d]:
-            elementText = treeObj.xpath(item['xpath'], namespaces = emlnamespaces)
-            actualText = [t for t in elementText if re.search(r"[\S]",t)]
-            if len(actualText) == 1:
-                item['content'] = actualText[0]
-            elif len(actualText) > 1:
-                item['content'] = ';'.join(actualText)
-            else:
-                item['content'] = None
-            item['content'] = re.sub(r"\s+"," ", item['content'])
-    except etree.XPathError as x:
-        if logger is not None:
-            logger.logMessage("Error with xpath.  %s" % (x.message,))
-        else:
-            print x.message
-        raise Exception(x.message)
-    except Exception as e:
-        if logger:
-            logger.logMessage("EML error. %s" % ( e.message, ))
-        else:
-            print e.message
-        raise Exception(e.message)
-    return temp
+##def parseAndPopulateEMLDicts(pathToEML, logger = None):
+##    global emlnamespaces, unittest
+##    try:
+##        treeObj = etree.parse(pathToEML)
+##    except etree.ParseError as e:
+##        if logger:
+##            logger.logMessage("Error parsing %s with message %s" % (pathToEML, e.message))
+##        else:
+##            print e.message
+##        raise Exception("Parsing error.")
+##    if not treeObj.getroot().tag == ( "{%s}eml" % (emlnamespaces['eml'],) ):
+##        msg = "%s does not appear to be valid EML doc." % (pathToEML,)
+##        if logger is not None:
+##            logger.logMessage(msg)
+##        raise Exception(msg)
+##    if False:
+##        results = treeObj.xpath('dataset/abstract/descendant::text()', namespaces = emlnamespaces)
+##        if results is not None:
+##            for kw in [s for s in results if re.search(r"[\S]",s) is not None]:
+##                print str(kw)
+##            #print ';'.join(results)
+##        else:
+##            print "no results"
+##        return treeObj
+##    temp = deepcopy(parseEMLdata)
+##    try:
+##        spatialNod = treeObj.xpath('//spatialVector')
+##        stype = [item for item in temp if item["name"] == "spatialType"]
+##        if spatialNod and etree.iselement(spatialNod[0]):
+##            stype[0]["content"] = "vector"
+##        else:
+##            spatialNod = treeObj.xpath('//spatialRaster')
+##            if spatialNod and etree.iselement(spatialNod[0]):
+##                stype[0]["content"] = "raster"
+##            else:
+##                print "problem, no spatial node seen"
+##        for item in [d for d in temp if 'xpath' in d]:
+##            elementText = treeObj.xpath(item['xpath'], namespaces = emlnamespaces)
+##            actualText = [t for t in elementText if re.search(r"[\S]",t)]
+##            if len(actualText) == 1:
+##                item['content'] = actualText[0]
+##            elif len(actualText) > 1:
+##                item['content'] = ';'.join(actualText)
+##            else:
+##                item['content'] = None
+##            item['content'] = re.sub(r"\s+"," ", item['content'])
+##    except etree.XPathError as x:
+##        if logger is not None:
+##            logger.logMessage("Error with xpath.  %s" % (x.message,))
+##        else:
+##            print x.message
+##        raise Exception(x.message)
+##    except Exception as e:
+##        if logger:
+##            logger.logMessage("EML error. %s" % ( e.message, ))
+##        else:
+##            print e.message
+##        raise Exception(e.message)
+##    return temp
+##
+##def addToXML(root, xpth, value = None, overwrite = False):
+##    """given top node, and full xpath to destination node, create the path
+##        if needed and insert value as text
+##    """
+##    node = root
+##    nodes = xpth.strip(' /').split("/")
+##    # loop over nodes, creating if needed
+##    for nodeName in nodes[1:]:
+##        if not nodeName in [n.tag for n in node]:
+##            node = etree.SubElement(node, nodeName)
+##        else:
+##            node = [n for n in node if n.tag == nodeName][0]
+##    if not overwrite and node.text is not None:
+##        etree.SubElement(node.getparent(),nodes[-1]).text = value
+##    else:
+##        node.text = value
 
-def addToXML(root, xpth, value = None, overwrite = False):
-    """given top node, and full xpath to destination node, create the path
-        if needed and insert value as text
-    """
-    node = root
-    nodes = xpth.strip(' /').split("/")
-    # loop over nodes, creating if needed
-    for nodeName in nodes[1:]:
-        if not nodeName in [n.tag for n in node]:
-            node = etree.SubElement(node, nodeName)
-        else:
-            node = [n for n in node if n.tag == nodeName][0]
-    if not overwrite and node.text is not None:
-        etree.SubElement(node.getparent(),nodes[-1]).text = value
+##def createSuppXML(emldata, outFilePath):
+##    try:
+##        suppX = etree.Element("supplemental")
+##        #break emldata list into different lists for different processing
+##        allMeta = [item for item in emldata if "xpath_metadata" in item]
+##        #otherCitDet = [item for item in allMeta if item["xpath_metadata"].endswith("otherCitDet")]
+##        keywds = [item for item in allMeta if item["xpath_metadata"].endswith("keyword")]
+##        remains = [item for item in allMeta if item not in keywds]
+####        if len(otherCitDet) > 0:
+####            otherCitDetVal = ""
+####            for item in otherCitDet:
+####                #combine content and make one entry
+####                otherCitDetVal = "%s %s: %s; " % (otherCitDetVal, item["name"], item["content"])
+####            addToXML(suppX, otherCitDet[0]["xpath_metadata"], otherCitDetVal.strip("; "), overwrite = True)
+##        if len(keywds) > 0:
+##            # make entry for each keyword
+##            keywords = keywds[0]["content"].split(";")
+##            for kw in keywords:
+##                addToXML(suppX, keywds[0]["xpath_metadata"], kw, overwrite = False)
+##        for item in remains:
+##            addToXML(suppX, item["xpath_metadata"], item["content"], overwrite = True)
+##        #finally add a date
+##        datepath = [item for item in allMeta if item["name"] == "loadDate"][0]["xpath_metadata"]
+##        addToXML(suppX, datepath, time.strftime("%Y-%m-%dT%H:%M:%S"), overwrite = True)
+##        with open(outFilePath,'w') as outfile:
+##            outfile.write(etree.tostring(suppX, xml_declaration = True))
+##    except Exception as err:
+##        raise Exception("Error creating supplemental metadata XML in %s. %s" % (outFilePath, err.message))
+##    #print (etree.tostring(suppX, pretty_print = True))
+
+def createEmlSubset(workDir, pathToEML):
+    """ Run XSL transformation on EML with emlSubset.xsl to generate emlSubset.xml.
+        Also, make workingData object with packageId, spatial type, and entity info,
+        and push it into newly created XML. Returns the workingData object. If spatialType
+        is None, not spatial data. """
+    stylesheet = pathToStylesheets + os.sep + "emlSubset.xsl"
+    outputXMLtree = runTransformation(xslPath = stylesheet, inputXMLPath = pathToEML)
+    workingData = {"packageId": None, "spatialType" : None, "entityName" : None, "entityDesc" : None }
+    top = outputXMLtree.getroot()
+    pId = top.get("packageId")
+    workingData["packageId"] = pId
+    spTypeHit = outputXMLtree.xpath("//*[local-name()='spatialRaster' or local-name()='spatialVector']")
+    if spTypeHit:
+        spType = spTypeHit[0].tag
+        workingData["spatialType"] = spType
+        entNameNode = outputXMLtree.xpath("//" + spType + "/entityName")[0]
+        workingData["entityName"] = entNameNode.text
+        entDescNode = outputXMLtree.xpath("//" + spType + "/entityDescription")[0]
+        workingData["entityDesc"] = entDescNode.text
+    outputXMLtree.write(workDir + os.sep + "emlSubset.xml", xml_declaration = 'yes')
+    writeWorkingDataToXML(workDir + os.sep + "emlSubset.xml", workingData)
+    return workingData
+
+
+def createSuppXML(workDir):
+    """ Run XSL transformation on emlSubset.xml with emlSubsetToSupp.xsl to generate emlSupp.xml """
+    stylesheet = pathToStylesheets + os.sep + "emlSubsetToSupp.xsl"
+    inputXML = workDir + os.sep + "emlSubset.xml"
+    outputXMLtree = runTransformation(xslPath = stylesheet, inputXMLPath = inputXML)
+    outputXMLtree.write(workDir + os.sep + "emlSupp.xml", xml_declaration = 'yes')
+    del outputXMLtree
+
+
+def runTransformation(xslPath = None, inputXMLPath = None):
+    """ XSLT using lxml on the given parameters. Returns ElementTree instance. Traps lxml exceptions and throws Exception """
+    if os.path.isfile(xslPath) and os.path.isfile(inputXMLPath):
+        try:
+            transformer = etree.XSLT(etree.parse(xslPath))
+            return transformer(etree.parse(inputXMLPath))
+        except etree.LxmlSyntaxError as syntaxErr:
+           raise Exception("Syntax/parse error transforming %s with %s. %s" % (inputXMLPath, xslPath, synctaxErr.message))
+        except etree.XSLTerror as transformErr:
+            raise Exception("XSLT error transforming %s with %s. %s" % (inputXMLPath, xslPath, transformErr.message))
+        finally:
+            del transformer
     else:
-        node.text = value
+        raise Exception("%s or %s not found." % (xslPath, inputXMLPath))
 
-def createSuppXML(emldata, outFilePath):
+
+##def createInsertObj(emldata):
+##    retval = {}
+##    pkgId = getContentFromEmldataByName(emldata,"packageId")
+##    site, numId, rev = siteFromId(pkgId)
+##    if site == "error":
+##        retval["error"] = "bad package id"
+##        return ("error",retval)
+##    retval["packageid"] = pkgId
+##    retval["site"] = site
+##    retval["numericid"] = numId
+##    retval["revision"] = rev
+##    retval["title"] = getContentFromEmldataByName(emldata,"title")
+##    retval["keywords"] = getContentFromEmldataByName(emldata,"keywords")
+##    retval["entity"] = getContentFromEmldataByName(emldata,"entityName")
+##    spatialType = getContentFromEmldataByName(emldata,"spatialType")
+##    retval["raster"] = spatialType == "raster"
+##    retval["featureclass"] = spatialType == "vector"
+##    retval["added"] = datetime.datetime.now()
+##    #this filled in when data loaded
+##    retval["layerName"] = ""
+##    #this recovered by query on map
+##    retval["servId"] = None
+##    return (getInsertStmt(),retval)
+
+def getInitInsertStmt():
+    return  """INSERT INTO geonis.processed_items (packageid,procdate) VALUES(%(packageid)s,%(obtained)s);"""
+
+##def getContentFromEmldataByName(emldata, name):
+##    try:
+##        return [item for item in emldata if item["name"] == name][0]["content"]
+##    except Exception:
+##        return ""
+##
+
+def writeWorkingDataToXML(workDir, data, logger = None):
     try:
-        suppX = etree.Element("supplemental")
-        #break emldata list into different lists for different processing
-        allMeta = [item for item in emldata if "xpath_metadata" in item]
-        #otherCitDet = [item for item in allMeta if item["xpath_metadata"].endswith("otherCitDet")]
-        keywds = [item for item in allMeta if item["xpath_metadata"].endswith("keyword")]
-        remains = [item for item in allMeta if item not in keywds]
-##        if len(otherCitDet) > 0:
-##            otherCitDetVal = ""
-##            for item in otherCitDet:
-##                #combine content and make one entry
-##                otherCitDetVal = "%s %s: %s; " % (otherCitDetVal, item["name"], item["content"])
-##            addToXML(suppX, otherCitDet[0]["xpath_metadata"], otherCitDetVal.strip("; "), overwrite = True)
-        if len(keywds) > 0:
-            # make entry for each keyword
-            keywords = keywds[0]["content"].split(";")
-            for kw in keywords:
-                addToXML(suppX, keywds[0]["xpath_metadata"], kw, overwrite = False)
-        for item in remains:
-            addToXML(suppX, item["xpath_metadata"], item["content"], overwrite = True)
-        #finally add a date
-        datepath = [item for item in allMeta if item["name"] == "loadDate"][0]["xpath_metadata"]
-        addToXML(suppX, datepath, time.strftime("%Y-%m-%dT%H:%M:%S"), overwrite = True)
-        with open(outFilePath,'w') as outfile:
-            outfile.write(etree.tostring(suppX, xml_declaration = True))
-    except Exception as err:
-        raise Exception("Error creating supplemental metadata XML in %s. %s" % (outFilePath, err.message))
-    #print (etree.tostring(suppX, pretty_print = True))
-
-def createInsertObj(emldata):
-    retval = {}
-    pkgId = getContentFromEmldataByName(emldata,"packageId")
-    site, numId, rev = siteFromId(pkgId)
-    if site == "error":
-        retval["error"] = "bad package id"
-        return ("error",retval)
-    retval["packageid"] = pkgId
-    retval["site"] = site
-    retval["numericid"] = numId
-    retval["revision"] = rev
-    retval["title"] = getContentFromEmldataByName(emldata,"title")
-    retval["keywords"] = getContentFromEmldataByName(emldata,"keywords")
-    retval["entity"] = getContentFromEmldataByName(emldata,"entityName")
-    spatialType = getContentFromEmldataByName(emldata,"spatialType")
-    retval["raster"] = spatialType == "raster"
-    retval["featureclass"] = spatialType == "vector"
-    retval["added"] = datetime.datetime.now()
-    #this filled in when data loaded
-    retval["layerName"] = ""
-    #this recovered by query on map
-    retval["servId"] = None
-    return (getInsertStmt(),retval)
-
-def getInsertStmt():
-    return  """INSERT INTO geonis.processed_items (packageid,sitecode,entity,packagenum,packagerev,title,keywords,featureclass,raster,procdate,layername,serviceid) VALUES(%(packageid)s,%(site)s,%(entity)s,%(numericid)s,%(revision)s,%(title)s,%(keywords)s,%(featureclass)s,%(raster)s,%(added)s,%(layerName)s,%(servId)s);"""
-
-def getContentFromEmldataByName(emldata, name):
-    try:
-        return [item for item in emldata if item["name"] == name][0]["content"]
-    except Exception:
-        return ""
-
-
-def writeWorkingDataToXML(pathToXML, data, logger = None):
-    try:
+        pathToXML = workDir + os.sep + "emlSubset.xml"
         treeObj = etree.parse(pathToXML)
         root = treeObj.getroot()
     except etree.ParseError as e:
@@ -230,8 +283,9 @@ def writeWorkingDataToXML(pathToXML, data, logger = None):
 
 
 
-def readWorkingData(pathToXML, logger = None):
+def readWorkingData(workDir, logger = None):
     try:
+        pathToXML = workDir + os.sep + "emlSubset.xml"
         treeObj = etree.parse(pathToXML)
         root =  treeObj.getroot()
     except etree.ParseError as e:
@@ -257,6 +311,29 @@ def readWorkingData(pathToXML, logger = None):
     return retval
 
 
+def readFromEmlSubset(workDir, xpath, logger = None):
+    retval = ""
+    try:
+        pathToXML = workDir + os.sep + "emlSubset.xml"
+        treeObj = etree.parse(pathToXML)
+        root =  treeObj.getroot()
+    except etree.ParseError as e:
+        if logger:
+            logger.logMessage("Error parsing %s with message %s" % (pathToXML, e.message))
+        else:
+            print e.message
+        raise Exception("Parsing error.")
+    if not root.tag == "emlSubset":
+        msg = "%s does not appear to be emlSubset doc." % (pathToXML,)
+        if logger is not None:
+            logger.logMessage(msg)
+        raise Exception(msg)
+    # get nodes
+    nodes = root.xpath(xpath)
+    if nodes:
+        retval = nodes[0].text
+    del nodes, root, treeObj
+    return retval
 
 
 

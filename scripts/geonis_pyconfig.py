@@ -22,8 +22,8 @@ tempMetadataFilename = "temp_meta.data"
 if platform.node() == "Maps3":
     #path to env settings file. settings loaded by base execute method
     envSettingsPath = r"C:\pasta2geonis\savedEnv.xml"
-    #metadata stylesheet
-    pathToMetadataMerge = r"C:\pasta2geonis\metadataMerge.xsl"
+    #path to stylesheets
+    pathToStylesheets = r"C:\pasta2geonis"
     #raster data storage
     pathToRasterData = r"C:\pasta2geonis\Gis_data\Raster_raw"
     #raster mosaic datasets
@@ -48,7 +48,7 @@ else:
     #file gdb for dev
     geodatabase = r"C:\Users\ron\Documents\geonis_tests\geonis.gdb"
     #metadata stylesheet
-    pathToMetadataMerge = r"Z:\docs\local\git\pasta2geonis_sg\metadataMerge.xsl"
+    pathToStylesheets = r"Z:\docs\local\git\pasta2geonis_sg"
     #raster data storage
     pathToRasterData = r"C:\Users\ron\Documents\geonis_tests\raster_data"
     #raster mosaic datasets

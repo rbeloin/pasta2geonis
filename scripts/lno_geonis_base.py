@@ -120,18 +120,18 @@ class ArcpyTool(object):
         else:
             return str(paramlist[numericIndex].value)
 
-    def getEMLdata(self, workDir):
-        emldatafile = os.path.join(workDir,tempMetadataFilename)
-        if os.path.isfile(emldatafile):
-            try:
-                with open(emldatafile) as datafile:
-                    datastr = datafile.read()
-                return eval(datastr)
-            except Exception as err:
-                self.logger.logMessage(WARN, "EML data in %s could not be read or parsed. %s" % (emldatafile, err.message))
-                raise err
-        else:
-            raise Exception("EML data file %s not found." % (emldatafile,))
+##    def getEMLdata(self, workDir):
+##        emldatafile = os.path.join(workDir,tempMetadataFilename)
+##        if os.path.isfile(emldatafile):
+##            try:
+##                with open(emldatafile) as datafile:
+##                    datastr = datafile.read()
+##                return eval(datastr)
+##            except Exception as err:
+##                self.logger.logMessage(WARN, "EML data in %s could not be read or parsed. %s" % (emldatafile, err.message))
+##                raise err
+##        else:
+##            raise Exception("EML data file %s not found." % (emldatafile,))
 
 
     def execute(self, parameters, messages):

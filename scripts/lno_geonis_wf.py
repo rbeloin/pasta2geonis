@@ -9,7 +9,7 @@ Created on Jan 14, 2013
 @see https://nis.lternet.edu/NIS/
 '''
 import sys, os, re
-import time
+import time, datetime
 import json
 import httplib, urllib, urllib2
 import psycopg2
@@ -26,7 +26,7 @@ from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase
 from geonis_pyconfig import pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets, dsnfile, pathToMapDoc, layerQueryURI, pubConnection, mapServInfo
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId, getToken
-from geonis_emlparse import parseAndPopulateEMLDicts, createSuppXML, createInsertObj
+from geonis_emlparse import createEmlSubset, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, getInitInsertStmt
 
 ## *****************************************************************************
 class UnpackPackages(ArcpyTool):
@@ -92,37 +92,73 @@ class UnpackPackages(ArcpyTool):
                     raise Exception("No EML file in package.")
         #TODO: rename eml file so as to avoid confusion with other xml files that may be unpacked
         emlfile = os.path.join(workDir, xmlfiles[0])
-        emldata = parseAndPopulateEMLDicts(emlfile, self.logger)
-        with open(emldatafile,'w') as datafile:
-            datafile.write(repr(emldata))
+        workingData = createEmlSubset(workDir, emlfile)
+        return workingData
+##        emldata = parseAndPopulateEMLDicts(emlfile, self.logger)
+##        with open(emldatafile,'w') as datafile:
+##            datafile.write(repr(emldata))
+
+    @errHandledWorkflowTask(taskName="Package initial entry")
+    def initialEntry(self, pkgId):
+        if dsnfile is None:
+            return
+        stmt = getInitInsertStmt()
+        self.logger.logMessage(INFO,stmt)
+        with open(dsnfile) as dsnf:
+            dsnStr = dsnf.readline()
+        self.logger.logMessage(INFO,dsnStr)
+        conn = psycopg2.connect(dsn = dsnStr)
+        try:
+            cur = conn.cursor()
+            #execute insert
+            valuesObj = {"packageid":pkgId, "obtained":datetime.datetime.now()}
+            self.logger.logMessage(DEBUG,cur.mogrify(stmt,valuesObj))
+                cur.execute(stmt,valuesObj)
+            conn.commit()
+            del cur
+        except Exception as err:
+            conn.rollback()
+            self.logger.logMessage(WARN, err.message)
+        finally:
+            conn.close()
+
+
+    @errHandledWorkflowTask(taskName="Read URL from emlSubset")
+    def readURL(self, workDir):
+        emldata = readWorkingData(workDir, self.logger)
+        url = readFromEmlSubset(workDir, "//physical/distribution/online/url", self.logger)
+        if len(url) > 0:
+            emldata["physical/distribution/online/url"] = url
+            writeWorkingDataToXML(workDir, emldata, self.logger)
 
 
     @errHandledWorkflowTask(taskName="Retrieve and unzip data")
     def retrieveData(self, workDir):
-        emldata = self.getEMLdata(workDir)
-        urlobj = [item for item in emldata if item["name"] == "url"]
-        if not urlobj:
-            raise Exception("URL item not found in eml data.")
-        dataloc = urlobj[0]["content"]
-        try:
-            resourceName = dataloc[dataloc.rindex("/") + 1 :]
-            sdatafile = os.path.join(workDir,resourceName)
-            resource = urllib2.urlopen(dataloc)
-            with open(sdatafile,'wb') as dest:
-                copyfileobj(resource,dest)
-        except Exception as e:
-            raise Exception(e.message)
-        finally:
-            resource.close()
-        if not os.path.exists(sdatafile):
-            raise Exception("spatial data file %s missing after download" % (sdatafile,))
-        with ZipFile(sdatafile) as sdata:
-            if sdata.testzip() is None:
-                sdata.extractall(workDir)
-            else:
-                self.logger.logMessage(WARN,"%s did not pass zip test." % (sdatafile,))
-                raise Exception("Zip test fail.")
-        #TODO: check to see if only a dir after unpacking. Its contents may need to be raised to the current dir level
+        emldata = readWorkingData(workDir, self.logger)
+        dataloc = emldata["physical/distribution/online/url"]
+        if dataloc is not None:
+            try:
+                resourceName = dataloc[dataloc.rindex("/") + 1 :]
+                sdatafile = os.path.join(workDir,resourceName)
+                resource = urllib2.urlopen(dataloc)
+                with open(sdatafile,'wb') as dest:
+                    copyfileobj(resource,dest)
+            except Exception as e:
+                raise Exception(e.message)
+            finally:
+                resource.close()
+            if not os.path.exists(sdatafile):
+                raise Exception("spatial data file %s missing after download" % (sdatafile,))
+            with ZipFile(sdatafile) as sdata:
+                if sdata.testzip() is None:
+                    sdata.extractall(workDir)
+                else:
+                    self.logger.logMessage(WARN,"%s did not pass zip test." % (sdatafile,))
+                    raise Exception("Zip test fail.")
+            #TODO: check to see if only a dir after unpacking. Its contents may need to be raised to the current dir level
+        else:
+            self.logger.logMessage(WARN, "URL for data source missing.")
+            raise Exception("No URL for data in %s" % (workDir,))
 
 
     def execute(self, parameters, messages):
@@ -138,7 +174,12 @@ class UnpackPackages(ArcpyTool):
         for pkg in allpackages:
             try:
                 workdir = self.unzipPkg(pkg, outputDir)
-                self.parseEML(workdir)
+                initWorkingData = self.parseEML(workdir)
+                self.initialEntry(initWorkingData["packageId"])
+                if initWorkingData["spatialType"] is None:
+                    self.logger.logMessage(WARN, "No EML spatial node. The data in %s will not be processed." % (pkg,))
+                    continue
+                self.readURL(workdir)
                 self.retrieveData(workdir)
             except Exception as err:
                 self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (pkg, err.message))
@@ -175,18 +216,17 @@ class CheckSpatialData(ArcpyTool):
         super(CheckSpatialData, self).updateMessages(parameters)
 
     @errHandledWorkflowTask(taskName="Examine EML data for type")
-    def examineEMLforType(self, emlData):
-        spatialTypeItem = [item for item in emlData if item["name"] == "spatialType"][0]
-        if spatialTypeItem["content"] == "vector":
+    def examineEMLforType(self, emldata):
+        spatialTypeItem = emldata["spatialType"]
+        if spatialTypeItem == "spatialVector":
             retval = GeoNISDataType.SPATIALVECTOR
-        elif spatialTypeItem["content"] == "raster":
+        elif spatialTypeItem == "spatialRaster":
             retval = GeoNISDataType.SPATIALRASTER
         else:
-            self.logger.logMessage(WARN,"EML spatial type not set, implying 'spatialVector' or 'spatialRaster' node not found.")
-            raise Exception("EML spatialType node not found.")
+            self.logger.logMessage(WARN,"EML spatial type is %s, should be either 'spatialVector' or 'spatialRaster'." % (spatialTypeItem,))
+            raise Exception("EML spatialType not found.")
         # now see if can find out more specifically
-        entDescItem = [item for item in emlData if item["name"] == "entityDescription"][0]
-        entDescStr = entDescItem["content"].lower()
+        entDescStr = emldata["entityDescription"]
         if retval == GeoNISDataType.SPATIALVECTOR:
             for fileext in [GeoNISDataType.SHAPEFILE, GeoNISDataType.KML, GeoNISDataType.FILEGEODB]:
                 for ext in fileext:
@@ -205,20 +245,20 @@ class CheckSpatialData(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Data type check")
-    def acceptableDataType(self, apackageDir, hint = None):
+    def acceptableDataType(self, apackageDir, emldata):
         if not os.path.isdir(apackageDir):
             self.logger.logMessage(WARN,"Parameter not a directory.")
             return (None, GeoNISDataType.NA)
+        hint = emldata["type(eml)"]
         contents = [os.path.join(apackageDir,item) for item in os.listdir(apackageDir)]
         if len(contents) == 0:
             self.logger.logMessage(WARN,"Directory empty.")
             return (None, GeoNISDataType.NA)
-        spatialTypeItem = [item for item in self.getEMLdata(apackageDir) if item["name"] == "spatialType"][0]
-        if spatialTypeItem["content"] == "vector":
+        spatialTypeItem = emldata["spatialType"]
+        if spatialTypeItem == "spatialVector":
             emlNode = GeoNISDataType.SPATIALVECTOR
-        elif spatialTypeItem["content"] == "raster":
+        elif spatialTypeItem == "spatialRaster":
             emlNode = GeoNISDataType.SPATIALRASTER
-        #self.logger.logMessage(DEBUG, str(contents))
         #array of tuples, one of which we will return
         allPotentialFiles = []
         #special handling - if we have interchange file, E00, then import it, reset the hint, and continue
@@ -324,12 +364,10 @@ class CheckSpatialData(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Format report")
-    def getReport(self, notesfilePath):
-        retval = {}
-        pkgname = os.path.dirname(notesfilePath)
-        with open(notesfilePath) as notesfile:
-            retval[pkgname] = " ".join(notesfile.readlines())
-        return retval
+    def getReport(self, reportText):
+        """eventually when we know the report format, this could be an XSLT from emlSubset+workingData
+        to the formatted report, perhaps json, xml, or html """
+        return ""
 
     def execute(self, parameters, messages):
         super(CheckSpatialData, self).execute(parameters, messages)
@@ -340,57 +378,53 @@ class CheckSpatialData(ArcpyTool):
             for dataDir in self.inputDirs:
                 self.logger.logMessage(INFO, "working in: " + dataDir)
                 try:
-                    emldata = self.getEMLdata(dataDir)
-                    #simple lookup when we expect exactly one value
-                    getEMLitem = lambda ky : [item["content"] for item in emldata if item["name"] == ky][0]
-                    #get packageId from emldata
-                    pkgId = getEMLitem("packageId")
+                    emldata = readWorkingData(dataDir, self.logger)
+                    pkgId = emldata["packageId"]
                     shortPkgId = pkgId[9:]
-                    notesfilePath = os.path.join(dataDir, "geonis_notes.txt")
                     reportfilePath = os.path.join(dataDir, shortPkgId + "_geonis_report.txt")
-                    with open(notesfilePath,'w') as notesfile:
-                        entityName = getEMLitem("entityName")
-                        notesfile.write("PackageId:%s\n" % (pkgId,))
-                        notesfile.write("EntityNameFound:%s\n" % (entityName,))
-                        hint = self.examineEMLforType(emldata)
-                        notesfile.write("TYPE(eml):%s\n" % (hint,))
-                        foundFile, spatialType = self.acceptableDataType(dataDir, hint)
-                        if spatialType == GeoNISDataType.NA:
-                            notesfile.write("TYPE:NOT FOUND\n")
-                            raise Exception("No compatible data found in %s" % dataDir)
-                        notesfile.write("DatafilePath:%s\n" % (foundFile,))
-                        nameMatch = self.entityNameMatch(entityName, foundFile)
-                        notesfile.write("DatafileMatchesEntity:%s\n" % (nameMatch,))
-                        if spatialType == GeoNISDataType.KML:
-                            self.logger.logMessage(INFO, "kml  found")
-                            notesfile.write('TYPE:kml\n')
-                        if spatialType == GeoNISDataType.SHAPEFILE:
-                            self.logger.logMessage(INFO, "shapefile found")
-                            notesfile.write('TYPE:shapefile\n')
-                        if spatialType == GeoNISDataType.ASCIIRASTER:
-                            self.logger.logMessage(INFO, "ascii raster found")
-                            notesfile.write('TYPE:ascii raster\n')
-                        if spatialType == GeoNISDataType.FILEGEODB:
-                            self.logger.logMessage(INFO, "file gdb found")
-                            notesfile.write('TYPE:file geodatabase\n')
-                            #need to examine file gdb to see what is there, or rely on EML?
-                        if spatialType == GeoNISDataType.ESRIE00:
-                            self.logger.logMessage(WARN, "arcinfo e00  reported. Should have been unpacked.")
-                        if spatialType == GeoNISDataType.TIF:
-                            notesfile.write('TYPE:tif\n')
-                        if spatialType == GeoNISDataType.JPEG:
-                            notesfile.write('TYPE:jpg\n')
-                        if spatialType == GeoNISDataType.SPATIALRASTER:
-                            notesfile.write('TYPE:raster dataset\n')
-                        if spatialType == GeoNISDataType.SPATIALVECTOR:
-                            notesfile.write('TYPE:vector\n')
+                    entityName = emldata["entityName"]
+                    hint = self.examineEMLforType(emldata)
+                    emldata["type(eml)"] = hint
+                    foundFile, spatialType = self.acceptableDataType(dataDir, emldata)
+                    if spatialType == GeoNISDataType.NA:
+                        emldata["type"] = "NOT FOUND"
+                        raise Exception("No compatible data found in %s" % dataDir)
+                    emldata["datafilePath"] = foundFile
+                    nameMatch = self.entityNameMatch(entityName, foundFile)
+                    emldata["datafileMatchesEntity"] = nameMatch
+                    if spatialType == GeoNISDataType.KML:
+                        self.logger.logMessage(INFO, "kml  found")
+                        emldata["type"] = "kml"
+                    if spatialType == GeoNISDataType.SHAPEFILE:
+                        self.logger.logMessage(INFO, "shapefile found")
+                        emldata["type"] = "shapefile"
+                    if spatialType == GeoNISDataType.ASCIIRASTER:
+                        self.logger.logMessage(INFO, "ascii raster found")
+                        emldata["type"] = "ascii raster"
+                    if spatialType == GeoNISDataType.FILEGEODB:
+                        self.logger.logMessage(INFO, "file gdb found")
+                        emldata["type"] = "file geodatabase"
+                        #need to examine file gdb to see what is there, or rely on EML?
+                    if spatialType == GeoNISDataType.ESRIE00:
+                        self.logger.logMessage(WARN, "arcinfo e00  reported. Should have been unpacked.")
+                    if spatialType == GeoNISDataType.TIF:
+                        emldata["type"] = "tif"
+                    if spatialType == GeoNISDataType.JPEG:
+                        emldata["type"] = "jpg"
+                    if spatialType == GeoNISDataType.SPATIALRASTER:
+                        emldata["type"] = "raster dataset"
+                    if spatialType == GeoNISDataType.SPATIALVECTOR:
+                        emldata["type"] = "vector"
                 except Exception as e:
-                    with open(notesfilePath,'w') as notesfile:
-                        notesfile.write("Exception:%s\n", (e.message,))
                     self.logger.logMessage(WARN, e.message)
+                    reportText.append({"Status":"Failed"})
+                    reportText.append({"Error message":e.message})
                 else:
+                    reportText.append({"Status":"OK"})
                     self.outputDirs.append(dataDir)
-                reportText.append(self.getReport(notesfilePath))
+                finally:
+                    writeWorkingDataToXML(dataDir, emldata, self.logger)
+                    formattedReport = self.getReport(reportText)
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
             arcpy.SetParameterAsText(4,str(reportText))
         except AssertionError:
@@ -473,9 +507,8 @@ class LoadVectorTypes(ArcpyTool):
     def mergeMetadata(self, workDir, loadedFeatureClasses):
         if not loadedFeatureClasses:
             return
-        emldataObj = self.getEMLdata(workDir)
-        xmlSuppFile = os.path.join(workDir, "supp_metadata.xml")
-        createSuppXML(emldataObj, xmlSuppFile)
+        createSuppXML(workDir)
+        xmlSuppFile = workDir + os.sep + "emlSupp.xml"
         if not os.path.isfile(xmlSuppFile):
             self.logger.logMessage(WARN, "Supplemental metadata file missing in %s" % (workDir,))
             return
@@ -485,13 +518,15 @@ class LoadVectorTypes(ArcpyTool):
             result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", fc)
 
 
-    @errHandledWorkflowTask(taskName="Insert to table")
-    def insertIntoTable(self, workDir, loadedFeatureClasses):
+    @errHandledWorkflowTask(taskName="Update processed table")
+    def updateTable(self, workDir, loadedFeatureClasses):
         if not loadedFeatureClasses or dsnfile is None:
             return
-        emldataObj = self.getEMLdata(workDir)
-        stmt, valuesObj = createInsertObj(emldataObj)
+        emldata = readWorkingData(workDir, self.logger)
+        stmt = getInitInsertStmt()
         self.logger.logMessage(INFO,stmt)
+        valuesObj = {}
+
         self.logger.logMessage(INFO,repr(valuesObj))
         with open(dsnfile) as dsnf:
             dsnStr = dsnf.readline()
@@ -515,26 +550,15 @@ class LoadVectorTypes(ArcpyTool):
 
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
-##        arcpy.env.overwriteOutput = True
-##        arcpy.env.scratchWorkspace = r"C:\Users\ron\Documents\geonis_tests\scratch"
-##        arcpy.SaveSettings(r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml")
         for dir in self.inputDirs:
             datafilePath, pkgId, datatype, entityname = ("" for i in range(4))
             loadedFeatureClasses = []
             try:
-                with open(os.path.join(dir,"geonis_notes.txt"),'r') as notesfile:
-                    notes = notesfile.readlines()
-                for line in notes:
-                    if ':' in line:
-                        lineval = line[line.index(':') + 1 : -1]
-                        if line.startswith("PackageId"):
-                            pkgId = lineval
-                        elif line.startswith("DatafilePath"):
-                            datafilePath = lineval
-                        elif line.startswith("TYPE:"):
-                            datatype = lineval
-                        elif line.startswith("EntityName"):
-                            entityname = lineval
+                emldata = readWorkingData(dir, self.logger)
+                pkgId = emldata["packageId"]
+                datafilePath = emldata["datafilePath"]
+                datatype = emldata["type"]
+                entityname = emldata["entityName"]
                 siteId, n, m = siteFromId(pkgId)
                 if 'shapefile' in datatype:
                     loadedFeatureClasses = self.loadShapefile(siteId, entityname, datafilePath)
@@ -551,7 +575,7 @@ class LoadVectorTypes(ArcpyTool):
                 self.mergeMetadata(dir, loadedFeatureClasses)
                 # add dir for next tool, in any case except exception
                 # update table in geonis db
-                self.insertIntoTable(dir, loadedFeatureClasses)
+                self.updateTable(dir, loadedFeatureClasses)
                 self.outputDirs.append(dir)
             except Exception as err:
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
@@ -665,9 +689,8 @@ class LoadRasterTypes(ArcpyTool):
     def mergeMetadata(self, workDir, raster):
         if not arcpy.Exists(raster):
             return False
-        emldataObj = self.getEMLdata(workDir)
-        xmlSuppFile = os.path.join(workDir, "supp_metadata.xml")
-        createSuppXML(emldataObj, xmlSuppFile)
+        createSuppXML(workDir)
+        xmlSuppFile = workDir + os.sep + "emlSupp.xml"
         if not os.path.isfile(xmlSuppFile):
             self.logger.logMessage(WARN, "Supplemental metadata file missing in %s" % (workDir,))
             return False
@@ -693,19 +716,11 @@ class LoadRasterTypes(ArcpyTool):
             datafilePath, pkgId, datatype, entityname = ("" for i in range(4))
             loadedRaster = None
             try:
-                with open(os.path.join(dir,"geonis_notes.txt"),'r') as notesfile:
-                    notes = notesfile.readlines()
-                for line in notes:
-                    if ':' in line:
-                        lineval = line[line.index(':') + 1 : -1]
-                        if line.startswith("PackageId"):
-                            pkgId = lineval
-                        elif line.startswith("DatafilePath"):
-                            datafilePath = lineval
-                        elif line.startswith("TYPE"):
-                            datatype = lineval
-                        elif line.startswith("EntityName"):
-                            entityname = lineval
+                emldata = readWorkingData(dir, self.logger)
+                pkgId = emldata["packageId"]
+                datafilePath = emldata["datafilePath"]
+                datatype = emldata["type"]
+                entityname = emldata["entityName"]
                 #check for supported type
                 if not self.isSupported(datatype):
                     self.outputDirs.append(dir)
