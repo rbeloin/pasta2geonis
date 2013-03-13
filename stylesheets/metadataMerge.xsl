@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!-- Adds Geonis metadata to existing Arcgis metadata. Use with XSLTransform tool in Conversion-Metadata toolset -->
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:esri="http://www.esri.com/metadata/">	
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:esri="http://www.esri.com/metadata/">
 	<xsl:output method="xml" indent="no" version="1.0" encoding="UTF-8" omit-xml-declaration="no"/>
 	<!-- param should be xml file that supplies supplemental values -->
 	<xsl:param name="gpparam"/>
@@ -14,25 +14,25 @@
 	<xsl:variable name="dataURL" select="document($gpparam)//aggrInfo/aggrDSName/citOnlineRes/linkage/text()" />
 	<xsl:variable name="packageId" select="document($gpparam)//aggrInfo/aggrDSName/citId/identCode/text()" />
 	<xsl:variable name="loadDate" select="document($gpparam)//aggrInfo/aggrDSName/date/pubDate/text()" />
-		
-	
+
+
 	<xsl:template match="/">
 		<xsl:apply-templates select="node()|@*"/>
 	</xsl:template>
-	
+
 	<!-- if no dataIdInfo tag, make one and populate it after copying metadata and processing other nodes -->
 	<xsl:template match="/metadata[not(dataIdInfo)]" >
 		<xsl:copy>
-			<xsl:apply-templates select="node()|@*"/>	
+			<xsl:apply-templates select="node()|@*"/>
 			<xsl:element name="dataIdInfo">
 				<xsl:element name="idCitation">
 					<xsl:copy-of select="$title" />
 				</xsl:element>
 				<xsl:copy-of select="$abstract" />
-				<xsl:copy-of select="$keywords" />	
-				<xsl:copy-of select="$purpose" />	
-				<xsl:call-template name="makeAggrInfo" />		
-			</xsl:element>	
+				<xsl:copy-of select="$keywords" />
+				<xsl:copy-of select="$purpose" />
+				<xsl:call-template name="makeAggrInfo" />
+			</xsl:element>
 		</xsl:copy>
 	</xsl:template>
 
@@ -40,14 +40,14 @@
 	<xsl:template match="text()">
 		<xsl:value-of select="normalize-space(.)" />
 	</xsl:template>
-	
+
 	<!-- match and copy everything (that doesn't fall into another template) -->
 	<xsl:template match="node()|@*" name="identity" priority="0">
 		<xsl:copy>
 			 <xsl:apply-templates select="node()|@*"/>
 		</xsl:copy>
 	</xsl:template>
-		
+
 	<!-- match dataIdInfo if it doesn't have one of the nodes we have. -->
 	<xsl:template match="//dataIdInfo[not(idAbs) or not(idPurp) or not(searchKeys)]" priority="1">
 		<xsl:copy>
@@ -56,15 +56,15 @@
 				<xsl:copy-of select="$abstract" />
 			</xsl:if>
 			<xsl:if test="not(./searchKeys)" >
-				<xsl:copy-of select="$keywords" />	
+				<xsl:copy-of select="$keywords" />
 			</xsl:if>
 			<xsl:if test="not(./idPurp)" >
-				<xsl:copy-of select="$purpose" />	
+				<xsl:copy-of select="$purpose" />
 			</xsl:if>
 			<xsl:call-template name="makeAggrInfo" />
 		</xsl:copy>
 	</xsl:template>
-	
+
 	<!-- match dataIdInfo for cases where it didn't match above -->
 	<xsl:template match="//dataIdInfo" priority="1">
 		<xsl:copy>
@@ -72,7 +72,7 @@
 			<xsl:call-template name="makeAggrInfo" />
 		</xsl:copy>
 	</xsl:template>
-	
+
 	<xsl:template name="makeAggrInfo">
 		<xsl:element name="aggrInfo">
 			<xsl:element name="assocType">
@@ -101,12 +101,12 @@
 					<xsl:element name="identCode">
 						<xsl:value-of select="$packageId" />
 					</xsl:element>
-				</xsl:element>				
-			</xsl:element>									
+				</xsl:element>
+			</xsl:element>
 		</xsl:element>
 	</xsl:template>
 
-		
+
 	<!-- special case for the resTitle - always put in supplemental one, overwriting old one. -->
 	<xsl:template match="//dataIdInfo/idCitation/resTitle" priority="2">
 		<xsl:copy-of select="$title" />
