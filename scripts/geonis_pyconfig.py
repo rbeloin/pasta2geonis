@@ -23,7 +23,7 @@ if platform.node() == "Maps3":
     #path to env settings file. settings loaded by base execute method
     envSettingsPath = r"C:\pasta2geonis\savedEnv.xml"
     #path to stylesheets
-    pathToStylesheets = r"C:\pasta2geonis"
+    pathToStylesheets = r"C:\pasta2geonis\stylesheets"
     #raster data storage
     pathToRasterData = r"C:\pasta2geonis\Gis_data\Raster_raw"
     #raster mosaic datasets
@@ -48,13 +48,13 @@ else:
     #file gdb for dev
     geodatabase = r"C:\Users\ron\Documents\geonis_tests\geonis.gdb"
     #metadata stylesheet
-    pathToStylesheets = r"Z:\docs\local\git\pasta2geonis_sg"
+    pathToStylesheets = r"Z:\docs\local\git\pasta2geonis_sg\stylesheets"
     #raster data storage
     pathToRasterData = r"C:\Users\ron\Documents\geonis_tests\raster_data"
     #raster mosaic datasets
     pathToRasterMosaicDatasets = r"C:\Users\ron\Documents\geonis_tests\raster_md.gdb"
     #no dsn
-    dsnfile = None
+    dsnfile = r"Z:\docs\local\git\pasta2geonis_sg\geonisDSN.txt"
     #map doc
     pathToMapDoc = r"Z:\docs\local\mapserve.mxd"
     #map service layer query

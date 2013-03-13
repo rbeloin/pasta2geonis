@@ -16,7 +16,10 @@ from logging import WARN, ERROR
 
 @contextmanager
 def cursorContext(logger = None):
-    """ Usage:
+    """ Provides a wrapper to a generator function that yields a db cursor
+        ready to execute a statement. Handles connection, commit, rollback,
+        error trapping, and closing connection. Will propagate exceptions.
+    Usage:
         with cursorContext() as cur:
             cur.execute(...)
     """
@@ -27,7 +30,14 @@ def cursorContext(logger = None):
         cur = conn.cursor()
         #enter WITH block with value of cur
         yield cur
-    except Exception as err:
+    except psycopg2.Warning as warn:
+        conn.close()
+        del conn
+        if logger:
+            logger.logMessage(WARN, warn.message)
+        else:
+            print warn.message
+    except psycopg2.Error as err:
         #exiting WITH block with errors
         conn.rollback()
         conn.close()
@@ -36,7 +46,7 @@ def cursorContext(logger = None):
             logger.logMessage(ERROR, err.message)
         else:
             print err.message
-        raise(err)
+        raise
     else:
         #exiting WITH block with no errors
         conn.commit
@@ -46,22 +56,14 @@ def cursorContext(logger = None):
 
 
 
-
-
-
-
-
-
-
-
-def main():
-    with cursorContext() as mycur:
-        stmt = "SELECT id, sitecode, entity, layername FROM geonis.processed_items;"
-        mycur.execute(stmt)
-        rows = mycur.fetchall()
-        for r in rows:
-            print str(r)
-
-
-if __name__ == '__main__':
-    main()
+##def main():
+##    with cursorContext() as mycur:
+##        stmt = "select * from geonis.weather w where w.city = 'salem';"
+##        mycur.execute(stmt)
+##        rows = mycur.fetchall()
+##        for r in rows:
+##            print str(r)
+##
+##
+##if __name__ == '__main__':
+##    main()

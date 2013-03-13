@@ -196,6 +196,8 @@ def createSuppXML(workDir):
     stylesheet = pathToStylesheets + os.sep + "emlSubsetToSupp.xsl"
     inputXML = workDir + os.sep + "emlSubset.xml"
     outputXMLtree = runTransformation(xslPath = stylesheet, inputXMLPath = inputXML)
+    #fill in today as date of pub within the new reference node
+    outputXMLtree.xpath("//aggrInfo/aggrDSName/date/pubDate")[0].text = str(datetime.date.today())
     outputXMLtree.write(workDir + os.sep + "emlSupp.xml", xml_declaration = 'yes')
     del outputXMLtree
 
