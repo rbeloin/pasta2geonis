@@ -33,7 +33,7 @@ if platform.node() == "Maps3":
     #DSN file
     dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
     #map doc
-    pathToMapDoc = r"C:\pasta2geonis\Arcmap_mxd\MapTest.mxd"
+    pathToMapDoc = r"C:\pasta2geonis\Arcmap_mxd"
     #map service layer query
     layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/Test/VectorData/MapServer/layers?f=json"
     #scratchWorkspace is NOT saved in settings
@@ -56,7 +56,7 @@ else:
     #no dsn
     dsnfile = r"Z:\docs\local\git\pasta2geonis_sg\geonisDSN.txt"
     #map doc
-    pathToMapDoc = r"Z:\docs\local\mapserve.mxd"
+    pathToMapDoc = r"Z:\docs\local"
     #map service layer query
     layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/Test/VectorData/MapServer/layers?f=json"
     #scratchWorkspace is NOT saved in settings

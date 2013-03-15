@@ -242,9 +242,6 @@ def runTransformation(xslPath = None, inputXMLPath = None):
 ##    retval["servId"] = None
 ##    return (getInsertStmt(),retval)
 
-def getInitInsertStmt():
-    return  """INSERT INTO geonis.processed_items (packageid,procdate) VALUES(%(packageid)s,%(obtained)s);"""
-
 ##def getContentFromEmldataByName(emldata, name):
 ##    try:
 ##        return [item for item in emldata if item["name"] == name][0]["content"]

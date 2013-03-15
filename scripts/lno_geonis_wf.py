@@ -26,7 +26,8 @@ from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase
 from geonis_pyconfig import pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets, dsnfile, pathToMapDoc, layerQueryURI, pubConnection, mapServInfo
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId, getToken
-from geonis_emlparse import createEmlSubset, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, getInitInsertStmt
+from geonis_emlparse import createEmlSubset, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML
+from geonis_postgresql import cursorContext, getPackageInsert, getEntityInsert, updateSpatialType
 
 ## *****************************************************************************
 class UnpackPackages(ArcpyTool):
@@ -99,29 +100,16 @@ class UnpackPackages(ArcpyTool):
 ##            datafile.write(repr(emldata))
 
     @errHandledWorkflowTask(taskName="Package initial entry")
-    def initialEntry(self, pkgId):
-        if dsnfile is None:
-            return
-        stmt = getInitInsertStmt()
-        self.logger.logMessage(INFO,stmt)
-        with open(dsnfile) as dsnf:
-            dsnStr = dsnf.readline()
-        self.logger.logMessage(INFO,dsnStr)
-        conn = psycopg2.connect(dsn = dsnStr)
-        try:
-            cur = conn.cursor()
-            #execute insert
-            valuesObj = {"packageid":pkgId, "obtained":datetime.datetime.now()}
-            self.logger.logMessage(DEBUG,cur.mogrify(stmt,valuesObj))
-                cur.execute(stmt,valuesObj)
-            conn.commit()
-            del cur
-        except Exception as err:
-            conn.rollback()
-            self.logger.logMessage(WARN, err.message)
-        finally:
-            conn.close()
-
+    def makePackageRec(self, pkgId):
+        """Inserts record into package table """
+        stmt, vals = getPackageInsert()
+        vals["packageid"] = pkgId
+        scope, id, rev = siteFromId(pkgId)
+        vals["scope"] = scope
+        vals["identifier"] = id
+        vals["revision"] = rev
+        with cursorContext(self.logger) as cur:
+            cur.execute(stmt, vals)
 
     @errHandledWorkflowTask(taskName="Read URL from emlSubset")
     def readURL(self, workDir):
@@ -161,6 +149,18 @@ class UnpackPackages(ArcpyTool):
             raise Exception("No URL for data in %s" % (workDir,))
 
 
+    @errHandledWorkflowTask(taskName="Entity initial entry")
+    def makeEntityRec(self, workDir):
+        """Inserts record into entity table """
+        emldata = readWorkingData(workDir, self.logger)
+        stmt, vals = getEntityInsert()
+        vals["packageid"] = emldata["packageId"]
+        vals["entityname"] = emldata["entityName"]
+        vals["entitydescription"] = emldata["entityDesc"]
+        vals["status"] = "%s node found. Downloaded." % emldata["spatialType"]
+        with cursorContext(self.logger) as cur:
+            cur.execute(stmt, vals)
+
     def execute(self, parameters, messages):
         super(UnpackPackages, self).execute(parameters, messages)
         carryForwardList = []
@@ -175,12 +175,15 @@ class UnpackPackages(ArcpyTool):
             try:
                 workdir = self.unzipPkg(pkg, outputDir)
                 initWorkingData = self.parseEML(workdir)
-                self.initialEntry(initWorkingData["packageId"])
+                self.makePackageRec(initWorkingData["packageId"])
                 if initWorkingData["spatialType"] is None:
                     self.logger.logMessage(WARN, "No EML spatial node. The data in %s will not be processed." % (pkg,))
                     continue
+                #update package table with spatial type
+                updateSpatialType(initWorkingData["packageId"], initWorkingData["spatialType"])
                 self.readURL(workdir)
                 self.retrieveData(workdir)
+                self.makeEntityRec(workdir)
             except Exception as err:
                 self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (pkg, err.message))
             else:
@@ -226,7 +229,7 @@ class CheckSpatialData(ArcpyTool):
             self.logger.logMessage(WARN,"EML spatial type is %s, should be either 'spatialVector' or 'spatialRaster'." % (spatialTypeItem,))
             raise Exception("EML spatialType not found.")
         # now see if can find out more specifically
-        entDescStr = emldata["entityDescription"]
+        entDescStr = emldata["entityDesc"]
         if retval == GeoNISDataType.SPATIALVECTOR:
             for fileext in [GeoNISDataType.SHAPEFILE, GeoNISDataType.KML, GeoNISDataType.FILEGEODB]:
                 for ext in fileext:
@@ -378,6 +381,7 @@ class CheckSpatialData(ArcpyTool):
             for dataDir in self.inputDirs:
                 self.logger.logMessage(INFO, "working in: " + dataDir)
                 try:
+                    status = "Entering data checks."
                     emldata = readWorkingData(dataDir, self.logger)
                     pkgId = emldata["packageId"]
                     shortPkgId = pkgId[9:]
@@ -388,8 +392,10 @@ class CheckSpatialData(ArcpyTool):
                     foundFile, spatialType = self.acceptableDataType(dataDir, emldata)
                     if spatialType == GeoNISDataType.NA:
                         emldata["type"] = "NOT FOUND"
+                        status = "Data type not found with tentative type %s" % hint
                         raise Exception("No compatible data found in %s" % dataDir)
                     emldata["datafilePath"] = foundFile
+                    status = "Found acceptable data file."
                     nameMatch = self.entityNameMatch(entityName, foundFile)
                     emldata["datafileMatchesEntity"] = nameMatch
                     if spatialType == GeoNISDataType.KML:
@@ -420,9 +426,15 @@ class CheckSpatialData(ArcpyTool):
                     reportText.append({"Status":"Failed"})
                     reportText.append({"Error message":e.message})
                 else:
+                    status = "Passed checks"
                     reportText.append({"Status":"OK"})
                     self.outputDirs.append(dataDir)
                 finally:
+                    #write status msg to db table
+                    if pkgId:
+                        stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s;"
+                        with cursorContext(self.logger) as cur:
+                            cur.execute(stmt, (status, pkgId))
                     writeWorkingDataToXML(dataDir, emldata, self.logger)
                     formattedReport = self.getReport(reportText)
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
@@ -461,7 +473,6 @@ class LoadVectorTypes(ArcpyTool):
     def loadShapefile(self, site, name, path):
         """call feature class to feature class to copy shapefile to geodatabase"""
         self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, site, name))
-        addedFC = []
         #if no dataset, make one
         if not arcpy.Exists(os.path.join(geodatabase,site)):
             arcpy.CreateFeatureDataset_management(out_dataset_path = geodatabase,
@@ -470,8 +481,7 @@ class LoadVectorTypes(ArcpyTool):
         arcpy.FeatureClassToFeatureClass_conversion(in_features = path,
                                     out_path = os.path.join(geodatabase,site),
                                     out_name = name)
-        addedFC.append(geodatabase + os.sep + site + os.sep + name)
-        return addedFC
+        return geodatabase + os.sep + site + os.sep + name
 
 
     @errHandledWorkflowTask(taskName="Load KML")
@@ -479,7 +489,6 @@ class LoadVectorTypes(ArcpyTool):
         """call KML to Layer tool to copy kml contents to file gdb, then loop over features
         and load each to geodatabase"""
         self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, site, name))
-        addedFC = []
         #if no dataset, make one
         if not arcpy.Exists(os.path.join(geodatabase,site)):
             arcpy.CreateFeatureDataset_management(out_dataset_path = geodatabase,
@@ -492,19 +501,20 @@ class LoadVectorTypes(ArcpyTool):
         fgdb = os.path.join(os.path.dirname(path), name + '.gdb')
         arcpy.env.workspace = fgdb
         fclasses = arcpy.ListFeatureClasses(wild_card = '*', feature_type = '', feature_dataset = "Placemarks")
-        for feature in fclasses:
+        if fclasses:
+            feature = fclasses[0]
             fcpath = fgdb + os.sep + "Placemarks" + os.sep + feature
             outDS = os.path.join(geodatabase, site)
             outF = name + '_' + feature
             arcpy.FeatureClassToFeatureClass_conversion(in_features = fcpath,
                                                         out_path = outDS,
                                                         out_name = outF)
-            addedFC.append(outDS + os.sep + outF)
-        return addedFC
+            return outDS + os.sep + outF
+        return None
 
 
     @errHandledWorkflowTask(taskName="Merge metadata")
-    def mergeMetadata(self, workDir, loadedFeatureClasses):
+    def mergeMetadata(self, workDir, loadedFeatureClass):
         if not loadedFeatureClasses:
             return
         createSuppXML(workDir)
@@ -513,39 +523,17 @@ class LoadVectorTypes(ArcpyTool):
             self.logger.logMessage(WARN, "Supplemental metadata file missing in %s" % (workDir,))
             return
         arcpy.env.workspace = workDir
-        for fc in loadedFeatureClasses:
-            result = arcpy.XSLTransform_conversion(fc, pathToMetadataMerge, "merged_metadata.xml", xmlSuppFile)
-            result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", fc)
+        result = arcpy.XSLTransform_conversion(loadedFeatureClass, pathToMetadataMerge, "merged_metadata.xml", xmlSuppFile)
+        result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", loadedFeatureClass)
 
 
-    @errHandledWorkflowTask(taskName="Update processed table")
-    def updateTable(self, workDir, loadedFeatureClasses):
-        if not loadedFeatureClasses or dsnfile is None:
+    @errHandledWorkflowTask(taskName="Update entity table")
+    def updateTable(self, workDir, loadedFeatureClass, pkid):
+        if not loadedFeatureClass:
             return
-        emldata = readWorkingData(workDir, self.logger)
-        stmt = getInitInsertStmt()
-        self.logger.logMessage(INFO,stmt)
-        valuesObj = {}
-
-        self.logger.logMessage(INFO,repr(valuesObj))
-        with open(dsnfile) as dsnf:
-            dsnStr = dsnf.readline()
-        self.logger.logMessage(INFO,dsnStr)
-        conn = psycopg2.connect(dsn = dsnStr)
-        try:
-            cur = conn.cursor()
-            for fc in loadedFeatureClasses:
-                valuesObj["layerName"] = valuesObj["site"] + os.path.basename(fc)
-                #execute insert
-                self.logger.logMessage(DEBUG,cur.mogrify(stmt,valuesObj))
-                cur.execute(stmt,valuesObj)
-            conn.commit()
-            del cur
-        except Exception as err:
-            conn.rollback()
-            self.logger.logMessage(WARN, err.message)
-        finally:
-            conn.close()
+        stmt = "UPDATE workflow.entity set storage = %s WHERE packageid = %s;"
+        with cursorContext(self.logger) as cur:
+            cur.execute(stmt, (loadedFeatureClass, pkid))
 
 
     def execute(self, parameters, messages):
@@ -554,6 +542,7 @@ class LoadVectorTypes(ArcpyTool):
             datafilePath, pkgId, datatype, entityname = ("" for i in range(4))
             loadedFeatureClasses = []
             try:
+                status = "Entering load vector"
                 emldata = readWorkingData(dir, self.logger)
                 pkgId = emldata["packageId"]
                 datafilePath = emldata["datafilePath"]
@@ -561,24 +550,35 @@ class LoadVectorTypes(ArcpyTool):
                 entityname = emldata["entityName"]
                 siteId, n, m = siteFromId(pkgId)
                 if 'shapefile' in datatype:
-                    loadedFeatureClasses = self.loadShapefile(siteId, entityname, datafilePath)
+                    loadedFeatureClass = self.loadShapefile(siteId, entityname, datafilePath)
+                    status = "Loaded shapefile"
                 elif 'kml' in datatype:
-                    loadedFeatureClasses = self.loadKml(siteId, entityname, datafilePath)
+                    loadedFeatureClass = self.loadKml(siteId, entityname, datafilePath)
+                    status = "Loaded from KML"
                 elif 'geodatabase' in datatype:
                     #TODO: copy vector from file geodatabase, for now, leave dir behind
+                    status = "Loaded from file geodatabase"
                     continue
                 else:
                     # no vector data here; continue to next dir, placing this one into the output set
                     self.outputDirs.append(dir)
                     continue
                 # amend metadata
-                self.mergeMetadata(dir, loadedFeatureClasses)
-                # add dir for next tool, in any case except exception
+                self.mergeMetadata(dir, loadedFeatureClass)
                 # update table in geonis db
-                self.updateTable(dir, loadedFeatureClasses)
+                self.updateTable(dir, loadedFeatureClass, pkgId)
+                # add dir for next tool, in any case except exception
                 self.outputDirs.append(dir)
+                status = "Load with metadata complete"
             except Exception as err:
+                status = "Failed after " + status
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
+            finally:
+                #write status msg to db table
+                if pkgId:
+                    stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s;"
+                    with cursorContext(self.logger) as cur:
+                        cur.execute(stmt, (status, pkgId))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
@@ -707,6 +707,12 @@ class LoadRasterTypes(ArcpyTool):
         return True
 
 
+    @errHandledWorkflowTask(taskName="Update entity table")
+    def updateTable(self, location, pkid):
+        stmt = "UPDATE workflow.entity set storage = %s WHERE packageid = %s;"
+        with cursorContext(self.logger) as cur:
+            cur.execute(stmt, (location, pkid))
+
 
     def execute(self, parameters, messages):
         super(LoadRasterTypes, self).execute(parameters, messages)
@@ -716,6 +722,7 @@ class LoadRasterTypes(ArcpyTool):
             datafilePath, pkgId, datatype, entityname = ("" for i in range(4))
             loadedRaster = None
             try:
+                status = "Entering raster load"
                 emldata = readWorkingData(dir, self.logger)
                 pkgId = emldata["packageId"]
                 datafilePath = emldata["datafilePath"]
@@ -729,219 +736,283 @@ class LoadRasterTypes(ArcpyTool):
                 rawDataLoc = self.prepareStorage(siteId, datafilePath, entityname)
                 os.mkdir(rawDataLoc)
                 raster = self.copyRaster(datafilePath, rawDataLoc)
+                updateTable(rawDataLoc, pkgId)
                 # amend metadata in place
                 if self.mergeMetadata(dir, raster):
+                    status = "Metadata updated"
                     result = self.loadRaster(siteId, raster, pkgId)
                     if result != 4:
+                        status = "Load raster failed"
                         self.logger.logMessage(WARN, "Loading %s did not succeed, with code %d.\n" % (raster, result))
                     else:
                         # add dir for next tool, in any case except exception
+                        status = "Load raster completed"
                         self.outputDirs.append(dir)
                 else:
                     self.logger.logMessage(WARN, "Metadata function returned False.\n")
             except Exception as err:
+                status = "Failed after " + status
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
+            finally:
+                #write status msg to db table
+                if pkgId:
+                    stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s;"
+                    with cursorContext(self.logger) as cur:
+                        cur.execute(stmt, (status, pkgId))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
+
 ## *****************************************************************************
-class RefreshMapService(ArcpyTool):
-    """Adds new vector data to map, creates service def draft, modifies it to replace, uploads and starts service,
-       waits for service to start, gets list of layers, updates table with layer IDs. """
+class UpdateMXDs(ArcpyTool):
+    """Adds new vector data to map files"""
     def __init__(self):
         ArcpyTool.__init__(self)
-        self._description = "Adds new vector data to map, creates service def draft, modifies it to replace, uploads and starts service, waits for service to start, gets list of layers, updates table with layer IDs."
-        self._label = "Refresh Map Service"
-        self._alias = "refreshMapServ"
+        self._description = "Adds new vector data to map files by scope."
+        self._label = "S6. Update MXD"
+        self._alias = "updateMXD"
 
     def getParameterInfo(self):
-        return super(RefreshMapService, self).getParameterInfo()
+        params = super(UpdateMXDs, self).getParameterInfo()
+        params.append(self.getMultiDirInputParameter())
+        params.append(self.getMultiDirOutputParameter())
+        return params
 
     def updateParameters(self, parameters):
         """called whenever user edits parameter in tool GUI. Can adjust other parameters here. """
-        super(RefreshMapService, self).updateParameters(parameters)
+        super(UpdateMXDs, self).updateParameters(parameters)
 
     def updateMessages(self, parameters):
         """called after all of the update parameter calls. Call attach messages to parameters, usually warnings."""
-        super(RefreshMapService, self).updateMessages(parameters)
+        super(UpdateMXDs, self).updateMessages(parameters)
 
-    @errHandledWorkflowTask(taskName="Add vector data to map")
-    def addVectorData(self, dbconn):
-        """Checks table and compares to layer list, adds vectors not in layer list"""
-        retval = []
-        #bypass
-        #rows = [ (2, 'tjv', 'hjaveg', 'tjvhjaveg'), (3, 'rmb', 'someKML_Points', 'rmbsomeKML_Points'), (4, 'rmb', 'someKML_Polylines', 'rmbsomeKML_Polylines')]
-        curs = dbconn.cursor()
-        stmt = "SELECT id, sitecode, entity, layername FROM geonis.processed_items  WHERE featureclass AND serviceid is null;"
-        curs.execute(stmt)
-        rows = curs.fetchall()
-        if rows:
-            addToMap = []
-            #get list of layer names from service
-            layerInfoJson = urllib2.urlopen(layerQueryURI)
-            layerInfo = json.loads(layerInfoJson.readline())
-            layerNamesLong = [lyr["name"] for lyr in layerInfo["layers"] if lyr["type"] == "Feature Layer"]
-            layerNames = []
-            for name in layerNamesLong:
-                while name.startswith("geonis."):
-                    name = name[7:]
-                layerNames.append(name)
-            for row in rows:
-                id, site, entity, layerNm = row
-                if not layerNm in layerNames:
-                    addToMap.append((geodatabase + os.sep + site + os.sep + entity, layerNm))
-            if addToMap:
-                scratchFld = arcpy.env.scratchFolder
-                mxd = arcpy.mapping.MapDocument(pathToMapDoc)
-                layersFrame = arcpy.mapping.ListDataFrames(mxd, "layers")[0]
-                for feature, lname in addToMap:
-                    arcpy.MakeFeatureLayer_management(in_features = feature, out_layer = lname)
-                    lyrFile = scratchFld + os.sep + lname + ".lyr"
-                    arcpy.SaveToLayerFile_management(lname, lyrFile)
-                    arcpy.mapping.AddLayer(layersFrame, arcpy.mapping.Layer(lyrFile))
-                    os.remove(lyrFile)
-                    retval.append(lname)
+    @errHandledWorkflowTask(taskName="Add vector data to MXD")
+    def addVectorData(self, workDir, workingData):
+        """   """
+        # see if entry in entity table, and get storage path
+        stmt = "SELECT storage, status FROM workflow.entity WHERE packageid = %s;"
+        with cursorContext(self.logger) as cur:
+            cur.execute(stmt, workingData["packageId"])
+            rows = cur.fetchall()
+            if rows:
+                store, status = rows[0]
+            else:
+                raise Exception("Record not in entity table")
+        # get list of layer names from mxd
+        if "complete" not in status:
+            self.logger.logMessage(WARN, "Status of layer being added to mxd: %s" % (status,))
+        scope = siteFromId(workingData["packageId"])[0]
+        # make layer name
+        layerName = workingData["entityName"].strip().replace(' ','_')[0:24]
+        mxdName = scope + ".mxd"
+        mxdfile = pathToMapDoc + os.sep + mxdName
+        # check if layer is in mxd, and remove if found
+        mxd = arcpy.mapping.MapDocument(mxdfile)
+        layersFrame = arcpy.mapping.ListDataFrames(mxd, "layers")[0]
+        for layer in arcpy.mapping.ListLayers(mxd, "", layersFrame):
+            itsName = layer.name
+            while itsName.startswith("geonis."):
+                itsName = itsName[7:]
+            if itsName == layerName:
+                arcpy.mapping.RemoveLayer(layersFrame, layer)
                 mxd.save()
-                del layersFrame, mxd
-                return retval
-        else:
-            return retval
-
-
-    @errHandledWorkflowTask(taskName="Create service draft")
-    def draftSD(self):
-        """Stops service, creates SD draft, modifies it"""
-        """http://maps3.lternet.edu:6080/arcgis/admin/services/Test/VectorData.MapServer/stop"""
-        arcpy.env.workspace = os.path.dirname(pathToMapDoc)
-        wksp = arcpy.env.workspace
-        #stop service first
-        with open(r"C:\pasta2geonis\arcgis_cred.txt") as f:
-            cred = eval(f.readline())
-        token = getToken(cred['username'], cred['password'])
-        if token:
-            serviceStopURL = "/arcgis/admin/services/Test/VectorData.MapServer/stop"
-            # This request only needs the token and the response formatting parameter
-            params = urllib.urlencode({'token': token, 'f': 'json'})
-            headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
-            # Connect to URL and post parameters
-            httpConn = httplib.HTTPConnection("localhost", "6080")
-            httpConn.request("POST", serviceStopURL, params, headers)
-            response = httpConn.getresponse()
-            if (response.status != 200):
-                self.logger.logMessage(WARN, "Error while attempting to stop service.")
-            httpConn.close()
-        else:
-             self.logger.logMessage(WARN, "Error while attempting to get admin token.")
-        mxd = arcpy.mapping.MapDocument(pathToMapDoc)
-        sdDraft = wksp + os.sep + mapServInfo['service_name'] + ".sddraft"
-        arcpy.mapping.CreateMapSDDraft(mxd, sdDraft, mapServInfo['service_name'],
-        "ARCGIS_SERVER", pubConnection, False, "Test", mapServInfo['summary'], mapServInfo['tags'])
-        del mxd
-        #now we need to change one tag in the draft to indicate this is a replacement service
-        draftXml = etree.parse(sdDraft)
-        typeNode = draftXml.xpath("/SVCManifest/Type")
-        if typeNode and etree.iselement(typeNode[0]):
-            typeNode[0].text = "esriServiceDefinitionType_Replacement"
-            with open(sdDraft,'w') as outfile:
-                outfile.write(etree.tostring(draftXml, xml_declaration = False))
-            #save backup for debug
-            with open(sdDraft + '.bak', 'w') as bakfile:
-                bakfile.write(etree.tostring(draftXml, xml_declaration = False))
-        del typeNode, draftXml
-
-    @errHandledWorkflowTask(taskName="Replace service")
-    def replaceService(self):
-        """Creates SD, uploads to server"""
-        arcpy.env.workspace = os.path.dirname(pathToMapDoc)
-        wksp = arcpy.env.workspace
-        mxd = arcpy.mapping.MapDocument(pathToMapDoc)
-        sdDraft = wksp + os.sep + mapServInfo['service_name'] + ".sddraft"
-        sdFile =  wksp + os.sep + mapServInfo['service_name'] + ".sd"
-        if os.path.exists(sdFile):
-            os.remove(sdFile)
-        #by default, writes SD file to same loc as draft, then DELETES DRAFT
-        arcpy.StageService_server(sdDraft)
-        if os.path.exists(sdFile):
-            arcpy.UploadServiceDefinition_server(in_sd_file = sdFile, in_server = pubConnection, in_startupType = 'STARTED')
-        else:
-            raise Exception("Staging failed to create %s" % (sdFile,))
-
-
-    @errHandledWorkflowTask(taskName="Update search table")
-    def updateLayerIds(self, dbconn, addedLayerNames):
-        """Updates layer ids in search table with service info query"""
-            #get list of layer names from service
-        available = False
-        tries = 0
-        layerInfoJson = urllib2.urlopen(layerQueryURI)
-        layerInfo = json.loads(layerInfoJson.readline())
-        del layerInfoJson
-        available = "error" not in layerInfo
-        while not available and tries < 10:
-            time.sleep(5)
-            tries += 1
-            layerInfoJson = urllib2.urlopen(layerQueryURI)
-            layerInfo = json.loads(layerInfoJson.readline())
-            available = "error" not in layerInfo
-        self.logger.logMessage(DEBUG, "service conn attemps %d" % (tries,))
-        # make list of dict with just name and id of feature layers
-        layers = [{'name':lyr["name"],'id':lyr['id']} for lyr in layerInfo["layers"] if lyr["type"] == "Feature Layer"]
-        # shorten names that have db and schema in the name
-        for lyr in layers:
-            while lyr['name'].startswith("geonis."):
-                lyr['name'] = lyr['name'][7:]
-        # update table with ids of layers
-        # To completely refresh table, set all ids to null before using tool
-        curs = dbconn.cursor()
-        stmt = "SELECT id, layername FROM geonis.processed_items t1 WHERE t1.featureclass AND t1.serviceid is null;"
-        curs.execute(stmt)
-        rows = curs.fetchall()
-        dbconn.commit()
-        updateParams = []
-        if rows:
-            for row in rows:
-                rowid, layername = row
-                search = [lyr['id'] for lyr in layers if lyr['name'] == layername]
-                if search:
-                    updateParams.append((int(search[0]), int(rowid)))
-        del rows
-        # updateParams now has 0 or more tuples (layer id, db id)
-        stmt2 = "UPDATE geonis.processed_items SET serviceid = %s WHERE id = %s;"
-        for params in updateParams:
-            curs.execute(stmt2, params)
-        dbconn.commit()
-        del curs
+        #now add to map
+        feature = store
+        scratchFld = arcpy.env.scratchFolder
+        arcpy.MakeFeatureLayer_management(in_features = feature, out_layer = layerName)
+        lyrFile = scratchFld + os.sep + lname + ".lyr"
+        arcpy.SaveToLayerFile_management(layerName, lyrFile)
+        arcpy.mapping.AddLayer(layersFrame, arcpy.mapping.Layer(lyrFile))
+        mxd.save()
+        workingData["layerName"] = layerName
+        writeWorkingDataToXML(workDir, workingData)
+        os.remove(lyrFile)
+        del layersFrame, mxd
+        return mxdName
 
 
     def execute(self, parameters, messages):
-        super(RefreshMapService, self).execute(parameters, messages)
-        #bypass
-        conn = None
-        try:
-            with open(dsnfile) as dsnf:
-                dsnStr = dsnf.readline()
-            conn = psycopg2.connect(dsn = dsnStr)
-        except Exception as connerr:
-            self.logger.logMessage(ERROR, connerr.message)
-            exit(1)
-        try:
-            addedLayers = self.addVectorData(conn)
-            if addedLayers:
-                self.logger.logMessage(INFO, "The following added to map: %s" % (str(addedLayers),))
-                self.draftSD()
-                self.replaceService()
-                #delay for service to start, get layer info
-                time.sleep(20)
-                self.updateLayerIds(conn, addedLayers)
-            else:
-                self.logger.logMessage(INFO, "No new vector data added to map.")
-        except Exception as err:
-            conn.rollback()
-            self.logger.logMessage(ERROR, err.message)
-        finally:
-            conn.close()
+        super(UpdateMXDs, self).execute(parameters, messages)
+        for dir in self.inputDirs:
+            try:
+                status = "Entering add vector to MXD"
+                workingData = readWorkingData(dir, self.logger)
+                pkgId = workingData["packageId"]
+                mxdName = addVectorData(dir, workingData)
+                with cursorContext(self.logger) as cur:
+                    stmt = "UPDATE workflow.entity set mxd = %(mxd)s, completed = %(now)s WHERE packageid = %(pkgId)s;"
+                    cur.execute(stmt, {'mxd': mxdName, 'now':datetime.datetime.now(), 'pkgId': pkgId})
+                status = "OK"
+                self.outputDirs.append(dir)
+            except Exception as err:
+                status = "Failed after " + status
+                self.logger.logMessage(WARN, err.message)
+            finally:
+                #write status msg to db table
+                if pkgId:
+                    stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s;"
+                    with cursorContext(self.logger) as cur:
+                        cur.execute(stmt, (status, pkgId))
+        #pass the list on
+        arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
 
+## *****************************************************************************
+##class RefreshMapService(ArcpyTool):
+##    """Adds new vector data to map, creates service def draft, modifies it to replace, uploads and starts service,
+##       waits for service to start, gets list of layers, updates table with layer IDs. """
+##    def __init__(self):
+##        ArcpyTool.__init__(self)
+##        self._description = "Adds new vector data to map, creates service def draft, modifies it to replace, uploads and starts service, waits for service to start, gets list of layers, updates table with layer IDs."
+##        self._label = "Refresh Map Service"
+##        self._alias = "refreshMapServ"
+##
+##    def getParameterInfo(self):
+##        return super(RefreshMapService, self).getParameterInfo()
+##
+##    def updateParameters(self, parameters):
+##        """called whenever user edits parameter in tool GUI. Can adjust other parameters here. """
+##        super(RefreshMapService, self).updateParameters(parameters)
+##
+##    def updateMessages(self, parameters):
+##        """called after all of the update parameter calls. Call attach messages to parameters, usually warnings."""
+##        super(RefreshMapService, self).updateMessages(parameters)
+##
+##
+##    @errHandledWorkflowTask(taskName="Create service draft")
+##    def draftSD(self):
+##        """Stops service, creates SD draft, modifies it"""
+##        """http://maps3.lternet.edu:6080/arcgis/admin/services/Test/VectorData.MapServer/stop"""
+##        arcpy.env.workspace = os.path.dirname(pathToMapDoc)
+##        wksp = arcpy.env.workspace
+##        #stop service first
+##        with open(r"C:\pasta2geonis\arcgis_cred.txt") as f:
+##            cred = eval(f.readline())
+##        token = getToken(cred['username'], cred['password'])
+##        if token:
+##            serviceStopURL = "/arcgis/admin/services/Test/VectorData.MapServer/stop"
+##            # This request only needs the token and the response formatting parameter
+##            params = urllib.urlencode({'token': token, 'f': 'json'})
+##            headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+##            # Connect to URL and post parameters
+##            httpConn = httplib.HTTPConnection("localhost", "6080")
+##            httpConn.request("POST", serviceStopURL, params, headers)
+##            response = httpConn.getresponse()
+##            if (response.status != 200):
+##                self.logger.logMessage(WARN, "Error while attempting to stop service.")
+##            httpConn.close()
+##        else:
+##             self.logger.logMessage(WARN, "Error while attempting to get admin token.")
+##        mxd = arcpy.mapping.MapDocument(pathToMapDoc)
+##        sdDraft = wksp + os.sep + mapServInfo['service_name'] + ".sddraft"
+##        arcpy.mapping.CreateMapSDDraft(mxd, sdDraft, mapServInfo['service_name'],
+##        "ARCGIS_SERVER", pubConnection, False, "Test", mapServInfo['summary'], mapServInfo['tags'])
+##        del mxd
+##        #now we need to change one tag in the draft to indicate this is a replacement service
+##        draftXml = etree.parse(sdDraft)
+##        typeNode = draftXml.xpath("/SVCManifest/Type")
+##        if typeNode and etree.iselement(typeNode[0]):
+##            typeNode[0].text = "esriServiceDefinitionType_Replacement"
+##            with open(sdDraft,'w') as outfile:
+##                outfile.write(etree.tostring(draftXml, xml_declaration = False))
+##            #save backup for debug
+##            with open(sdDraft + '.bak', 'w') as bakfile:
+##                bakfile.write(etree.tostring(draftXml, xml_declaration = False))
+##        del typeNode, draftXml
+##
+##    @errHandledWorkflowTask(taskName="Replace service")
+##    def replaceService(self):
+##        """Creates SD, uploads to server"""
+##        arcpy.env.workspace = os.path.dirname(pathToMapDoc)
+##        wksp = arcpy.env.workspace
+##        mxd = arcpy.mapping.MapDocument(pathToMapDoc)
+##        sdDraft = wksp + os.sep + mapServInfo['service_name'] + ".sddraft"
+##        sdFile =  wksp + os.sep + mapServInfo['service_name'] + ".sd"
+##        if os.path.exists(sdFile):
+##            os.remove(sdFile)
+##        #by default, writes SD file to same loc as draft, then DELETES DRAFT
+##        arcpy.StageService_server(sdDraft)
+##        if os.path.exists(sdFile):
+##            arcpy.UploadServiceDefinition_server(in_sd_file = sdFile, in_server = pubConnection, in_startupType = 'STARTED')
+##        else:
+##            raise Exception("Staging failed to create %s" % (sdFile,))
+##
+##
+##    @errHandledWorkflowTask(taskName="Update search table")
+##    def updateLayerIds(self, dbconn, addedLayerNames):
+##        """Updates layer ids in search table with service info query"""
+##            #get list of layer names from service
+##        available = False
+##        tries = 0
+##        layerInfoJson = urllib2.urlopen(layerQueryURI)
+##        layerInfo = json.loads(layerInfoJson.readline())
+##        del layerInfoJson
+##        available = "error" not in layerInfo
+##        while not available and tries < 10:
+##            time.sleep(5)
+##            tries += 1
+##            layerInfoJson = urllib2.urlopen(layerQueryURI)
+##            layerInfo = json.loads(layerInfoJson.readline())
+##            available = "error" not in layerInfo
+##        self.logger.logMessage(DEBUG, "service conn attemps %d" % (tries,))
+##        # make list of dict with just name and id of feature layers
+##        layers = [{'name':lyr["name"],'id':lyr['id']} for lyr in layerInfo["layers"] if lyr["type"] == "Feature Layer"]
+##        # shorten names that have db and schema in the name
+##        for lyr in layers:
+##            while lyr['name'].startswith("geonis."):
+##                lyr['name'] = lyr['name'][7:]
+##        # update table with ids of layers
+##        # To completely refresh table, set all ids to null before using tool
+##        curs = dbconn.cursor()
+##        stmt = "SELECT id, layername FROM geonis.processed_items t1 WHERE t1.featureclass AND t1.serviceid is null;"
+##        curs.execute(stmt)
+##        rows = curs.fetchall()
+##        dbconn.commit()
+##        updateParams = []
+##        if rows:
+##            for row in rows:
+##                rowid, layername = row
+##                search = [lyr['id'] for lyr in layers if lyr['name'] == layername]
+##                if search:
+##                    updateParams.append((int(search[0]), int(rowid)))
+##        del rows
+##        # updateParams now has 0 or more tuples (layer id, db id)
+##        stmt2 = "UPDATE geonis.processed_items SET serviceid = %s WHERE id = %s;"
+##        for params in updateParams:
+##            curs.execute(stmt2, params)
+##        dbconn.commit()
+##        del curs
+##
+##
+##    def execute(self, parameters, messages):
+##        super(RefreshMapService, self).execute(parameters, messages)
+##        #bypass
+##        conn = None
+##        try:
+##            with open(dsnfile) as dsnf:
+##                dsnStr = dsnf.readline()
+##            conn = psycopg2.connect(dsn = dsnStr)
+##        except Exception as connerr:
+##            self.logger.logMessage(ERROR, connerr.message)
+##            exit(1)
+##        try:
+##            addedLayers = self.addVectorData(conn)
+##            if addedLayers:
+##                self.logger.logMessage(INFO, "The following added to map: %s" % (str(addedLayers),))
+##                self.draftSD()
+##                self.replaceService()
+##                #delay for service to start, get layer info
+##                time.sleep(20)
+##                self.updateLayerIds(conn, addedLayers)
+##            else:
+##                self.logger.logMessage(INFO, "No new vector data added to map.")
+##        except Exception as err:
+##            conn.rollback()
+##            self.logger.logMessage(ERROR, err.message)
+##        finally:
+##            conn.close()
+##
+##
 
 ## *****************************************************************************
 class Tool(ArcpyTool):
@@ -991,5 +1062,5 @@ toolclasses =  [UnpackPackages,
                 CheckSpatialData,
                 LoadVectorTypes,
                 LoadRasterTypes,
-                RefreshMapService ]
+                UpdateMXDs ]
 
