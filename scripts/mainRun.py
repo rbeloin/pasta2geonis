@@ -78,7 +78,7 @@ def testCheckData():
     params = tool.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
-    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1"
+    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\gi01001"
     params[3].value = None
     tool.execute(params,[])
     print params[3].value
@@ -101,7 +101,7 @@ def testLoadRaster():
     params = tool.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
-    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-tjv.2.1"
+    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\gi01001"
     params[3].value = None
     tool.execute(params,[])
     print params[3].value
@@ -123,11 +123,11 @@ def testRefresh():
 
 if __name__ == '__main__':
     arcpy.env.scratchWorkspace = scratchWS
-    #testUnpack()
+    testUnpack()
     #testCheckData()
     #testLoadVector()
     #testLoadRaster()
     #testUnpackAsTool()
     #testChain()
     #makeSettingsfile()
-    testRefresh()
+    #testRefresh()

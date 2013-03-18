@@ -187,7 +187,7 @@ def createEmlSubset(workDir, pathToEML):
         entDescNode = outputXMLtree.xpath("//" + spType + "/entityDescription")[0]
         workingData["entityDesc"] = entDescNode.text
     outputXMLtree.write(workDir + os.sep + "emlSubset.xml", xml_declaration = 'yes')
-    writeWorkingDataToXML(workDir + os.sep + "emlSubset.xml", workingData)
+    writeWorkingDataToXML(workDir, workingData)
     return workingData
 
 

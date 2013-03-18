@@ -23,7 +23,7 @@ from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase
-from geonis_pyconfig import pathToMetadataMerge, pathToRasterData, pathToRasterMosaicDatasets, dsnfile, pathToMapDoc, layerQueryURI, pubConnection, mapServInfo
+from geonis_pyconfig import pathToRasterData, pathToRasterMosaicDatasets, pathToStylesheets, dsnfile, pathToMapDoc, layerQueryURI, pubConnection, mapServInfo
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId, getToken
 from geonis_emlparse import createEmlSubset, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML
@@ -523,7 +523,7 @@ class LoadVectorTypes(ArcpyTool):
             self.logger.logMessage(WARN, "Supplemental metadata file missing in %s" % (workDir,))
             return
         arcpy.env.workspace = workDir
-        result = arcpy.XSLTransform_conversion(loadedFeatureClass, pathToMetadataMerge, "merged_metadata.xml", xmlSuppFile)
+        result = arcpy.XSLTransform_conversion(loadedFeatureClass, pathToStylesheets + os.sep + "metadataMerge.xsl", "merged_metadata.xml", xmlSuppFile)
         result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", loadedFeatureClass)
 
 
@@ -549,11 +549,13 @@ class LoadVectorTypes(ArcpyTool):
                 datatype = emldata["type"]
                 entityname = emldata["entityName"]
                 siteId, n, m = siteFromId(pkgId)
+                #TODO Do we need a way to specify this suffix?
+                scopeWithSuffix = siteId + "_main"
                 if 'shapefile' in datatype:
-                    loadedFeatureClass = self.loadShapefile(siteId, entityname, datafilePath)
+                    loadedFeatureClass = self.loadShapefile(scopeWithSuffix, entityname, datafilePath)
                     status = "Loaded shapefile"
                 elif 'kml' in datatype:
-                    loadedFeatureClass = self.loadKml(siteId, entityname, datafilePath)
+                    loadedFeatureClass = self.loadKml(scopeWithSuffix, entityname, datafilePath)
                     status = "Loaded from KML"
                 elif 'geodatabase' in datatype:
                     #TODO: copy vector from file geodatabase, for now, leave dir behind
@@ -618,18 +620,21 @@ class LoadRasterTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Prepare storage")
-    def prepareStorage(self, site, datapath, name):
+    def prepareStorage(self, site, datapath, name, dsSuffix = "main"):
         """ Create the directories necessary for storing the raw data, and return path to location.
             Also create mosaic dataset for site if needed.
+            Currently appending '_main' to scope for storage dir and mosaic dataset name (db terms
+            not allowed as ds name--I'm looking at you, and)
         """
-        siteStore = os.path.join(pathToRasterData,site)
+        dsName = site + '_' + dsSuffix
+        siteStore = os.path.join(pathToRasterData,dsName)
         #name, ext =  os.path.splitext( os.path.basename(datapath))
         storageLoc = siteStore + os.sep + name
         #if no site folder, make one
         if not os.path.exists(siteStore):
             os.mkdir(siteStore)
         #if no mosaic dataset, make it
-        siteMosDS = pathToRasterMosaicDatasets + os.sep + site
+        siteMosDS = pathToRasterMosaicDatasets + os.sep + dsName
         if not arcpy.Exists(siteMosDS):
             result = arcpy.Copy_management(pathToRasterMosaicDatasets + os.sep + "Template", siteMosDS)
         else:
@@ -639,27 +644,24 @@ class LoadRasterTypes(ArcpyTool):
         while os.path.isdir(storageLoc):
             storageLoc = "%s_%s" % (storageLoc, i)
             i += 1
-        return storageLoc
+        return storageLoc, siteMosDS
 
 
     @errHandledWorkflowTask(taskName="Copy raster")
     def copyRaster(self, path, storageLoc):
         """Copy raster data to permanent home. Path must lead to raster dataset of some type."""
-        self.logger.logMessage(INFO,"Copying %s to %s\n" % (path, storageLoc))
+        self.logger.logMessage(INFO,"Copying %s to %s" % (path, storageLoc))
         data = storageLoc + os.sep + os.path.basename(path)
         #name, ext = os.path.splitext(os.path.basename(path))
         result = arcpy.Copy_management(path, data)
-        while result.status < 4:
-            time.sleep(.5) #in case it's working in background
         if result.status != 4:
             raise Exception(WARN, "Copying %s to %s did not succeed. Status: %d\n" % (path, storageLoc, result.status))
         return data
 
     @errHandledWorkflowTask(taskName="Load raster")
-    def loadRaster(self, site, path, pId):
+    def loadRaster(self, siteMosDS, path, pId):
         """Load raster to mosaic dataset. Path must lead to raster dataset in permanent home."""
-        self.logger.logMessage(INFO,"Loading raster %s to %s\n" % (path, site))
-        siteMosDS = pathToRasterMosaicDatasets + os.sep + site
+        self.logger.logMessage(INFO,"Loading raster %s to %s" % (path, siteMosDS))
         rastype = "Raster Dataset"
         updatecs = "UPDATE_CELL_SIZES"
         updatebnd = "UPDATE_BOUNDARY"
@@ -695,7 +697,7 @@ class LoadRasterTypes(ArcpyTool):
             self.logger.logMessage(WARN, "Supplemental metadata file missing in %s" % (workDir,))
             return False
         arcpy.env.workspace = workDir
-        result = arcpy.XSLTransform_conversion(raster, pathToMetadataMerge, "merged_metadata.xml", xmlSuppFile)
+        result = arcpy.XSLTransform_conversion(raster, pathToStylesheets + os.sep + "metadataMerge.xsl", "merged_metadata.xml", xmlSuppFile)
         if result.status == 4:
             result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", raster)
         else:
@@ -709,9 +711,15 @@ class LoadRasterTypes(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Update entity table")
     def updateTable(self, location, pkid):
+        # get last three parts of location:  scope, entity dir, entity name
+        parts = location.split(os.sep)
+        if len(parts) > 3:
+            loc = os.sep.join(parts[-3:])
+        else:
+            loc = location[-50:]
         stmt = "UPDATE workflow.entity set storage = %s WHERE packageid = %s;"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, (location, pkid))
+            cur.execute(stmt, (loc, pkid))
 
 
     def execute(self, parameters, messages):
@@ -733,16 +741,18 @@ class LoadRasterTypes(ArcpyTool):
                     self.outputDirs.append(dir)
                     continue
                 siteId, n, m = siteFromId(pkgId)
-                rawDataLoc = self.prepareStorage(siteId, datafilePath, entityname)
+                rawDataLoc, mosaicDS = self.prepareStorage(siteId, datafilePath, entityname)
+                status = "Storage prepared"
                 os.mkdir(rawDataLoc)
                 raster = self.copyRaster(datafilePath, rawDataLoc)
-                updateTable(rawDataLoc, pkgId)
+                self.updateTable(raster, pkgId)
+                status = "Raster copied to permanent storage"
                 # amend metadata in place
                 if self.mergeMetadata(dir, raster):
                     status = "Metadata updated"
-                    result = self.loadRaster(siteId, raster, pkgId)
+                    result = self.loadRaster(mosaicDS, raster, pkgId)
                     if result != 4:
-                        status = "Load raster failed"
+                        status = "Load raster to mosaic failed"
                         self.logger.logMessage(WARN, "Loading %s did not succeed, with code %d.\n" % (raster, result))
                     else:
                         # add dir for next tool, in any case except exception
