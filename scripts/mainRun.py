@@ -78,7 +78,7 @@ def testCheckData():
     params = tool.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
-    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\gi01001"
+    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-and.9999.1.0;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.0;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.1;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.2"
     params[3].value = None
     tool.execute(params,[])
     print params[3].value
@@ -90,7 +90,7 @@ def testLoadVector():
     params = tool.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
-    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-rmb.1.1"
+    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-and.9999.1.0;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.0;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.1;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.2"
     params[3].value = None
     tool.execute(params,[])
     print params[3].value
@@ -112,22 +112,25 @@ def makeSettingsfile():
     #arcpy.env.scratchWorkspace = r"C:\Temp\scratch"
     arcpy.SaveSettings(envSettingsPath)
 
-def testRefresh():
-    tool = lno_geonis_wf.RefreshMapService()
+def testMXD():
+    tool = lno_geonis_wf.UpdateMXDs()
     tool._isRunningAsTool = False
     params = tool.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
+    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-and.9999.1.0;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.0;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.1;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.2"
+    params[3].value = None
     tool.execute(params,[])
+    print params[3].value
 
 
 if __name__ == '__main__':
     arcpy.env.scratchWorkspace = scratchWS
-    testUnpack()
+    #testUnpack()
     #testCheckData()
     #testLoadVector()
     #testLoadRaster()
     #testUnpackAsTool()
     #testChain()
     #makeSettingsfile()
-    #testRefresh()
+    #testMXD()

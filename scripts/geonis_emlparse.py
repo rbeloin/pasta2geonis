@@ -217,6 +217,8 @@ def createEmlSubsetWithNode(originalDir, newDirectory, whichSpatialNode, logger 
         workingData["spatialType"] = spType
         entNameNode = snode.xpath("//entityName")[0]
         workingData["entityName"] = entNameNode.text
+        #save the first 16 characters of entityName after non-alphanumeric removed
+        workingData["shortEntityName"] = stringToValidName(workingData["entityName"])
         entDescNode = snode.xpath("//entityDescription")[0]
         workingData["entityDesc"] = entDescNode.text
         tree.write(emlsubNew, xml_declaration = 'yes')
@@ -256,6 +258,14 @@ def runTransformation(xslPath = None, inputXMLPath = None):
             del transformer
     else:
         raise Exception("%s or %s not found." % (xslPath, inputXMLPath))
+
+
+def stringToValidName(inStr, spacesToUnderscore = False, max = 16):
+    """Return alphanumeric + underscore chars up to max"""
+    if spacesToUnderscore:
+        return ''.join(re.findall('\w+',inStr.replace(' ','_')))[:max]
+    else:
+        return ''.join(re.findall('\w+',inStr))[:max]
 
 
 ##def createInsertObj(emldata):

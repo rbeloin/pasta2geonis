@@ -27,7 +27,7 @@ from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase
 from geonis_pyconfig import pathToRasterData, pathToRasterMosaicDatasets, pathToStylesheets, dsnfile, pathToMapDoc, layerQueryURI, pubConnection, mapServInfo
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId, getToken
-from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML
+from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName
 from geonis_postgresql import cursorContext, getPackageInsert, getEntityInsert
 
 ## *****************************************************************************
@@ -93,7 +93,6 @@ class UnpackPackages(ArcpyTool):
                 self.logger.logMessage(WARN,"More than one EML file in %s ?" % (workDir,))
                 if len(xmlfiles) == 0:
                     raise Exception("No EML file in package.")
-        #TODO: rename eml file so as to avoid confusion with other xml files that may be unpacked
         emlfile = os.path.join(workDir, xmlfiles[0])
         pkgId, dataEntityNum = createEmlSubset(workDir, emlfile)
         for i in range(dataEntityNum):
@@ -136,15 +135,15 @@ class UnpackPackages(ArcpyTool):
         if dataloc is not None:
             try:
                 uri = HTMLParser().unescape(dataloc)
-                resourceName = emldata["entityName"].replace(' ','_').replace(':','-').replace('/','').replace('\\','')
-                sdatafile = os.path.join(workDir,resourceName)
+                sdatafile = os.path.join(workDir,emldata["shortEntityName"] + '.zip')
                 resource = urllib2.urlopen(uri)
                 with open(sdatafile,'wb') as dest:
                     copyfileobj(resource,dest)
             except Exception as e:
                 raise Exception(e.message)
             finally:
-                resource.close()
+                if resource:
+                    resource.close()
             if not os.path.exists(sdatafile):
                 raise Exception("spatial data file %s missing after download" % (sdatafile,))
             with ZipFile(sdatafile) as sdata:
@@ -166,7 +165,7 @@ class UnpackPackages(ArcpyTool):
         stmt, vals = getEntityInsert()
         vals["packageid"] = emldata["packageId"]
         vals["entityname"] = emldata["entityName"]
-        vals["entitydescription"] = emldata["entityDesc"]
+        vals["entitydescription"] = emldata["entityDesc"][:999]
         vals["status"] = "%s node found. Downloaded." % emldata["spatialType"]
         if emldata["spatialType"] == "spatialVector":
             vals["isvector"] = True
@@ -191,13 +190,12 @@ class UnpackPackages(ArcpyTool):
                 packageId, dataDirs = self.parseEML(workdir)
                 self.makePackageRec(packageId)
                 for dir in dataDirs:
+                    #loop over data package dirs, in most cases just one, if error keep trying others
                     try:
                         initWorkingData = readWorkingData(dir, self.logger)
                         if initWorkingData["spatialType"] is None:
                             self.logger.logMessage(WARN, "No EML spatial node. The data in %s with id %s will not be processed." % (pkg, packageId))
                             continue
-                        #update package table with spatial type
-                        #updateSpatialType(initWorkingData["packageId"], initWorkingData["spatialType"])
                         self.readURL(dir)
                         self.retrieveData(dir)
                         self.makeEntityRec(dir)
@@ -439,7 +437,8 @@ class CheckSpatialData(ArcpyTool):
                         emldata["type"] = "raster dataset"
                     if spatialType == GeoNISDataType.SPATIALVECTOR:
                         emldata["type"] = "vector"
-                except Exception as e:
+                except Exception as err:
+                    status = "Failed after %s with %s" % (status, err.message)
                     self.logger.logMessage(WARN, e.message)
                     reportText.append({"Status":"Failed"})
                     reportText.append({"Error message":e.message})
@@ -448,11 +447,11 @@ class CheckSpatialData(ArcpyTool):
                     reportText.append({"Status":"OK"})
                     self.outputDirs.append(dataDir)
                 finally:
-                    #write status msg to db table
-                    if pkgId:
-                        stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s;"
+                    #write status msg to workflow.entity. Need both packagid and entityname to be unique
+                    if pkgId and entityName:
+                        stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s and entityname = %s;"
                         with cursorContext(self.logger) as cur:
-                            cur.execute(stmt, (status, pkgId))
+                            cur.execute(stmt, (status[:499], pkgId, entityName))
                     writeWorkingDataToXML(dataDir, emldata, self.logger)
                     formattedReport = self.getReport(reportText)
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
@@ -488,29 +487,29 @@ class LoadVectorTypes(ArcpyTool):
         super(LoadVectorTypes, self).updateMessages(parameters)
 
     @errHandledWorkflowTask(taskName="Load shapefile")
-    def loadShapefile(self, site, name, path):
+    def loadShapefile(self, scope, name, path):
         """call feature class to feature class to copy shapefile to geodatabase"""
-        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, site, name))
+        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
         #if no dataset, make one
-        if not arcpy.Exists(os.path.join(geodatabase,site)):
+        if not arcpy.Exists(os.path.join(geodatabase,scope)):
             arcpy.CreateFeatureDataset_management(out_dataset_path = geodatabase,
-                                                out_name = site,
+                                                out_name = scope,
                                                 spatial_reference = self.spatialRef)
         arcpy.FeatureClassToFeatureClass_conversion(in_features = path,
-                                    out_path = os.path.join(geodatabase,site),
+                                    out_path = os.path.join(geodatabase,scope),
                                     out_name = name)
-        return geodatabase + os.sep + site + os.sep + name
+        return geodatabase + os.sep + scope + os.sep + name
 
 
     @errHandledWorkflowTask(taskName="Load KML")
-    def loadKml(self, site, name, path):
+    def loadKml(self, scope, name, path):
         """call KML to Layer tool to copy kml contents to file gdb, then loop over features
         and load each to geodatabase"""
-        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, site, name))
+        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
         #if no dataset, make one
-        if not arcpy.Exists(os.path.join(geodatabase,site)):
+        if not arcpy.Exists(os.path.join(geodatabase,scope)):
             arcpy.CreateFeatureDataset_management(out_dataset_path = geodatabase,
-                                                out_name = site,
+                                                out_name = scope,
                                                 spatial_reference = self.spatialRef)
         arcpy.KMLToLayer_conversion( in_kml_file = path,
                                     output_folder = os.path.dirname(path),
@@ -522,7 +521,7 @@ class LoadVectorTypes(ArcpyTool):
         if fclasses:
             feature = fclasses[0]
             fcpath = fgdb + os.sep + "Placemarks" + os.sep + feature
-            outDS = os.path.join(geodatabase, site)
+            outDS = os.path.join(geodatabase, scope)
             outF = name + '_' + feature
             arcpy.FeatureClassToFeatureClass_conversion(in_features = fcpath,
                                                         out_path = outDS,
@@ -533,7 +532,7 @@ class LoadVectorTypes(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Merge metadata")
     def mergeMetadata(self, workDir, loadedFeatureClass):
-        if not loadedFeatureClasses:
+        if not loadedFeatureClass:
             return
         createSuppXML(workDir)
         xmlSuppFile = workDir + os.sep + "emlSupp.xml"
@@ -546,19 +545,19 @@ class LoadVectorTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Update entity table")
-    def updateTable(self, workDir, loadedFeatureClass, pkid):
+    def updateTable(self, workDir, loadedFeatureClass, pkid, entityname):
         if not loadedFeatureClass:
             return
-        stmt = "UPDATE workflow.entity set storage = %s WHERE packageid = %s;"
+        scope_data = os.sep.join(loadedFeatureClass.split(os.sep)[-2:])
+        stmt = "UPDATE workflow.entity set storage = %s WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, (loadedFeatureClass, pkid))
+            cur.execute(stmt, (scope_data, pkid, entityname))
 
 
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
         for dir in self.inputDirs:
-            datafilePath, pkgId, datatype, entityname = ("" for i in range(4))
-            loadedFeatureClasses = []
+            datafilePath, pkgId, datatype, entityname, shortentityname = ("" for i in range(5))
             try:
                 status = "Entering load vector"
                 emldata = readWorkingData(dir, self.logger)
@@ -566,14 +565,15 @@ class LoadVectorTypes(ArcpyTool):
                 datafilePath = emldata["datafilePath"]
                 datatype = emldata["type"]
                 entityname = emldata["entityName"]
+                shortentityname = emldata["shortEntityName"]
                 siteId, n, m = siteFromId(pkgId)
                 #TODO Do we need a way to specify this suffix?
                 scopeWithSuffix = siteId + "_main"
                 if 'shapefile' in datatype:
-                    loadedFeatureClass = self.loadShapefile(scopeWithSuffix, entityname, datafilePath)
+                    loadedFeatureClass = self.loadShapefile(scopeWithSuffix, shortentityname, datafilePath)
                     status = "Loaded shapefile"
                 elif 'kml' in datatype:
-                    loadedFeatureClass = self.loadKml(scopeWithSuffix, entityname, datafilePath)
+                    loadedFeatureClass = self.loadKml(scopeWithSuffix, shortentityname, datafilePath)
                     status = "Loaded from KML"
                 elif 'geodatabase' in datatype:
                     #TODO: copy vector from file geodatabase, for now, leave dir behind
@@ -586,19 +586,19 @@ class LoadVectorTypes(ArcpyTool):
                 # amend metadata
                 self.mergeMetadata(dir, loadedFeatureClass)
                 # update table in geonis db
-                self.updateTable(dir, loadedFeatureClass, pkgId)
+                self.updateTable(dir, loadedFeatureClass, pkgId, entityname)
                 # add dir for next tool, in any case except exception
                 self.outputDirs.append(dir)
                 status = "Load with metadata complete"
             except Exception as err:
-                status = "Failed after " + status
+                status = "Failed after %s with %s" % (status, err.message)
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
             finally:
                 #write status msg to db table
-                if pkgId:
-                    stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s;"
+                if pkgId and entityname:
+                    stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s and entityname = %s;"
                     with cursorContext(self.logger) as cur:
-                        cur.execute(stmt, (status, pkgId))
+                        cur.execute(stmt, (status[:499], pkgId, entityname))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
@@ -728,16 +728,16 @@ class LoadRasterTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Update entity table")
-    def updateTable(self, location, pkid):
+    def updateTable(self, location, pkid, entityname):
         # get last three parts of location:  scope, entity dir, entity name
         parts = location.split(os.sep)
         if len(parts) > 3:
             loc = os.sep.join(parts[-3:])
         else:
             loc = location[-50:]
-        stmt = "UPDATE workflow.entity set storage = %s WHERE packageid = %s;"
+        stmt = "UPDATE workflow.entity set storage = %s WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, (loc, pkid))
+            cur.execute(stmt, (loc, pkid, entityname))
 
 
     def execute(self, parameters, messages):
@@ -754,16 +754,17 @@ class LoadRasterTypes(ArcpyTool):
                 datafilePath = emldata["datafilePath"]
                 datatype = emldata["type"]
                 entityname = emldata["entityName"]
+                shortentityname = emldata["shortEntityName"]
                 #check for supported type
                 if not self.isSupported(datatype):
                     self.outputDirs.append(dir)
                     continue
                 siteId, n, m = siteFromId(pkgId)
-                rawDataLoc, mosaicDS = self.prepareStorage(siteId, datafilePath, entityname)
+                rawDataLoc, mosaicDS = self.prepareStorage(siteId, datafilePath, shortentityname)
                 status = "Storage prepared"
                 os.mkdir(rawDataLoc)
                 raster = self.copyRaster(datafilePath, rawDataLoc)
-                self.updateTable(raster, pkgId)
+                self.updateTable(raster, pkgId, entityname)
                 status = "Raster copied to permanent storage"
                 # amend metadata in place
                 if self.mergeMetadata(dir, raster):
@@ -779,14 +780,14 @@ class LoadRasterTypes(ArcpyTool):
                 else:
                     self.logger.logMessage(WARN, "Metadata function returned False.\n")
             except Exception as err:
-                status = "Failed after " + status
+                status = "Failed after %s with %s" % (status, err.message)
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
             finally:
                 #write status msg to db table
                 if pkgId:
                     stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s;"
                     with cursorContext(self.logger) as cur:
-                        cur.execute(stmt, (status, pkgId))
+                        cur.execute(stmt, (status[:499], pkgId))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
@@ -818,9 +819,9 @@ class UpdateMXDs(ArcpyTool):
     def addVectorData(self, workDir, workingData):
         """   """
         # see if entry in entity table, and get storage path
-        stmt = "SELECT storage, status FROM workflow.entity WHERE packageid = %s;"
+        stmt = "SELECT storage, status FROM workflow.entity WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, workingData["packageId"])
+            cur.execute(stmt, (workingData["packageId"], workingData["entityName"]))
             rows = cur.fetchall()
             if rows:
                 store, status = rows[0]
@@ -831,7 +832,7 @@ class UpdateMXDs(ArcpyTool):
             self.logger.logMessage(WARN, "Status of layer being added to mxd: %s" % (status,))
         scope = siteFromId(workingData["packageId"])[0]
         # make layer name
-        layerName = workingData["entityName"].strip().replace(' ','_')[0:24]
+        layerName = stringToValidName(workingData["entityName"], spacesToUnderscore = True, max = 24)
         mxdName = scope + ".mxd"
         mxdfile = pathToMapDoc + os.sep + mxdName
         # check if layer is in mxd, and remove if found
@@ -845,10 +846,10 @@ class UpdateMXDs(ArcpyTool):
                 arcpy.mapping.RemoveLayer(layersFrame, layer)
                 mxd.save()
         #now add to map
-        feature = store
+        feature = geodatabase + os.sep + store
         scratchFld = arcpy.env.scratchFolder
         arcpy.MakeFeatureLayer_management(in_features = feature, out_layer = layerName)
-        lyrFile = scratchFld + os.sep + lname + ".lyr"
+        lyrFile = scratchFld + os.sep + layerName + ".lyr"
         arcpy.SaveToLayerFile_management(layerName, lyrFile)
         arcpy.mapping.AddLayer(layersFrame, arcpy.mapping.Layer(lyrFile))
         mxd.save()
@@ -856,7 +857,7 @@ class UpdateMXDs(ArcpyTool):
         writeWorkingDataToXML(workDir, workingData)
         os.remove(lyrFile)
         del layersFrame, mxd
-        return mxdName
+        return (layerName, mxdName)
 
 
     def execute(self, parameters, messages):
@@ -866,21 +867,25 @@ class UpdateMXDs(ArcpyTool):
                 status = "Entering add vector to MXD"
                 workingData = readWorkingData(dir, self.logger)
                 pkgId = workingData["packageId"]
-                mxdName = addVectorData(dir, workingData)
+                lName, mxdName = self.addVectorData(dir, workingData)
+                status = "Added to Map"
                 with cursorContext(self.logger) as cur:
-                    stmt = "UPDATE workflow.entity set mxd = %(mxd)s, completed = %(now)s WHERE packageid = %(pkgId)s;"
-                    cur.execute(stmt, {'mxd': mxdName, 'now':datetime.datetime.now(), 'pkgId': pkgId})
+                    stmt = """UPDATE workflow.entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s
+                     WHERE packageid = %(pkgId)s and entityname = %(entityname)s;
+                     """
+                    cur.execute(stmt,
+                     {'mxd': mxdName, 'layername' : lName, 'now' : datetime.datetime.now(), 'pkgId': pkgId, 'entityname' : workingData["entityName"]})
                 status = "OK"
                 self.outputDirs.append(dir)
             except Exception as err:
-                status = "Failed after " + status
+                status = "Failed after %s with %s" % (status, err.message)
                 self.logger.logMessage(WARN, err.message)
             finally:
                 #write status msg to db table
-                if pkgId:
-                    stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s;"
+                if pkgId and workingData:
+                    stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s  and entityname = %s;"
                     with cursorContext(self.logger) as cur:
-                        cur.execute(stmt, (status, pkgId))
+                        cur.execute(stmt, (status[:499], pkgId, workingData["entityName"]))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
