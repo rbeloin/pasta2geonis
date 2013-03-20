@@ -12,6 +12,7 @@ import sys, os, re
 import time, datetime
 import json
 import httplib, urllib, urllib2
+from HTMLParser import HTMLParser
 import psycopg2
 from shutil import copyfileobj
 from zipfile import ZipFile
@@ -26,8 +27,8 @@ from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase
 from geonis_pyconfig import pathToRasterData, pathToRasterMosaicDatasets, pathToStylesheets, dsnfile, pathToMapDoc, layerQueryURI, pubConnection, mapServInfo
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId, getToken
-from geonis_emlparse import createEmlSubset, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML
-from geonis_postgresql import cursorContext, getPackageInsert, getEntityInsert, updateSpatialType
+from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML
+from geonis_postgresql import cursorContext, getPackageInsert, getEntityInsert
 
 ## *****************************************************************************
 class UnpackPackages(ArcpyTool):
@@ -79,6 +80,7 @@ class UnpackPackages(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Parse EML")
     def parseEML(self, workDir):
+        retval = []
         emldatafile = os.path.join(workDir,tempMetadataFilename)
         pkgfiles = os.listdir(workDir)
         xmlfiles = [f for f in pkgfiles if f[-4:].lower() == '.xml']
@@ -93,8 +95,15 @@ class UnpackPackages(ArcpyTool):
                     raise Exception("No EML file in package.")
         #TODO: rename eml file so as to avoid confusion with other xml files that may be unpacked
         emlfile = os.path.join(workDir, xmlfiles[0])
-        workingData = createEmlSubset(workDir, emlfile)
-        return workingData
+        pkgId, dataEntityNum = createEmlSubset(workDir, emlfile)
+        for i in range(dataEntityNum):
+            parentDir = os.path.dirname(workDir)
+            path = parentDir + os.sep + pkgId + "." + str(i)
+            if not os.path.exists(path):
+                os.mkdir(path)
+            createEmlSubsetWithNode(workDir, path, i + 1, self.logger)
+            retval.append(path)
+        return (pkgId, retval)
 ##        emldata = parseAndPopulateEMLDicts(emlfile, self.logger)
 ##        with open(emldatafile,'w') as datafile:
 ##            datafile.write(repr(emldata))
@@ -126,9 +135,10 @@ class UnpackPackages(ArcpyTool):
         dataloc = emldata["physical/distribution/online/url"]
         if dataloc is not None:
             try:
-                resourceName = dataloc[dataloc.rindex("/") + 1 :]
+                uri = HTMLParser().unescape(dataloc)
+                resourceName = emldata["entityName"].replace(' ','_').replace(':','-').replace('/','').replace('\\','')
                 sdatafile = os.path.join(workDir,resourceName)
-                resource = urllib2.urlopen(dataloc)
+                resource = urllib2.urlopen(uri)
                 with open(sdatafile,'wb') as dest:
                     copyfileobj(resource,dest)
             except Exception as e:
@@ -158,6 +168,10 @@ class UnpackPackages(ArcpyTool):
         vals["entityname"] = emldata["entityName"]
         vals["entitydescription"] = emldata["entityDesc"]
         vals["status"] = "%s node found. Downloaded." % emldata["spatialType"]
+        if emldata["spatialType"] == "spatialVector":
+            vals["isvector"] = True
+        elif emldata["spatialType"] == "spatialRaster":
+            vals["israster"] = True
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, vals)
 
@@ -174,20 +188,24 @@ class UnpackPackages(ArcpyTool):
         for pkg in allpackages:
             try:
                 workdir = self.unzipPkg(pkg, outputDir)
-                initWorkingData = self.parseEML(workdir)
-                self.makePackageRec(initWorkingData["packageId"])
-                if initWorkingData["spatialType"] is None:
-                    self.logger.logMessage(WARN, "No EML spatial node. The data in %s will not be processed." % (pkg,))
-                    continue
-                #update package table with spatial type
-                updateSpatialType(initWorkingData["packageId"], initWorkingData["spatialType"])
-                self.readURL(workdir)
-                self.retrieveData(workdir)
-                self.makeEntityRec(workdir)
+                packageId, dataDirs = self.parseEML(workdir)
+                self.makePackageRec(packageId)
+                for dir in dataDirs:
+                    try:
+                        initWorkingData = readWorkingData(dir, self.logger)
+                        if initWorkingData["spatialType"] is None:
+                            self.logger.logMessage(WARN, "No EML spatial node. The data in %s with id %s will not be processed." % (pkg, packageId))
+                            continue
+                        #update package table with spatial type
+                        #updateSpatialType(initWorkingData["packageId"], initWorkingData["spatialType"])
+                        self.readURL(dir)
+                        self.retrieveData(dir)
+                        self.makeEntityRec(dir)
+                        carryForwardList.append(dir)
+                    except Exception as err:
+                        self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (dir, err.message))
             except Exception as err:
                 self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (pkg, err.message))
-            else:
-                carryForwardList.append(workdir)
         arcpy.SetParameterAsText(4,  ";".join(carryForwardList))
 
 

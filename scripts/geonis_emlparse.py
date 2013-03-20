@@ -13,6 +13,7 @@ import os, re
 import time, datetime
 from copy import deepcopy
 from lxml import etree
+from logging import WARN
 from geonis_helpers import siteFromId
 from geonis_pyconfig import pathToStylesheets
 
@@ -45,7 +46,8 @@ def main():
     #writeWorkingDataToXML(r"Z:\docs\local\git\pasta2geonis_sg\emlSubset.xml",dat)
     #print str(readWorkingData(r"Z:\docs\local\git\pasta2geonis_sg\emlSubset.xml", None))
     #createEmlSubset(r"Z:\docs\local\git\pasta2geonis_sg",r"Z:\docs\local\geonis_testdata\downloaded_pkgs\gi01001.xml")
-    print(readFromEmlSubset(r"Z:\docs\local\git\pasta2geonis_sg","//physical/distribution/online/url"))
+    #print(readFromEmlSubset(r"Z:\docs\local\git\pasta2geonis_sg","//physical/distribution/online/url"))
+    createEmlSubsetWithNode(r"Z:\docs\local\geonis_testdata\tmp1",r"Z:\docs\local\geonis_testdata\tmp2",2)
 
 
 emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
@@ -169,26 +171,61 @@ emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
 
 def createEmlSubset(workDir, pathToEML):
     """ Run XSL transformation on EML with emlSubset.xsl to generate emlSubset.xml.
-        Also, make workingData object with packageId, spatial type, and entity info,
-        and push it into newly created XML. Returns the workingData object. If spatialType
-        is None, not spatial data. """
+        Also, make workingData object with packageId, spatial type,
+        and push it into newly created XML. Returns a tubple with the packageId and the number of spatialType nodes found.
+    """
     stylesheet = pathToStylesheets + os.sep + "emlSubset.xsl"
     outputXMLtree = runTransformation(xslPath = stylesheet, inputXMLPath = pathToEML)
-    workingData = {"packageId": None, "spatialType" : None, "entityName" : None, "entityDesc" : None }
+    workingData = {"packageId": None, "spatialType" : None, "entityName" : None, "entityDesc" : None, "dataEntityNum" : 0 }
     top = outputXMLtree.getroot()
     pId = top.get("packageId")
     workingData["packageId"] = pId
     spTypeHit = outputXMLtree.xpath("//*[local-name()='spatialRaster' or local-name()='spatialVector']")
-    if spTypeHit:
-        spType = spTypeHit[0].tag
-        workingData["spatialType"] = spType
-        entNameNode = outputXMLtree.xpath("//" + spType + "/entityName")[0]
-        workingData["entityName"] = entNameNode.text
-        entDescNode = outputXMLtree.xpath("//" + spType + "/entityDescription")[0]
-        workingData["entityDesc"] = entDescNode.text
+    workingData["dataEntityNum"] = len(spTypeHit)
+##    if len(spTypeHit) == 1:
+##        spType = spTypeHit[0].tag
+##        workingData["spatialType"] = spType
+##        entNameNode = outputXMLtree.xpath("//" + spType + "/entityName")[0]
+##        workingData["entityName"] = entNameNode.text
+##        entDescNode = outputXMLtree.xpath("//" + spType + "/entityDescription")[0]
+##        workingData["entityDesc"] = entDescNode.text
     outputXMLtree.write(workDir + os.sep + "emlSubset.xml", xml_declaration = 'yes')
     writeWorkingDataToXML(workDir, workingData)
-    return workingData
+    return (workingData["packageId"], workingData["dataEntityNum"])
+
+def createEmlSubsetWithNode(originalDir, newDirectory, whichSpatialNode, logger = None):
+    """Duplicate the emlSubset file in originalDir into newDirectory, keeping
+       only the spatial node indicated by the number whichSpatialNode.
+       Then, fill some entity info into workingData """
+    emlsub = originalDir + os.sep + "emlSubset.xml"
+    emlsubNew = newDirectory + os.sep + "emlSubset.xml"
+    workingData = readWorkingData(originalDir)
+    expectedNumber = int(workingData["dataEntityNum"])
+    tree = etree.parse(emlsub)
+    count = len(tree.xpath("//node()[local-name()='spatialRaster' or local-name()='spatialVector']"))
+    if whichSpatialNode > count or count != expectedNumber:
+        if logger:
+            logger.logMessage(WARN, "In %s: %d spatial nodes were found, expected %d" % (originalDir, count, expectedNumber))
+    xpth = "//node()[(local-name()='spatialRaster' or local-name()='spatialVector')][position() != " + str(whichSpatialNode) + "]"
+    spTypeHit = tree.xpath(xpth)
+    for rnode in spTypeHit:
+        rnode.getparent().remove(rnode)
+    spTypeHit = tree.xpath("//node()[local-name()='spatialRaster' or local-name()='spatialVector']")
+    if len(spTypeHit) == 1:
+        snode = spTypeHit[0]
+        spType = snode.tag
+        workingData["spatialType"] = spType
+        entNameNode = snode.xpath("//entityName")[0]
+        workingData["entityName"] = entNameNode.text
+        entDescNode = snode.xpath("//entityDescription")[0]
+        workingData["entityDesc"] = entDescNode.text
+        tree.write(emlsubNew, xml_declaration = 'yes')
+        writeWorkingDataToXML(newDirectory, workingData)
+    else:
+        if logger:
+            logger.logMessage(WARN, "In %s: %d spatial nodes were left, expecting 1" % (originalDir, len(spTypeHit)))
+
+
 
 
 def createSuppXML(workDir):
@@ -207,11 +244,14 @@ def runTransformation(xslPath = None, inputXMLPath = None):
     if os.path.isfile(xslPath) and os.path.isfile(inputXMLPath):
         try:
             transformer = etree.XSLT(etree.parse(xslPath))
-            return transformer(etree.parse(inputXMLPath))
+            emltree = etree.parse(inputXMLPath)
+            return transformer(emltree)
         except etree.LxmlSyntaxError as syntaxErr:
-           raise Exception("Syntax/parse error transforming %s with %s. %s" % (inputXMLPath, xslPath, synctaxErr.message))
+            msg = syntaxErr.message
+            raise Exception("Syntax/parse error transforming %s with %s. %s" % (inputXMLPath, xslPath, msg))
         except etree.XSLTerror as transformErr:
-            raise Exception("XSLT error transforming %s with %s. %s" % (inputXMLPath, xslPath, transformErr.message))
+            msg = transformer.message
+            raise Exception("XSLT error transforming %s with %s. %s" % (inputXMLPath, xslPath, msg))
         finally:
             del transformer
     else:

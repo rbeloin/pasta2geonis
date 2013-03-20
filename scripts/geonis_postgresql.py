@@ -23,22 +23,22 @@ def getPackageInsert():
     obj = {'packageid':'','scope':'','identifier':0,'revision':0,'downloaded':datetime.datetime.now()}
     return (stmt,obj)
 
-def updateSpatialType(packageId, sType):
-    if sType == "spatialRaster":
-        stmt = "UPDATE workflow.package set israster = TRUE where packageid = %s;"
-    elif sType == "spatialVector":
-        stmt = "UPDATE workflow.package set isvector = TRUE where packageid = %s;"
-    else:
-        return
-    with cursorContext() as cur:
-        cur.execute(stmt, (packageId,))
+##def updateSpatialType(packageId, sType):
+##    if sType == "spatialRaster":
+##        stmt = "UPDATE workflow.package set israster = TRUE where packageid = %s;"
+##    elif sType == "spatialVector":
+##        stmt = "UPDATE workflow.package set isvector = TRUE where packageid = %s;"
+##    else:
+##        return
+##    with cursorContext() as cur:
+##        cur.execute(stmt, (packageId,))
 
 def getEntityInsert():
     """Returns (statement, valueObject) where valueObject is dict with column names and defaults. Fill in values
        and execute statement. """
-    stmt = """INSERT INTO workflow.entity (packageid, entityname, entitydescription, status)
-     VALUES(%(packageid)s, %(entityname)s, %(entitydescription)s, %(status)s);"""
-    obj = {'packageid':'','entityname':'','entitydescription':'', 'status':''}
+    stmt = """INSERT INTO workflow.entity (packageid, entityname, israster, isvector, entitydescription, status)
+     VALUES(%(packageid)s, %(entityname)s, %(israster)s, %(isvector)s, %(entitydescription)s, %(status)s);"""
+    obj = {'packageid':'', 'entityname':'', 'israster':False, 'isvector':False, 'entitydescription':'', 'status':''}
     return (stmt,obj)
 
 @contextmanager
