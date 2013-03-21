@@ -827,9 +827,9 @@ class UpdateMXDs(ArcpyTool):
                 store, status = rows[0]
             else:
                 raise Exception("Record not in entity table")
-        # get list of layer names from mxd
-        if "complete" not in status:
-            self.logger.logMessage(WARN, "Status of layer being added to mxd: %s" % (status,))
+        # TODO: this is not robust, can pick up status from tool that skips it
+        #if "complete" not in status:
+        #    self.logger.logMessage(WARN, "Status of layer being added to mxd: %s" % (status,))
         scope = siteFromId(workingData["packageId"])[0]
         # make layer name
         layerName = stringToValidName(workingData["entityName"], spacesToUnderscore = True, max = 24)
@@ -866,26 +866,29 @@ class UpdateMXDs(ArcpyTool):
             try:
                 status = "Entering add vector to MXD"
                 workingData = readWorkingData(dir, self.logger)
-                pkgId = workingData["packageId"]
-                lName, mxdName = self.addVectorData(dir, workingData)
-                status = "Added to Map"
-                with cursorContext(self.logger) as cur:
-                    stmt = """UPDATE workflow.entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s
-                     WHERE packageid = %(pkgId)s and entityname = %(entityname)s;
-                     """
-                    cur.execute(stmt,
-                     {'mxd': mxdName, 'layername' : lName, 'now' : datetime.datetime.now(), 'pkgId': pkgId, 'entityname' : workingData["entityName"]})
-                status = "OK"
+                if workingData["spatialType"] == "spatialVector":
+                    pkgId = workingData["packageId"]
+                    lName, mxdName = self.addVectorData(dir, workingData)
+                    status = "Added to Map"
+                    with cursorContext(self.logger) as cur:
+                        stmt = """UPDATE workflow.entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s
+                         WHERE packageid = %(pkgId)s and entityname = %(entityname)s;
+                         """
+                        cur.execute(stmt,
+                         {'mxd': mxdName, 'layername' : lName, 'now' : datetime.datetime.now(), 'pkgId': pkgId, 'entityname' : workingData["entityName"]})
+                    status = "OK"
+                else:
+                    status = "Carried forward to next tool"
                 self.outputDirs.append(dir)
             except Exception as err:
                 status = "Failed after %s with %s" % (status, err.message)
                 self.logger.logMessage(WARN, err.message)
             finally:
                 #write status msg to db table
-                if pkgId and workingData:
+                if workingData:
                     stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s  and entityname = %s;"
                     with cursorContext(self.logger) as cur:
-                        cur.execute(stmt, (status[:499], pkgId, workingData["entityName"]))
+                        cur.execute(stmt, (status[:499], workingData["packageId"], workingData["entityName"]))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
