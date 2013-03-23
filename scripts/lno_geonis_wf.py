@@ -31,6 +31,130 @@ from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorki
 from geonis_postgresql import cursorContext, getPackageInsert, getEntityInsert
 
 ## *****************************************************************************
+class QueryPasta(ArcpyTool):
+    """  """
+    def __init__(self):
+        ArcpyTool.__init__(self)
+        self._description = """Makes requests via PASTA REST API to get the latest revisions of all packages,
+                            then makes inserts into workflow.package table, checks eml for spatial nodes,
+                            and records the number found. Where spatial nodes > 0, downloads the EML."""
+        self._label = "S1. Query PASTA"
+        self._alias = "query_pasta"
+
+    def getParameterInfo(self):
+        params = super(QueryPasta, self).getParameterInfo()
+        params.append(arcpy.Parameter(
+                        displayName = "Directory of Packages",
+                        name = "in_dir",
+                        datatype = "Folder",
+                        parameterType = "Required",
+                        direction = "Input"))
+        params.append(arcpy.Parameter(
+                        displayName = "Directory of Packages",
+                        name = "out_dir",
+                        datatype = "Folder",
+                        parameterType = "Derived",
+                        direction = "Output"))
+        return params
+
+    def updateParameters(self, parameters):
+        """called whenever user edits parameter in tool GUI. Can adjust other parameters here. """
+        super(QueryPasta, self).updateParameters(parameters)
+
+    def updateMessages(self, parameters):
+        """called after all of the update parameter calls. Call attach messages to parameters, usually warnings."""
+        super(QueryPasta, self).updateMessages(parameters)
+
+    @errHandledWorkflowTask(taskName="Get packageId list")
+    def getPackageIds(self, sitecode):
+        """ """
+        baseURL = "http://pasta.lternet.edu/package/eml"
+        retval = []
+        scope = "knb-lter-" + sitecode
+        #get list of identifiers
+        self.logger.logMessage(INFO, "Getting all packages in %s" % (scope,))
+        identUrl = "%s/%s" % (baseURL, scope)
+        resp = urllib2.urlopen(identUrl)
+        if resp.getcode() == 200:
+            identList = [int(line) for line in resp.readlines()]
+        else:
+            return retval
+        del resp
+        for i in identList:
+            revUrl = "%s/%s/%s" % (baseURL, scope, str(i))
+            resp = urllib2.urlopen(revUrl)
+            if resp.getcode() == 200:
+                parts = (scope,str(i),str(max([int(line) for line in resp.readlines()])))
+                retval.append('.'.join(parts))
+            del resp
+            time.sleep(1)
+        return retval
+
+
+    @errHandledWorkflowTask(taskName="Inserts into package table")
+    def packageTableInsert(self, pkidList):
+        stmt = """ INSERT INTO workflow.package (packageid) VALUES (%(packageid)s) EXCEPT SELECT packageid FROM workflow.package; """
+        with cursorContext(self.logger) as cur:
+            dictTupe = tuple([{'packageid':p} for p in pkidList])
+            cur.executemany(stmt, dictTupe)
+        stmt2 = """UPDATE workflow.package SET scope = substring(packageid from 10 for 3),
+                  identifier = CAST( substring(packageid from '\d+') as integer),
+                  revision = CAST (substring (packageid from '\d+$') as integer)
+                  WHERE scope is null;"""
+        with cursorContext(self.logger) as cur:
+            cur.execute(stmt2)
+
+
+    @errHandledWorkflowTask(taskName="Finding spatial data")
+    def findSpatialData(self):
+        """ Look at eml for spatial nodes, record number in workflow.package """
+        baseURL = "http://pasta.lternet.edu/package/metadata/eml/knb-lter-"
+        stmt = """SELECT packageid, scope, identifier, revision FROM workflow.package
+         WHERE spatialcount = -1 and scope = 'knz' and identifier > 75 and identifier < 211;"""
+        with cursorContext(self.logger) as cur:
+            cur.execute(stmt)
+            rows = cur.fetchall()
+        print "found ", len(rows)
+        for row in rows:
+            count = 0
+            pid, scope, ident, rev = row
+            url = "%s%s/%s/%s" % (baseURL, scope, ident, rev)
+            try:
+                resp = urllib2.urlopen(url)
+            except urllib2.HTTPError:
+                continue
+            if resp.getcode() == 200:
+                eml = resp.readlines()
+                for line in eml:
+                    if "<spatialVector" in line or "<spatialRaster" in line:
+                        count += 1
+                #update table with spatial count
+                print row, count
+                stmt = """UPDATE workflow.package SET spatialcount = %s WHERE packageid = %s"""
+                with cursorContext(self.logger) as cur:
+                    cur.execute(stmt, (count, pid))
+            del resp
+
+
+
+    def execute(self, parameters, messages):
+        """
+        """
+        super(QueryPasta, self).execute(parameters, messages)
+        pkgDir = arcpy.GetParameterAsText(2)
+        try:
+            #pids = self.getPackageIds('knz')
+            pids = ['knb-lter-knz.2.7', 'knb-lter-knz.3.9', 'knb-lter-knz.4.8', 'knb-lter-knz.5.7', 'knb-lter-knz.6.7', 'knb-lter-knz.7.7', 'knb-lter-knz.9.8', 'knb-lter-knz.10.7', 'knb-lter-knz.11.7', 'knb-lter-knz.12.7', 'knb-lter-knz.13.7', 'knb-lter-knz.14.7', 'knb-lter-knz.16.7', 'knb-lter-knz.17.6', 'knb-lter-knz.18.6', 'knb-lter-knz.19.6', 'knb-lter-knz.23.6', 'knb-lter-knz.24.6', 'knb-lter-knz.25.6', 'knb-lter-knz.26.6', 'knb-lter-knz.27.6', 'knb-lter-knz.28.6', 'knb-lter-knz.29.6', 'knb-lter-knz.30.6', 'knb-lter-knz.32.6', 'knb-lter-knz.33.6', 'knb-lter-knz.34.6', 'knb-lter-knz.37.6', 'knb-lter-knz.38.6', 'knb-lter-knz.46.4', 'knb-lter-knz.47.4', 'knb-lter-knz.49.4', 'knb-lter-knz.50.4', 'knb-lter-knz.51.4', 'knb-lter-knz.55.6', 'knb-lter-knz.57.4', 'knb-lter-knz.58.4', 'knb-lter-knz.59.4', 'knb-lter-knz.60.4', 'knb-lter-knz.61.4', 'knb-lter-knz.63.4', 'knb-lter-knz.64.4', 'knb-lter-knz.66.4', 'knb-lter-knz.68.4', 'knb-lter-knz.70.4', 'knb-lter-knz.76.6', 'knb-lter-knz.77.6', 'knb-lter-knz.95.4', 'knb-lter-knz.200.3', 'knb-lter-knz.201.3', 'knb-lter-knz.202.3', 'knb-lter-knz.205.2', 'knb-lter-knz.210.1', 'knb-lter-knz.211.2', 'knb-lter-knz.222.2', 'knb-lter-knz.230.1', 'knb-lter-knz.240.2', 'knb-lter-knz.245.2']
+            print len(pids)
+            self.packageTableInsert(pids)
+            self.findSpatialData()
+        except Exception as err:
+            self.logger.logMessage(WARN, err.message)
+        #pass the package download dir to workflow
+        arcpy.SetParameterAsText(3, pkgDir)
+
+
+## *****************************************************************************
 class UnpackPackages(ArcpyTool):
     def __init__(self):
         ArcpyTool.__init__(self)

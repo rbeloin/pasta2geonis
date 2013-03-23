@@ -59,6 +59,16 @@ def testUnpackAsTool():
     and there may be other subtle differences when running as a tool.
     However, the code can be stepped through, so this is useful.
     """
+def testQuery():
+    unpack = lno_geonis_wf.QueryPasta()
+    unpack._isRunningAsTool = False
+    params = unpack.getParameterInfo()
+    params[0].value = True
+    params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
+    params[2].value = r"Z:\docs\local\geonis_testdata\downloaded_pkgs"
+    unpack.execute(params,[])
+
+
 
 def testUnpack():
     unpack = lno_geonis_wf.UnpackPackages()
@@ -126,6 +136,7 @@ def testMXD():
 
 if __name__ == '__main__':
     arcpy.env.scratchWorkspace = scratchWS
+    testQuery()
     #testUnpack()
     #testCheckData()
     #testLoadVector()
