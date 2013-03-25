@@ -65,18 +65,37 @@ class QueryPasta(ArcpyTool):
         """called after all of the update parameter calls. Call attach messages to parameters, usually warnings."""
         super(QueryPasta, self).updateMessages(parameters)
 
-    @errHandledWorkflowTask(taskName="Get packageId list")
-    def getPackageIds(self, sitecode):
+    @errHandledWorkflowTask(taskName="Get scope list")
+    def getScopeList(self):
         """ """
+        URL = "http://pasta.lternet.edu/package/eml"
+        try:
+            resp = urllib2.urlopen(URL)
+            if resp.getcode() == 200:
+                return [scope.strip() for scope in resp.readlines() if scope.startswith('knb-lter-')]
+            else:
+                self.logger.logMessage(WARN, "Bad response from %s" % (URL,))
+                return []
+        except urllib2.HTTPError:
+            self.logger.logMessage(WARN, "Bad response from %s" % (URL,))
+            return []
+        finally:
+            if resp:
+                del resp
+
+
+    @errHandledWorkflowTask(taskName="Get packageId list")
+    def getPackageIds(self, scope):
+        """ Returns list of latest revision only of packages in the given scope. """
         baseURL = "http://pasta.lternet.edu/package/eml"
         retval = []
-        scope = "knb-lter-" + sitecode
         #get list of identifiers
         self.logger.logMessage(INFO, "Getting all packages in %s" % (scope,))
         identUrl = "%s/%s" % (baseURL, scope)
+        print identUrl
         resp = urllib2.urlopen(identUrl)
         if resp.getcode() == 200:
-            identList = [int(line) for line in resp.readlines()]
+            identList = [int(line.strip()) for line in resp.readlines() if line.strip().isdigit()]
         else:
             return retval
         del resp
@@ -84,10 +103,10 @@ class QueryPasta(ArcpyTool):
             revUrl = "%s/%s/%s" % (baseURL, scope, str(i))
             resp = urllib2.urlopen(revUrl)
             if resp.getcode() == 200:
-                parts = (scope,str(i),str(max([int(line) for line in resp.readlines()])))
+                parts = (scope, str(i), str(max([int(line.strip()) for line in resp.readlines() if line.strip().isdigit()])))
                 retval.append('.'.join(parts))
             del resp
-            time.sleep(1)
+            time.sleep(.2)
         return retval
 
 
@@ -106,19 +125,18 @@ class QueryPasta(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Finding spatial data")
-    def findSpatialData(self):
+    def findSpatialData(self, scope):
         """ Look at eml for spatial nodes, record number in workflow.package """
-        baseURL = "http://pasta.lternet.edu/package/metadata/eml/knb-lter-"
-        stmt = """SELECT packageid, scope, identifier, revision FROM workflow.package
-         WHERE spatialcount = -1 and scope = 'knz' and identifier > 75 and identifier < 211;"""
+        baseURL = "http://pasta.lternet.edu/package/metadata/eml"
+        stmt = """SELECT * FROM workflow.vw_newpackage WHERE scope = %s;"""
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt)
+            cur.execute(stmt, (scope[9:],))
             rows = cur.fetchall()
         print "found ", len(rows)
         for row in rows:
             count = 0
-            pid, scope, ident, rev = row
-            url = "%s%s/%s/%s" % (baseURL, scope, ident, rev)
+            pid, site, ident, rev = row
+            url = "%s/%s/%s/%s" % (baseURL, scope, ident, rev)
             try:
                 resp = urllib2.urlopen(url)
             except urllib2.HTTPError:
@@ -136,22 +154,55 @@ class QueryPasta(ArcpyTool):
             del resp
 
 
+    @errHandledWorkflowTask(taskName="Downloading EML")
+    def getEML(self, scope, packageDir):
+        """ Query db to get list of packages with spatial, where eml not yet downloaded """
+        baseURL = "http://pasta.lternet.edu/package/metadata/eml"
+        stmt = """SELECT * FROM workflow.vw_newspatialpackage WHERE scope = %s;"""
+        with cursorContext(self.logger) as cur:
+            cur.execute(stmt, (scope[9:],))
+            rows = cur.fetchall()
+        for row in rows:
+            pid, site, ident, rev = row
+            url = "%s/%s/%s/%s" % (baseURL, scope, ident, rev)
+            try:
+                resp = urllib2.urlopen(url)
+            except urllib2.HTTPError:
+                continue
+            if resp.getcode() == 200:
+                with open(os.path.join(packageDir, pid + '.xml'), 'w') as emlfile:
+                    emlfile.writelines(resp.readlines())
+                #update table with downloaded timestamp
+                stmt = """UPDATE workflow.package SET downloaded = %s WHERE packageid = %s"""
+                with cursorContext(self.logger) as cur:
+                    cur.execute(stmt, (datetime.datetime.now(), pid))
+            else:
+                self.logger.logMessage(WARN, "EML not found for %s" % (url,))
+            del row
+        del rows
+
+
 
     def execute(self, parameters, messages):
         """
         """
         super(QueryPasta, self).execute(parameters, messages)
-        pkgDir = arcpy.GetParameterAsText(2)
-        try:
-            #pids = self.getPackageIds('knz')
-            pids = ['knb-lter-knz.2.7', 'knb-lter-knz.3.9', 'knb-lter-knz.4.8', 'knb-lter-knz.5.7', 'knb-lter-knz.6.7', 'knb-lter-knz.7.7', 'knb-lter-knz.9.8', 'knb-lter-knz.10.7', 'knb-lter-knz.11.7', 'knb-lter-knz.12.7', 'knb-lter-knz.13.7', 'knb-lter-knz.14.7', 'knb-lter-knz.16.7', 'knb-lter-knz.17.6', 'knb-lter-knz.18.6', 'knb-lter-knz.19.6', 'knb-lter-knz.23.6', 'knb-lter-knz.24.6', 'knb-lter-knz.25.6', 'knb-lter-knz.26.6', 'knb-lter-knz.27.6', 'knb-lter-knz.28.6', 'knb-lter-knz.29.6', 'knb-lter-knz.30.6', 'knb-lter-knz.32.6', 'knb-lter-knz.33.6', 'knb-lter-knz.34.6', 'knb-lter-knz.37.6', 'knb-lter-knz.38.6', 'knb-lter-knz.46.4', 'knb-lter-knz.47.4', 'knb-lter-knz.49.4', 'knb-lter-knz.50.4', 'knb-lter-knz.51.4', 'knb-lter-knz.55.6', 'knb-lter-knz.57.4', 'knb-lter-knz.58.4', 'knb-lter-knz.59.4', 'knb-lter-knz.60.4', 'knb-lter-knz.61.4', 'knb-lter-knz.63.4', 'knb-lter-knz.64.4', 'knb-lter-knz.66.4', 'knb-lter-knz.68.4', 'knb-lter-knz.70.4', 'knb-lter-knz.76.6', 'knb-lter-knz.77.6', 'knb-lter-knz.95.4', 'knb-lter-knz.200.3', 'knb-lter-knz.201.3', 'knb-lter-knz.202.3', 'knb-lter-knz.205.2', 'knb-lter-knz.210.1', 'knb-lter-knz.211.2', 'knb-lter-knz.222.2', 'knb-lter-knz.230.1', 'knb-lter-knz.240.2', 'knb-lter-knz.245.2']
-            print len(pids)
-            self.packageTableInsert(pids)
-            self.findSpatialData()
-        except Exception as err:
-            self.logger.logMessage(WARN, err.message)
+        packageDir = self.getParamAsText(parameters,2)
+        scopes = self.getScopeList()
+        for scope in scopes:
+            if not scope in ['knb-lter-knz']:
+                continue
+            try:
+                pids = self.getPackageIds(scope)
+                #pids = ['knb-lter-knz.2.7', 'knb-lter-knz.3.9', 'knb-lter-knz.4.8', 'knb-lter-knz.5.7', 'knb-lter-knz.6.7', 'knb-lter-knz.7.7', 'knb-lter-knz.9.8', 'knb-lter-knz.10.7', 'knb-lter-knz.11.7', 'knb-lter-knz.12.7', 'knb-lter-knz.13.7', 'knb-lter-knz.14.7', 'knb-lter-knz.16.7', 'knb-lter-knz.17.6', 'knb-lter-knz.18.6', 'knb-lter-knz.19.6', 'knb-lter-knz.23.6', 'knb-lter-knz.24.6', 'knb-lter-knz.25.6', 'knb-lter-knz.26.6', 'knb-lter-knz.27.6', 'knb-lter-knz.28.6', 'knb-lter-knz.29.6', 'knb-lter-knz.30.6', 'knb-lter-knz.32.6', 'knb-lter-knz.33.6', 'knb-lter-knz.34.6', 'knb-lter-knz.37.6', 'knb-lter-knz.38.6', 'knb-lter-knz.46.4', 'knb-lter-knz.47.4', 'knb-lter-knz.49.4', 'knb-lter-knz.50.4', 'knb-lter-knz.51.4', 'knb-lter-knz.55.6', 'knb-lter-knz.57.4', 'knb-lter-knz.58.4', 'knb-lter-knz.59.4', 'knb-lter-knz.60.4', 'knb-lter-knz.61.4', 'knb-lter-knz.63.4', 'knb-lter-knz.64.4', 'knb-lter-knz.66.4', 'knb-lter-knz.68.4', 'knb-lter-knz.70.4', 'knb-lter-knz.76.6', 'knb-lter-knz.77.6', 'knb-lter-knz.95.4', 'knb-lter-knz.200.3', 'knb-lter-knz.201.3', 'knb-lter-knz.202.3', 'knb-lter-knz.205.2', 'knb-lter-knz.210.1', 'knb-lter-knz.211.2', 'knb-lter-knz.222.2', 'knb-lter-knz.230.1', 'knb-lter-knz.240.2', 'knb-lter-knz.245.2']
+                print len(pids)
+                self.packageTableInsert(pids)
+                self.findSpatialData(scope)
+                self.getEML(scope, packageDir)
+            except Exception as err:
+                self.logger.logMessage(WARN, err.message)
         #pass the package download dir to workflow
-        arcpy.SetParameterAsText(3, pkgDir)
+        arcpy.SetParameterAsText(3, packageDir)
 
 
 ## *****************************************************************************

@@ -60,13 +60,13 @@ def testUnpackAsTool():
     However, the code can be stepped through, so this is useful.
     """
 def testQuery():
-    unpack = lno_geonis_wf.QueryPasta()
-    unpack._isRunningAsTool = False
-    params = unpack.getParameterInfo()
+    tool = lno_geonis_wf.QueryPasta()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
     params[2].value = r"Z:\docs\local\geonis_testdata\downloaded_pkgs"
-    unpack.execute(params,[])
+    tool.execute(params,[])
 
 
 
