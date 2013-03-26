@@ -35,13 +35,13 @@ if platform.node() == "Maps3":
     #map doc
     pathToMapDoc = r"C:\pasta2geonis\Arcmap_mxd"
     #map service layer query
-    layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/Test/VectorData/MapServer/layers?f=json"
+    layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/%s/MapServer/layers?f=json"
     #scratchWorkspace is NOT saved in settings
     scratchWS = r"C:\Temp"
     #publisher conn
     pubConnection = r"C:\pasta2geonis\Maps3.lternet.edu_6080(publisher).ags"
     #map service info
-    mapServInfo = {'service_name':"VectorData",'tags':"GEONIS",'summary':"Testing vector data map service."}
+    mapServInfo = {'service_name':"", 'service_folder':"Test", 'tags':"GEONIS",'summary':"Testing vector data map service."}
 else:
     #path to env settings file. settings loaded by base execute method
     envSettingsPath = r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml"

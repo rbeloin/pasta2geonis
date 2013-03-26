@@ -15,13 +15,14 @@ from contextlib import contextmanager
 from geonis_pyconfig import dsnfile
 from logging import WARN
 
-def getPackageInsert():
-    """Returns (statement, valueObject) where valueObject is dict with column names and defaults. Fill in values
-       and execute statement. """
-    stmt = """INSERT INTO workflow.package (packageid, scope, identifier, revision, downloaded)
-     VALUES(%(packageid)s, %(scope)s, %(identifier)s, %(revision)s, %(downloaded)s);"""
-    obj = {'packageid':'','scope':'','identifier':0,'revision':0,'downloaded':datetime.datetime.now()}
-    return (stmt,obj)
+# some statements now obsolete
+##def getPackageInsert():
+##    """Returns (statement, valueObject) where valueObject is dict with column names and defaults. Fill in values
+##       and execute statement. """
+##    stmt = """INSERT INTO workflow.package (packageid, scope, identifier, revision, downloaded)
+##     VALUES(%(packageid)s, %(scope)s, %(identifier)s, %(revision)s, %(downloaded)s);"""
+##    obj = {'packageid':'','scope':'','identifier':0,'revision':0,'downloaded':datetime.datetime.now()}
+##    return (stmt,obj)
 
 ##def updateSpatialType(packageId, sType):
 ##    if sType == "spatialRaster":
