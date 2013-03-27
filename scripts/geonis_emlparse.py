@@ -47,7 +47,7 @@ def main():
     #print str(readWorkingData(r"Z:\docs\local\git\pasta2geonis_sg\emlSubset.xml", None))
     #createEmlSubset(r"Z:\docs\local\git\pasta2geonis_sg",r"Z:\docs\local\geonis_testdata\downloaded_pkgs\gi01001.xml")
     #print(readFromEmlSubset(r"Z:\docs\local\git\pasta2geonis_sg","//physical/distribution/online/url"))
-    createEmlSubsetWithNode(r"Z:\docs\local\geonis_testdata\tmp1",r"Z:\docs\local\geonis_testdata\tmp2",2)
+    #createEmlSubsetWithNode(r"Z:\docs\local\geonis_testdata\tmp1",r"Z:\docs\local\geonis_testdata\tmp2",2)
 
 
 emlnamespaces = {'eml':'eml://ecoinformatics.org/eml-2.1.0',
@@ -239,6 +239,16 @@ def createSuppXML(workDir):
     outputXMLtree.xpath("//aggrInfo/aggrDSName/date/pubDate")[0].text = str(datetime.date.today())
     outputXMLtree.write(workDir + os.sep + "emlSupp.xml", xml_declaration = 'yes')
     del outputXMLtree
+
+
+def createDictFromEmlSubset(workDir):
+    """ Run XSL transformation on emlSubset.xml with emlSubsetToSupp.xsl to generate emlSupp.xml """
+    stylesheet = pathToStylesheets + os.sep + "emlSubsetToDataFields.xsl"
+    inputXML = workDir + os.sep + "emlSubset.xml"
+    outputXMLtree = runTransformation(xslPath = stylesheet, inputXMLPath = inputXML)
+    obj = eval(str(outputXMLtree))
+    return obj
+
 
 
 def runTransformation(xslPath = None, inputXMLPath = None):

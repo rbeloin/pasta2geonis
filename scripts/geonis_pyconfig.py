@@ -35,7 +35,7 @@ if platform.node() == "Maps3":
     #map doc
     pathToMapDoc = r"C:\pasta2geonis\Arcmap_mxd"
     #map service layer query
-    layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/%s/MapServer/layers?f=json"
+    layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/%s/%s/MapServer/layers?f=json"
     #scratchWorkspace is NOT saved in settings
     scratchWS = r"C:\Temp"
     #publisher conn

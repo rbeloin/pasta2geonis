@@ -10,7 +10,7 @@ Created on Mar 12, 2013
 @see https://nis.lternet.edu/NIS/
 '''
 import psycopg2
-import datetime
+import datetime, time
 from contextlib import contextmanager
 from geonis_pyconfig import dsnfile
 from logging import WARN
@@ -52,9 +52,23 @@ def cursorContext(logger = None):
             cur.execute(...)
     """
     try:
+        conn = None
         with open(dsnfile) as dsnf:
             dsnStr = dsnf.readline()
         conn = psycopg2.connect(dsn = dsnStr)
+        if not conn or conn.closed:
+            if conn:
+                del conn
+            attempt = 1
+            while attempt < 5 and (not conn or conn.closed):
+                if conn:
+                    del conn
+                print "attempt:", attempt
+                time.sleep(0.5)
+                attempt += 1
+                conn = psycopg2.connect(dsn = dsnStr)
+        if not conn or conn.closed:
+            raise Exception("DB connection failed after %d attemps." % (attempt,))
         cur = conn.cursor()
         #enter WITH block with value of cur
         yield cur
