@@ -25,7 +25,7 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
-from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase
+from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase, workflowSchema
 from geonis_pyconfig import pathToRasterData, pathToRasterMosaicDatasets, pathToStylesheets, dsnfile, pathToMapDoc, layerQueryURI, pubConnection, mapServInfo
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId, getToken
@@ -114,14 +114,14 @@ class QueryPasta(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Inserts into package table")
     def packageTableInsert(self, pkidList):
-        stmt = """ INSERT INTO workflow.package (packageid) VALUES (%(packageid)s) EXCEPT SELECT packageid FROM workflow.package; """
+        stmt = "INSERT INTO " + workflowSchema + ".package (packageid) VALUES (%(packageid)s) EXCEPT SELECT packageid FROM " + workflowSchema + ".package;"
         with cursorContext(self.logger) as cur:
             dictTupe = tuple([{'packageid':p} for p in pkidList])
             cur.executemany(stmt, dictTupe)
-        stmt2 = """UPDATE workflow.package SET scope = substring(packageid from 10 for 3),
-                  identifier = CAST( substring(packageid from '\d+') as integer),
-                  revision = CAST (substring (packageid from '\d+$') as integer)
-                  WHERE scope is null;"""
+        stmt2 = "UPDATE " + workflowSchema + ".package SET scope = substring(packageid from 10 for 3),\
+                  identifier = CAST( substring(packageid from '\d+') as integer),\
+                  revision = CAST (substring (packageid from '\d+$') as integer)\
+                  WHERE scope is null;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt2)
 
@@ -130,7 +130,7 @@ class QueryPasta(ArcpyTool):
     def findSpatialData(self, scope):
         """ Look at eml for spatial nodes, record number in workflow.package """
         baseURL = "http://pasta.lternet.edu/package/metadata/eml"
-        stmt = """SELECT * FROM workflow.vw_newpackage WHERE scope = %s;"""
+        stmt = "SELECT * FROM " + workflowSchema + ".vw_newpackage WHERE scope = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (scope[9:],))
             rows = cur.fetchall()
@@ -150,7 +150,7 @@ class QueryPasta(ArcpyTool):
                         count += 1
                 #update table with spatial count
                 print row, count
-                stmt = """UPDATE workflow.package SET spatialcount = %s WHERE packageid = %s"""
+                stmt = "UPDATE " + workflowSchema + ".package SET spatialcount = %s WHERE packageid = %s"
                 with cursorContext(self.logger) as cur:
                     cur.execute(stmt, (count, pid))
             del resp
@@ -160,7 +160,7 @@ class QueryPasta(ArcpyTool):
     def getEML(self, scope, packageDir):
         """ Query db to get list of packages with spatial, where eml not yet downloaded """
         baseURL = "http://pasta.lternet.edu/package/metadata/eml"
-        stmt = """SELECT * FROM workflow.vw_newspatialpackage WHERE scope = %s;"""
+        stmt = "SELECT * FROM " + workflowSchema + ".vw_newspatialpackage WHERE scope = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (scope[9:],))
             rows = cur.fetchall()
@@ -175,7 +175,7 @@ class QueryPasta(ArcpyTool):
                 with open(os.path.join(packageDir, pid + '.xml'), 'w') as emlfile:
                     emlfile.writelines(resp.readlines())
                 #update table with downloaded timestamp
-                stmt = """UPDATE workflow.package SET downloaded = %s WHERE packageid = %s"""
+                stmt = "UPDATE " + workflowSchema + ".package SET downloaded = %s WHERE packageid = %s"
                 with cursorContext(self.logger) as cur:
                     cur.execute(stmt, (datetime.datetime.now(), pid))
             else:
@@ -256,33 +256,42 @@ class UnpackPackages(ArcpyTool):
                     self.logger.logMessage(WARN,"%s did not pass zip test." % (apackage,))
                     raise Exception("Zip test fail.")
         else:
+            os.mkdir(destpath)
             copyFileToFileOrDir(apackage, destpath)
         return destpath
 
     @errHandledWorkflowTask(taskName="Parse EML")
     def parseEML(self, workDir):
         retval = []
-        emldatafile = os.path.join(workDir,tempMetadataFilename)
-        pkgfiles = os.listdir(workDir)
-        xmlfiles = [f for f in pkgfiles if f[-4:].lower() == '.xml']
+        if not os.path.isdir(workDir):
+            self.logger.logMessage(WARN,"Not a directory %s" % (workDir,))
+            raise Exception("No directory passed.")
+        allfiles = os.listdir(workDir)
+        xmlfiles = [f for f in allfiles if f[-4:].lower() == '.xml']
         if len(xmlfiles) == 0:
             self.logger.logMessage(WARN,"No xml files in %s" % (workDir,))
             raise Exception("No xml file in package.")
         elif len(xmlfiles) > 1:
-            xmlfiles = [f for f in xmlfiles if f[:8].lower() == 'knb-lter']
-            if len(xmlfiles) != 1:
+            pkgfiles = [f for f in xmlfiles if f[:8].lower() == 'knb-lter']
+            if len(pkgfiles) != 1:
                 self.logger.logMessage(WARN,"More than one EML file in %s ?" % (workDir,))
-                if len(xmlfiles) == 0:
+                if len(pkgfiles) == 0:
                     raise Exception("No EML file in package.")
-        emlfile = os.path.join(workDir, xmlfiles[0])
+        else:
+            pkgfiles = xmlfiles
+        emlfile = os.path.join(workDir, pkgfiles[0])
         pkgId, dataEntityNum = createEmlSubset(workDir, emlfile)
-        for i in range(dataEntityNum):
-            parentDir = os.path.dirname(workDir)
-            path = parentDir + os.sep + pkgId + "." + str(i)
-            if not os.path.exists(path):
-                os.mkdir(path)
-            createEmlSubsetWithNode(workDir, path, i + 1, self.logger)
-            retval.append(path)
+        if dataEntityNum > 1:
+            for i in range(1, dataEntityNum + 1):
+                parentDir = os.path.dirname(workDir)
+                path = parentDir + os.sep + pkgId + "." + str(i)
+                if not os.path.exists(path):
+                    os.mkdir(path)
+                createEmlSubsetWithNode(workDir, path, i, self.logger)
+                retval.append(path)
+        else:
+            createEmlSubsetWithNode(workDir, logger = self.logger)
+            retval.append(workDir)
         return (pkgId, retval)
 ##        emldata = parseAndPopulateEMLDicts(emlfile, self.logger)
 ##        with open(emldatafile,'w') as datafile:
@@ -313,11 +322,17 @@ class UnpackPackages(ArcpyTool):
     def retrieveData(self, workDir):
         emldata = readWorkingData(workDir, self.logger)
         dataloc = emldata["physical/distribution/online/url"]
+        resource = None
         if dataloc is not None:
             try:
-                uri = HTMLParser().unescape(dataloc)
+                #uri = HTMLParser().unescape(dataloc)
+                uri = dataloc
                 sdatafile = os.path.join(workDir,emldata["shortEntityName"] + '.zip')
                 resource = urllib2.urlopen(uri)
+##                waittime = 60
+##                while not resource and waittime > 0:
+##                    time.sleep(1)
+##                    waittime -= 1
                 with open(sdatafile,'wb') as dest:
                     copyfileobj(resource,dest)
             except Exception as e:
@@ -368,6 +383,7 @@ class UnpackPackages(ArcpyTool):
         #loop over packages, handling one at a time. an error will drop the current package and go to the next one
         #TESTING
         allTestPackages = [p for p in allpackages if (os.path.basename(p) == 'knb-lter-knz.230.1.xml' or os.path.basename(p) == 'knb-lter-ntl.135.9.xml')]
+        allTestPackages = [p for p in allpackages if ( os.path.basename(p) == 'knb-lter-knz.230.1.xml')]
         for pkg in allTestPackages:
             try:
                 workdir = self.unzipPkg(pkg, outputDir)
@@ -632,7 +648,7 @@ class CheckSpatialData(ArcpyTool):
                 finally:
                     #write status msg to workflow.entity. Need both packagid and entityname to be unique
                     if pkgId and entityName:
-                        stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s and entityname = %s;"
+                        stmt = "UPDATE " + workflowSchema + ".entity set status = %s WHERE packageid = %s and entityname = %s;"
                         with cursorContext(self.logger) as cur:
                             cur.execute(stmt, (status[:499], pkgId, entityName))
                     writeWorkingDataToXML(dataDir, emldata, self.logger)
@@ -732,7 +748,7 @@ class LoadVectorTypes(ArcpyTool):
         if not loadedFeatureClass:
             return
         scope_data = os.sep.join(loadedFeatureClass.split(os.sep)[-2:])
-        stmt = """UPDATE workflow.entity set storage = %s WHERE packageid = %s and entityname = %s;"""
+        stmt = "UPDATE " + workflowSchema + ".entity set storage = %s WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (scope_data, pkid, entityname))
 
@@ -779,7 +795,7 @@ class LoadVectorTypes(ArcpyTool):
             finally:
                 #write status msg to db table
                 if pkgId and entityname:
-                    stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s and entityname = %s;"
+                    stmt = "UPDATE " + workflowSchema + ".entity set status = %s WHERE packageid = %s and entityname = %s;"
                     with cursorContext(self.logger) as cur:
                         cur.execute(stmt, (status[:499], pkgId, entityname))
         #pass the list on
@@ -918,7 +934,7 @@ class LoadRasterTypes(ArcpyTool):
             loc = os.sep.join(parts[-3:])
         else:
             loc = location[-50:]
-        stmt = "UPDATE workflow.entity set storage = %s WHERE packageid = %s and entityname = %s;"
+        stmt = "UPDATE " + workflowSchema + ".entity set storage = %s WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (loc, pkid, entityname))
 
@@ -968,7 +984,7 @@ class LoadRasterTypes(ArcpyTool):
             finally:
                 #write status msg to db table
                 if pkgId:
-                    stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s;"
+                    stmt = "UPDATE " + workflowSchema + ".entity set status = %s WHERE packageid = %s;"
                     with cursorContext(self.logger) as cur:
                         cur.execute(stmt, (status[:499], pkgId))
         #pass the list on
@@ -1002,7 +1018,7 @@ class UpdateMXDs(ArcpyTool):
     def addVectorData(self, workDir, workingData):
         """   """
         # see if entry in entity table, and get storage path
-        stmt = """SELECT storage, status FROM workflow.entity WHERE packageid = %s and entityname = %s;"""
+        stmt = "SELECT storage, status FROM " + workflowSchema + ".entity WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (workingData["packageId"], workingData["entityName"]))
             rows = cur.fetchall()
@@ -1046,12 +1062,13 @@ class UpdateMXDs(ArcpyTool):
     @errHandledWorkflowTask(taskName="Insert into layer table")
     def makeLayerRec(self, workDir, pkgId, name):
         """Insert record into workflow.geonis_layer for this entity  """
-        insstmt = """INSERT INTO workflow.geonis_layer
-         VALUES (%(id)s, %s(pid), %(site)s, %(name)s, %(desc)s, %(title)s, %(abstract)s, %(purpose)s, %(keywords)s, %(source)s, %(layer)s, %(arcloc)s, %(layerid)s);"""
-        selstmt = """SELECT id, status FROM workflow.entity WHERE packageid = %s and entityname = %s;"""
+        insstmt = "INSERT INTO " + workflowSchema + ".geonis_layer \
+         (id, packageid, scope, entityname, entitydescription, title, abstract, purpose, keywords, sourceloc, layername, arcloc, layerid) VALUES \
+         (%(id)s, %(pid)s, %(site)s, %(name)s, %(desc)s, %(title)s, %(abstract)s, %(purpose)s, %(keywords)s, %(source)s, %(layer)s, %(arcloc)s, %(layerid)s);"
+        selstmt = "SELECT id, status FROM " + workflowSchema + ".entity WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(selstmt, (pkgId, name))
-            row = cur.fetch()
+            row = cur.fetchone()
             if row:
                 recId, status = row
             else:
@@ -1087,11 +1104,11 @@ class UpdateMXDs(ArcpyTool):
                     pkgId = workingData["packageId"]
                     lName, mxdName = self.addVectorData(dir, workingData)
                     with cursorContext(self.logger) as cur:
-                        stmt = """UPDATE workflow.entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s, status = 'Added to map'
-                         WHERE packageid = %(pkgId)s and entityname = %(entityname)s;"""
+                        stmt = "UPDATE " + workflowSchema + ".entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s, status = 'Added to map' \
+                         WHERE packageid = %(pkgId)s and entityname = %(entityname)s;"
                         cur.execute(stmt,
                          {'mxd': mxdName, 'layername' : lName, 'now' : datetime.datetime.now(), 'pkgId': pkgId, 'entityname' : workingData["entityName"]})
-                    self.makeLayerRec(dir)
+                    self.makeLayerRec(dir, pkgId, workingData["entityName"] )
                     status = "Ready for map service"
                 else:
                     status = "Carried forward to next tool"
@@ -1102,7 +1119,7 @@ class UpdateMXDs(ArcpyTool):
             finally:
                 #write status msg to db table
                 if workingData:
-                    stmt = "UPDATE workflow.entity set status = %s WHERE packageid = %s  and entityname = %s;"
+                    stmt = "UPDATE " + workflowSchema + ".entity set status = %s WHERE packageid = %s  and entityname = %s;"
                     with cursorContext(self.logger) as cur:
                         cur.execute(stmt, (status[:499], workingData["packageId"], workingData["entityName"]))
         #pass the list on
@@ -1224,12 +1241,12 @@ class RefreshMapService(ArcpyTool):
             lyr["scope"] = site
             lyr["arcloc"] = arcloc
         # update table, set arcloc field for layers that are newly added
-        stmt = """UPDATE workflow.geonis_layer set arcloc = %s WHERE scope = %s AND (layerid = -1 OR layerid is null);"""
+        stmt = "UPDATE " + workflowSchema + ".geonis_layer set arcloc = %s WHERE scope = %s AND (layerid = -1 OR layerid is null);"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (arcloc, site) )
         # update table with ids of layers for all layers (not just newly added)
         valObj = tuple(layers)
-        stmt = """UPDATE workflow.geonis_layer set layerid = %(id)s WHERE scope = %(scope)s AND layername = %(name)s and arcloc = %(arcloc)s;"""
+        stmt = "UPDATE " + workflowSchema + ".geonis_layer set layerid = %(id)s WHERE scope = %(scope)s AND layername = %(name)s and arcloc = %(arcloc)s;"
         with cursorContext(self.logger) as cur:
             cur.executemany(stmt, valObj )
 
@@ -1238,7 +1255,7 @@ class RefreshMapService(ArcpyTool):
         self.serverInfo = copy.copy(mapServInfo)
         try:
             #get list of map services where entity record exists, is OK, has mxd, but not in geonis_layer
-            stml = """SELECT * FROM workflow.vw_stalemapservices;"""
+            stml = "SELECT * FROM " + workflowSchema + ".vw_stalemapservices;"
             with cursorContext(self.logger) as cur:
                 cur.execute(stmt)
                 rows = cur.fetchall()

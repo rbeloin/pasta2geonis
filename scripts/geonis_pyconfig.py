@@ -38,6 +38,8 @@ if platform.node() == "Maps3":
     layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/%s/%s/MapServer/layers?f=json"
     #scratchWorkspace is NOT saved in settings
     scratchWS = r"C:\Temp"
+    #db schema
+    workflowSchema = "workflow_d"
     #publisher conn
     pubConnection = r"C:\pasta2geonis\Maps3.lternet.edu_6080(publisher).ags"
     #map service info
@@ -61,6 +63,8 @@ else:
     layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/Test/VectorData/MapServer/layers?f=json"
     #scratchWorkspace is NOT saved in settings
     scratchWS = r"C:\Users\ron\AppData\Local\Temp"
+    #db schema
+    workflowSchema = "workflow"
     #publisher conn
     pubConnection = None
     #map service info

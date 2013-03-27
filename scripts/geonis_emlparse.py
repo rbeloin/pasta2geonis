@@ -193,12 +193,16 @@ def createEmlSubset(workDir, pathToEML):
     writeWorkingDataToXML(workDir, workingData)
     return (workingData["packageId"], workingData["dataEntityNum"])
 
-def createEmlSubsetWithNode(originalDir, newDirectory, whichSpatialNode, logger = None):
-    """Duplicate the emlSubset file in originalDir into newDirectory, keeping
+def createEmlSubsetWithNode(originalDir, newDirectory = None, whichSpatialNode = 1, logger = None):
+    """Duplicate the emlSubset file in originalDir into (optional) newDirectory, keeping
        only the spatial node indicated by the number whichSpatialNode.
-       Then, fill some entity info into workingData """
+       Then, fill some entity info into workingData and write it back """
     emlsub = originalDir + os.sep + "emlSubset.xml"
-    emlsubNew = newDirectory + os.sep + "emlSubset.xml"
+    if newDirectory is None:
+        newDirectory = originalDir
+        emlsubNew = emlsub
+    else:
+        emlsubNew = newDirectory + os.sep + "emlSubset.xml"
     workingData = readWorkingData(originalDir)
     expectedNumber = int(workingData["dataEntityNum"])
     tree = etree.parse(emlsub)
@@ -217,10 +221,13 @@ def createEmlSubsetWithNode(originalDir, newDirectory, whichSpatialNode, logger 
         workingData["spatialType"] = spType
         entNameNode = snode.xpath("//entityName")[0]
         workingData["entityName"] = entNameNode.text
-        #save the first 16 characters of entityName after non-alphanumeric removed
-        workingData["shortEntityName"] = stringToValidName(workingData["entityName"])
-        entDescNode = snode.xpath("//entityDescription")[0]
-        workingData["entityDesc"] = entDescNode.text
+        #save the first 63 characters of entityName after non-alphanumeric removed
+        workingData["shortEntityName"] = stringToValidName(workingData["entityName"], max = 63)
+        entDescNode = snode.xpath("//entityDescription")
+        if entDescNode:
+            workingData["entityDesc"] = entDescNode[0].text
+        else:
+            workingData["entityDesc"] = ""
         tree.write(emlsubNew, xml_declaration = 'yes')
         writeWorkingDataToXML(newDirectory, workingData)
     else:
@@ -270,8 +277,8 @@ def runTransformation(xslPath = None, inputXMLPath = None):
         raise Exception("%s or %s not found." % (xslPath, inputXMLPath))
 
 
-def stringToValidName(inStr, spacesToUnderscore = False, max = 16):
-    """Return alphanumeric + underscore chars up to max"""
+def stringToValidName(inStr, spacesToUnderscore = False, max = 31):
+    """Return alphanumeric + underscore chars up to max. 31 is max field name length. """
     if spacesToUnderscore:
         return ''.join(re.findall('\w+',inStr.replace(' ','_')))[:max]
     else:

@@ -58,14 +58,18 @@ FileName=$[Project-Path]stylesheets\emlSubset.xsl
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node1]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]stylesheets\emlSubsetToSupp.xsl
+FileName=$[Project-Path]stylesheets\emlSubsetToDataFields.xsl
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node2]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]stylesheets\emlSubsetToSupp.xsl
+
+[Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node3]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]stylesheets\metadataMerge.xsl
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes]
-Count=3
+Count=4
 
 [Project\ChildNodes\Node0\ChildNodes]
 Count=2

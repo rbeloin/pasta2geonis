@@ -128,7 +128,7 @@ def testMXD():
     params = tool.getParameterInfo()
     params[0].value = True
     params[1].value = None #r"C:\Users\ron\Documents\geonis_tests\wf.log"
-    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-and.9999.1.0;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.0;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.1;Z:\docs\local\geonis_testdata\pkgs\knb-lter-knz.201.3.2"
+    params[2].value = r"Z:\docs\local\geonis_testdata\pkgs\knb-lter-ntl.135.9"
     params[3].value = None
     tool.execute(params,[])
     print params[3].value
@@ -136,7 +136,7 @@ def testMXD():
 
 if __name__ == '__main__':
     arcpy.env.scratchWorkspace = scratchWS
-    testQuery()
+    #testQuery()
     #testUnpack()
     #testCheckData()
     #testLoadVector()
@@ -144,4 +144,4 @@ if __name__ == '__main__':
     #testUnpackAsTool()
     #testChain()
     #makeSettingsfile()
-    #testMXD()
+    testMXD()

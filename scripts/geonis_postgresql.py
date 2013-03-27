@@ -12,7 +12,7 @@ Created on Mar 12, 2013
 import psycopg2
 import datetime, time
 from contextlib import contextmanager
-from geonis_pyconfig import dsnfile
+from geonis_pyconfig import dsnfile, workflowSchema
 from logging import WARN
 
 # some statements now obsolete
@@ -37,8 +37,7 @@ from logging import WARN
 def getEntityInsert():
     """Returns (statement, valueObject) where valueObject is dict with column names and defaults. Fill in values
        and execute statement. """
-    stmt = """INSERT INTO workflow.entity (packageid, entityname, israster, isvector, entitydescription, status)
-     VALUES(%(packageid)s, %(entityname)s, %(israster)s, %(isvector)s, %(entitydescription)s, %(status)s);"""
+    stmt = "INSERT INTO " + workflowSchema + ".entity (packageid, entityname, israster, isvector, entitydescription, status) VALUES(%(packageid)s, %(entityname)s, %(israster)s, %(isvector)s, %(entitydescription)s, %(status)s);"
     obj = {'packageid':'', 'entityname':'', 'israster':False, 'isvector':False, 'entitydescription':'', 'status':''}
     return (stmt,obj)
 
@@ -100,43 +99,43 @@ def cursorContext(logger = None):
 
 
 
-def main():
-    pkid = 'knb-lter-rmb.1.2'
-    with cursorContext() as cur1:
-        stmt = "delete from workflow.entity where packageid = %s;"
-        cur1.execute(stmt,(pkid,))
-    with cursorContext() as cur2:
-        stmt = "delete from workflow.package where packageid = %s;"
-        cur2.execute(stmt,(pkid,))
-
-    s,vals = getPackageInsert()
-    vals["packageid"] = pkid
-    parts = pkid.split('.')
-    vals["scope"] = parts[0][9:]
-    vals["identifier"] = parts[1]
-    vals["revision"] = parts[2]
-
-    with cursorContext() as cur3:
-        #print cur1.mogrify(s,vals)
-        cur3.execute(s,vals)
-
-    s2, vals2 = getEntityInsert()
-    vals2["packageid"] = pkid
-    vals2["entityname"] = "e-name"
-    vals2["entitydescription"] = "e-desc"
-
-    with cursorContext() as cur5:
-        print cur5.mogrify(s2, vals2)
-        cur5.execute(s2, vals2)
-
-    updateSpatialType(pkid,'spatialVector')
-
-    with cursorContext() as cur4:
-        stmt = "select * from workflow.package left outer join workflow.entity on (workflow.package.packageid = workflow.entity.packageid);"
-        cur4.execute(stmt)
-        rows = cur4.fetchall()
-        for r in rows:
-            print str(r)
+##def main():
+##    pkid = 'knb-lter-rmb.1.2'
+##    with cursorContext() as cur1:
+##        stmt = "delete from workflow.entity where packageid = %s;"
+##        cur1.execute(stmt,(pkid,))
+##    with cursorContext() as cur2:
+##        stmt = "delete from workflow.package where packageid = %s;"
+##        cur2.execute(stmt,(pkid,))
+##
+##    s,vals = getPackageInsert()
+##    vals["packageid"] = pkid
+##    parts = pkid.split('.')
+##    vals["scope"] = parts[0][9:]
+##    vals["identifier"] = parts[1]
+##    vals["revision"] = parts[2]
+##
+##    with cursorContext() as cur3:
+##        #print cur1.mogrify(s,vals)
+##        cur3.execute(s,vals)
+##
+##    s2, vals2 = getEntityInsert()
+##    vals2["packageid"] = pkid
+##    vals2["entityname"] = "e-name"
+##    vals2["entitydescription"] = "e-desc"
+##
+##    with cursorContext() as cur5:
+##        print cur5.mogrify(s2, vals2)
+##        cur5.execute(s2, vals2)
+##
+##    updateSpatialType(pkid,'spatialVector')
+##
+##    with cursorContext() as cur4:
+##        stmt = "select * from workflow.package left outer join workflow.entity on (workflow.package.packageid = workflow.entity.packageid);"
+##        cur4.execute(stmt)
+##        rows = cur4.fetchall()
+##        for r in rows:
+##            print str(r)
 
 
 if __name__ == '__main__':
