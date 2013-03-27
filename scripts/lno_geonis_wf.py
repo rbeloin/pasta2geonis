@@ -366,7 +366,9 @@ class UnpackPackages(ArcpyTool):
         #allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.zip']
         allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.xml']
         #loop over packages, handling one at a time. an error will drop the current package and go to the next one
-        for pkg in allpackages:
+        #TESTING
+        allTestPackages = [p for p in allpackages if (os.path.basename(p) == 'knb-lter-knz.230.1.xml' or os.path.basename(p) == 'knb-lter-ntl.135.9.xml')]
+        for pkg in allTestPackages:
             try:
                 workdir = self.unzipPkg(pkg, outputDir)
                 packageId, dataDirs = self.parseEML(workdir)
@@ -1012,8 +1014,9 @@ class UpdateMXDs(ArcpyTool):
         #if "complete" not in status:
         #    self.logger.logMessage(WARN, "Status of layer being added to mxd: %s" % (status,))
         site = siteFromId(workingData["packageId"])[0]
-        # make layer name
-        layerName = stringToValidName(workingData["entityName"], spacesToUnderscore = True, max = 24)
+        # make layer name (actually Map allows almost anything in layer name, but we need to create the lyr file
+        # with this name to add to map, which then uses the file name as the layer name. Therefore must be file system compatible)
+        layerName = stringToValidName(workingData["entityName"], spacesToUnderscore = True, max = 100)
         mxdName = site + ".mxd"
         mxdfile = pathToMapDoc + os.sep + mxdName
         # check if layer is in mxd, and remove if found
@@ -1063,7 +1066,9 @@ class UpdateMXDs(ArcpyTool):
         insertObj['arcloc'] = None
         insertObj['layerid'] = -1
         #catch some things that might be missing
-        for optional in ['abstract', 'purpose', 'desc', 'keywords', 'layer']:
+        if not "layer" in insertObj or insertObj['layer'] is None or insertObj['layer'] == '':
+            insertObj['layer'] = stringToValidName(name, spacesToUnderscore = True, max = 100)
+        for optional in ['abstract', 'purpose', 'desc', 'keywords']:
             if not optional in insertObj:
                 insertObj[optional] = None
         if len(insertObj) == 13:
@@ -1139,7 +1144,7 @@ class RefreshMapService(ArcpyTool):
             cred = eval(f.readline())
         token = getToken(cred['username'], cred['password'])
         if token:
-            serviceStopURL = "/arcgis/admin/services/$s/%s.MapServer/stop" % ((self.serverInfo["service_folder"],self.serverInfo["service_name"])
+            serviceStopURL = "/arcgis/admin/services/$s/%s.MapServer/stop" % (self.serverInfo["service_folder"],self.serverInfo["service_name"])
             # This request only needs the token and the response formatting parameter
             params = urllib.urlencode({'token': token, 'f': 'json'})
             headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
@@ -1211,15 +1216,18 @@ class RefreshMapService(ArcpyTool):
         self.logger.logMessage(DEBUG, "service conn attempts %d" % (tries,))
         # make list of dict with just name and id of feature layers
         layers = [{'name':lyr["name"],'id':int(lyr['id'])} for lyr in layerInfo["layers"] if lyr["type"] == "Feature Layer"]
+        arcloc = self.serverInfo["service_folder"] + "/" + self.serverInfo["service_name"]
         # shorten names that have db and schema in the name
         for lyr in layers:
             while lyr['name'].startswith("geonis."):
                 lyr['name'] = lyr['name'][7:]
             lyr["scope"] = site
-            lyr["arcloc"] = self.serverInfo["service_folder"] + "/" + self.serverInfo["service_name"]
-        # make inserts for layers that are newly added
-
-        # update table with ids of layers for all layers
+            lyr["arcloc"] = arcloc
+        # update table, set arcloc field for layers that are newly added
+        stmt = """UPDATE workflow.geonis_layer set arcloc = %s WHERE scope = %s AND (layerid = -1 OR layerid is null);"""
+        with cursorContext(self.logger) as cur:
+            cur.execute(stmt, (arcloc, site) )
+        # update table with ids of layers for all layers (not just newly added)
         valObj = tuple(layers)
         stmt = """UPDATE workflow.geonis_layer set layerid = %(id)s WHERE scope = %(scope)s AND layername = %(name)s and arcloc = %(arcloc)s;"""
         with cursorContext(self.logger) as cur:
@@ -1234,19 +1242,20 @@ class RefreshMapService(ArcpyTool):
             with cursorContext(self.logger) as cur:
                 cur.execute(stmt)
                 rows = cur.fetchall()
-                mxds = list(rows)
+                mxds = [cols[0] for cols in rows]
             del rows
             if not mxds:
                 self.logger.logMessage(INFO, "No new vector data added any maps.")
                 return
             for map in mxds:
+                self.logger.logMessage(INFO, "Refreshing map service %s" % (map,))
                 draft = self.draftSD(map)
                 self.replaceService(map, draft)
                 #delay for service to start, get layer info
                 time.sleep(20)
                 site = map.split('.')[0]
                 self.updateLayerIds(site)
-         except Exception as err:
+        except Exception as err:
             self.logger.logMessage(ERROR, err.message)
 
 
@@ -1295,9 +1304,11 @@ class Tool(ArcpyTool):
 
 
 #this list is imported into Toolbox.pyt file and used to instantiate tools
-toolclasses =  [UnpackPackages,
+toolclasses =  [QueryPasta,
+                UnpackPackages,
                 CheckSpatialData,
                 LoadVectorTypes,
                 LoadRasterTypes,
-                UpdateMXDs ]
+                UpdateMXDs,
+                RefreshMapService ]
 
