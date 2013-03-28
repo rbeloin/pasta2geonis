@@ -385,8 +385,8 @@ class UnpackPackages(ArcpyTool):
         allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.xml']
         #loop over packages, handling one at a time. an error will drop the current package and go to the next one
         #TESTING
-        allTestPackages = [p for p in allpackages if (os.path.basename(p) == 'knb-lter-knz.230.1.xml' or os.path.basename(p) == 'knb-lter-ntl.135.9.xml')]
-        #allTestPackages = [p for p in allpackages if ( os.path.basename(p) == 'knb-lter-knz.230.1.xml')]
+        #allTestPackages = [p for p in allpackages if (os.path.basename(p) == 'knb-lter-knz.230.1.xml' or os.path.basename(p) == 'knb-lter-ntl.135.9.xml')]
+        allTestPackages = [p for p in allpackages if ( os.path.basename(p) == 'knb-lter-ntl.273.7.xml')]
         for pkg in allTestPackages:
             try:
                 workdir = self.unzipPkg(pkg, outputDir)

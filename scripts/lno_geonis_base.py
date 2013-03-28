@@ -151,7 +151,11 @@ class ArcpyTool(object):
             # if we have input dirs list, output dirs list parameters, make list instance
             for n in range(2,len(parameters)):
                 if parameters[n].name == "in_dirlist":
-                    self.inputDirs = [d for d in self.getParamAsText(parameters,n).split(';') if os.path.isdir(d)]
+                    indirlist = self.getParamAsText(parameters,n)
+                    if indirlist is None or len(indirlist) == 0:
+                        self.inputDirs = []
+                    else:
+                        self.inputDirs = [d for d in self.getParamAsText(parameters,n).split(';') if os.path.isdir(d)]
                 elif parameters[n].name == "out_dirlist":
                     self.outputDirs = [] # copied here as processing succeeds
         except AssertionError as asrtErr:
