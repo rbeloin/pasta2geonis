@@ -571,16 +571,16 @@ class CheckSpatialData(ArcpyTool):
             return (None, GeoNISDataType.NA)
 
     @errHandledWorkflowTask(taskName="Data name check")
-    def entityNameMatch(self, entityName, dataFilePath):
+    def entityNameMatch(self, emlName, dataFilePath):
         dataFileName = os.path.basename(dataFilePath).lower()
-        if entityName.lower() == dataFileName:
+        if emlName.lower() == dataFileName:
             return True
         else:
             name, ext = os.path.splitext(dataFileName)
-            if entityName.lower() == name:
+            if emlName.lower() == name:
                 return True
             else:
-                self.logger.logMessage(WARN, "entityName %s did not match data name %s" % (entityName, dataFileName))
+                self.logger.logMessage(WARN, "emlName %s did not match data name %s" % (emlName, dataFileName))
                 return False
 
 
@@ -605,6 +605,7 @@ class CheckSpatialData(ArcpyTool):
                     shortPkgId = pkgId[9:]
                     reportfilePath = os.path.join(dataDir, shortPkgId + "_geonis_report.txt")
                     entityName = emldata["entityName"]
+                    objectName = emldata["objectName"]
                     hint = self.examineEMLforType(emldata)
                     emldata["type(eml)"] = hint
                     foundFile, spatialType = self.acceptableDataType(dataDir, emldata)
@@ -614,8 +615,11 @@ class CheckSpatialData(ArcpyTool):
                         raise Exception("No compatible data found in %s" % dataDir)
                     emldata["datafilePath"] = foundFile
                     status = "Found acceptable data file."
-                    nameMatch = self.entityNameMatch(entityName, foundFile)
+                    nameMatch = self.entityNameMatch(objectName, foundFile)
                     emldata["datafileMatchesEntity"] = nameMatch
+                    #force objectName to have data file path, and use objectName for layer and database
+                    if not nameMatch:
+                        emldata["objectName"] = os.path.basename(foundFile)
                     if spatialType == GeoNISDataType.KML:
                         self.logger.logMessage(INFO, "kml  found")
                         emldata["type"] = "kml"
@@ -759,7 +763,7 @@ class LoadVectorTypes(ArcpyTool):
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
         for dir in self.inputDirs:
-            datafilePath, pkgId, datatype, entityname, shortentityname = ("" for i in range(5))
+            datafilePath, pkgId, datatype, entityname, objectName = ("" for i in range(5))
             try:
                 status = "Entering load vector"
                 emldata = readWorkingData(dir, self.logger)
@@ -767,15 +771,15 @@ class LoadVectorTypes(ArcpyTool):
                 datafilePath = emldata["datafilePath"]
                 datatype = emldata["type"]
                 entityname = emldata["entityName"]
-                shortentityname = emldata["shortEntityName"]
+                objectName = emldata["objectName"]
                 siteId, n, m = siteFromId(pkgId)
                 #TODO Do we need a way to specify this suffix?
                 scopeWithSuffix = siteId + "_main"
                 if 'shapefile' in datatype:
-                    loadedFeatureClass = self.loadShapefile(scopeWithSuffix, shortentityname, datafilePath)
+                    loadedFeatureClass = self.loadShapefile(scopeWithSuffix, objectName, datafilePath)
                     status = "Loaded shapefile"
                 elif 'kml' in datatype:
-                    loadedFeatureClass = self.loadKml(scopeWithSuffix, shortentityname, datafilePath)
+                    loadedFeatureClass = self.loadKml(scopeWithSuffix, objectName, datafilePath)
                     status = "Loaded from KML"
                 elif 'geodatabase' in datatype:
                     #TODO: copy vector from file geodatabase, for now, leave dir behind
@@ -956,13 +960,13 @@ class LoadRasterTypes(ArcpyTool):
                 datafilePath = emldata["datafilePath"]
                 datatype = emldata["type"]
                 entityname = emldata["entityName"]
-                shortentityname = emldata["shortEntityName"]
+                objectName = emldata["objectName"]
                 #check for supported type
                 if not self.isSupported(datatype):
                     self.outputDirs.append(dir)
                     continue
                 siteId, n, m = siteFromId(pkgId)
-                rawDataLoc, mosaicDS = self.prepareStorage(siteId, datafilePath, shortentityname)
+                rawDataLoc, mosaicDS = self.prepareStorage(siteId, datafilePath, objectName)
                 status = "Storage prepared"
                 os.mkdir(rawDataLoc)
                 raster = self.copyRaster(datafilePath, rawDataLoc)
@@ -1033,9 +1037,7 @@ class UpdateMXDs(ArcpyTool):
         #if "complete" not in status:
         #    self.logger.logMessage(WARN, "Status of layer being added to mxd: %s" % (status,))
         site = siteFromId(workingData["packageId"])[0]
-        # make layer name (actually Map allows almost anything in layer name, but we need to create the lyr file
-        # with this name to add to map, which then uses the file name as the layer name. Therefore must be file system compatible)
-        layerName = stringToValidName(workingData["entityName"], spacesToUnderscore = True, max = 100)
+        layerName = workingData["objectName"]
         mxdName = site + ".mxd"
         mxdfile = pathToMapDoc + os.sep + mxdName
         # check if layer is in mxd, and remove if found
@@ -1087,7 +1089,8 @@ class UpdateMXDs(ArcpyTool):
         insertObj['layerid'] = -1
         #catch some things that might be missing
         if not "layer" in insertObj or insertObj['layer'] is None or insertObj['layer'] == '':
-            insertObj['layer'] = stringToValidName(name, spacesToUnderscore = True, max = 100)
+            #there should be a layer name if it was added to a map
+            insertObj['layer'] = None
         for optional in ['abstract', 'purpose', 'desc', 'keywords']:
             if not optional in insertObj:
                 insertObj[optional] = None

@@ -228,6 +228,17 @@ def createEmlSubsetWithNode(originalDir, newDirectory = None, whichSpatialNode =
             workingData["entityDesc"] = entDescNode[0].text
         else:
             workingData["entityDesc"] = ""
+        #tyr to get a good object name to use for layer name and feature class
+        entObjNode = snode.xpath("//physical/objectName")
+        if entObjNode:
+            workingData["objectName"] = stringToValidName(entObjNode[0].text, max = 31)
+        else:
+            #try alternate identifier
+            entAltId = snode.xpath("//alternateIdentifier")
+            if entAltId:
+                workingData["objectName"] = stringToValidName(entAltId[0].text, max = 31)
+            else:
+                workingData["objectName"] = ""
         tree.write(emlsubNew, xml_declaration = 'yes')
         writeWorkingDataToXML(newDirectory, workingData)
     else:
