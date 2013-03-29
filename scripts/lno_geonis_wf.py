@@ -378,16 +378,23 @@ class UnpackPackages(ArcpyTool):
         carryForwardList = []
         packageDir = self.getParamAsText(parameters,2)
         outputDir = self.getParamAsText(parameters, 3)
-        self.logger.logMessage(DEBUG,  "in: %s; out:%s" % (packageDir, outputDir))
+        self.logger.logMessage(DEBUG,  "in: %s; out: %s" % (packageDir, outputDir))
         if not os.path.isdir(outputDir):
             os.mkdir(outputDir)
         #allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.zip']
         allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.xml']
         #loop over packages, handling one at a time. an error will drop the current package and go to the next one
         #TESTING
-        #allTestPackages = [p for p in allpackages if (os.path.basename(p) == 'knb-lter-knz.230.1.xml' or os.path.basename(p) == 'knb-lter-ntl.135.9.xml')]
-        allTestPackages = [p for p in allpackages if ( os.path.basename(p) == 'knb-lter-ntl.273.7.xml')]
+        testPacks = ['knb-lter-knz.222.2.xml']
+##        'knb-lter-knz.230.1.xml',
+##                     'knb-lter-ntl.176.7.xml',
+##                     'knb-lter-ntl.273.7.xml',
+##                     'knb-lter-ntl.177.11.xml',
+##                     'knb-lter-knz.240.2.xml'
+##                     ]
+        allTestPackages = [os.path.join(packageDir,p) for p in testPacks if os.path.join(packageDir,p) in allpackages]
         for pkg in allTestPackages:
+            self.logger.logMessage(DEBUG, "Starting work on %s" % (pkg,))
             try:
                 workdir = self.unzipPkg(pkg, outputDir)
                 packageId, dataDirs = self.parseEML(workdir)
@@ -619,7 +626,10 @@ class CheckSpatialData(ArcpyTool):
                     emldata["datafileMatchesEntity"] = nameMatch
                     #force objectName to have data file path, and use objectName for layer and database
                     if not nameMatch:
-                        emldata["objectName"] = os.path.basename(foundFile)
+                        datafilename = os.path.splitext(os.path.basename(foundFile))[0]
+                        if len(datafilename) > 0:
+                            datafilename = stringToValidName(datafilename, max = 31)
+                            emldata["objectName"] = datafilename
                     if spatialType == GeoNISDataType.KML:
                         self.logger.logMessage(INFO, "kml  found")
                         emldata["type"] = "kml"
