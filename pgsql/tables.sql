@@ -1,5 +1,5 @@
 /* workflow_d */
-
+/*
 CREATE TABLE workflow_d.package (
 packageid varchar(50) PRIMARY KEY,
 doi varchar(100),
@@ -35,13 +35,16 @@ sourceloc varchar(2000),
 layername varchar(100),
 arcloc varchar(100),
 layerid integer);
+*/
 /* dupe tables without defaults, constraints */
+/*
 CREATE TABLE workflow_d.package_superseded (LIKE workflow_d.package );
 CREATE TABLE workflow_d.entity_superseded (LIKE workflow_d.entity );
 CREATE TABLE workflow_d.geonis_layer_superseded (LIKE workflow_d.geonis_layer );
+*/
 
 /* workflow */
-
+/*
 CREATE TABLE workflow.package (
 packageid varchar(50) PRIMARY KEY,
 doi varchar(100),
@@ -77,7 +80,10 @@ sourceloc varchar(2000),
 layername varchar(100),
 arcloc varchar(100),
 layerid integer);
+*/
 /* dupe tables without defaults, constraints */
+/*
 CREATE TABLE workflow.package_superseded (LIKE workflow.package );
 CREATE TABLE workflow.entity_superseded (LIKE workflow.entity );
 CREATE TABLE workflow.geonis_layer_superseded (LIKE workflow.geonis_layer );
+*/

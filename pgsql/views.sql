@@ -37,5 +37,5 @@ SELECT  ent.id, ent.packageid, pack.scope, ent.entityname, ent.entitydescription
 */
 
 /* this is easier, gets package id of all superseded revs without assembling it. Create this view, then join it in 
-create view workflow.vw_maxrevs as select p2.scope, p2.identifier,  max(p2.revision) as maxrev from workflow.package as p2 group by p2.scope, p2.identifier;
+create view workflow_d.vw_maxrevs as select scope, identifier,  max(revision) as maxrev from workflow_d.package group by scope, identifier;
 */
