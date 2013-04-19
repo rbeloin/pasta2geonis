@@ -68,7 +68,7 @@ else:
     #publisher conn
     pubConnection = None
     #map service info
-    mapServInfo = {'service_name':"VectorData",'tags':"GEONIS",'summary':"Testing vector data map service."}
+    mapServInfo = {'service_name':"VectorData",'service_folder':"Test",'tags':"GEONIS",'summary':"Testing vector data map service."}
 
 class GeoNISDataType:
     """ members of this class serve as both enum type values for data types,

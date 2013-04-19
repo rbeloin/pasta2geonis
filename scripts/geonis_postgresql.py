@@ -137,7 +137,39 @@ def cursorContext(logger = None):
 ##        for r in rows:
 ##            print str(r)
 
+def main():
+    limits = [[u'and', u'1, 2, 3'], [u'rmb', u'20 - 25'], [u'xyz', u'200 '], [u'emp', u'#']]
+    valsArr = []
+    for item in limits:
+        scope = str(item[0]).strip()
+        idlist = []
+        #print scope
+        ids = str(item[1]).strip()
+        if ',' in ids:
+            for idnum in ids.split(','):
+                idlist.append(idnum.strip())
+        elif '-' in ids:
+            rng = ids.split('-')
+            low = int(rng[0].strip())
+            hi = int(rng[1].strip()) + 1
+            for i in range(low,hi):
+                idlist.append(str(i))
+        elif '#' in ids or ids == '':
+            idlist.append('*')
+        else:
+            idlist.append(ids)
+        for idn in idlist:
+            valsArr.append({'inc':'%s.%s' % (scope,idn)})
+    valsTuple = tuple(valsArr)
+    print valsTuple
+    with cursorContext() as cur:
+        stmt = "insert into limit_identifier values(%(inc)s);"
+        cur.executemany(stmt, valsTuple)
+
+
+
 
 if __name__ == '__main__':
     #main()
     pass
+

@@ -32,6 +32,93 @@ from geonis_helpers import siteFromId, getToken
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
 from geonis_postgresql import cursorContext, getEntityInsert
 
+
+## *****************************************************************************
+class Setup(ArcpyTool):
+    """Setup selects test mode or production mode, and stores optional set of identifiers to process, instead of all identifiers."""
+    def __init__(self):
+        ArcpyTool.__init__(self)
+        self._description = "Selects mode (test or production), and stores identifiers to process"
+        self._label = "Setup"
+        self._alias = "setup"
+
+    def getParameterInfo(self):
+        params = super(Setup, self).getParameterInfo()
+        params.append(arcpy.Parameter(
+                  displayName = 'Testing',
+                  name = 'testing_mode',
+                  datatype = 'Boolean',
+                  direction = 'Input',
+                  parameterType = 'Required'))
+        params.append(arcpy.Parameter(
+                    displayName = 'Scopes/Identifiers to Include',
+                  name = 'include_list',
+                  datatype = 'GPValueTable',
+                  direction = 'Input',
+                  parameterType = 'Optional'))
+        #testing true by default
+        params[2].value = True
+        params[3].columns = [['GPString','Scope'],['GPString','Identifier(CSV list or range)']]
+        return params
+
+    def updateParameters(self, parameters):
+        """  """
+        super(Setup, self).updateParameters(parameters)
+
+    def updateMessages(self, parameters):
+        """ puts up warning if running in production """
+        super(Setup, self).updateMessages(parameters)
+        if not parameters[2].value:
+            parameters[2].setWarningMessage("Workflow to run in production mode.")
+        else:
+            parameters[2].clearMessage()
+
+    def execute(self, parameters, messages):
+        """ alters role of geonis to set search_path to point to test tables or production tables.
+        inserts list of scope.identifier values into limit_identifier table for later tool """
+        super(Setup, self).execute(parameters, messages)
+        testingMode = parameters[2].value
+        if testingMode == True:
+            stmt1 = "alter role geonis in database geonis set search_path = public,workflow_d,workflow,sde;"
+        else:
+            stmt1 = "alter role geonis in database geonis set search_path = public,workflow,sde;"
+        stmt2 = "delete from limit_identifier;"
+        with cursorContext(self.logger) as cur:
+            #cur.execute(stmt1)
+            cur.execute(stmt2)
+        limitsParam = self.getParamAsText(parameters,3)
+        if limitsParam and limitsParam != '' and limitsParam != '#':
+            valsArr = []
+            limitStrings = limitsParam.split(';')
+            limits = [lim.split(' ') for lim in limitStrings]
+            for item in limits:
+                scope = str(item[0]).strip()
+                idlist = []
+                ids = str(item[1]).strip()
+                if ',' in ids:
+                    for idnum in ids.split(','):
+                        idlist.append(idnum.strip())
+                elif '-' in ids:
+                    rng = ids.split('-')
+                    low = int(rng[0].strip())
+                    hi = int(rng[1].strip()) + 1
+                    for i in range(low,hi):
+                        idlist.append(str(i))
+                elif '#' in ids or ids == '':
+                    idlist.append('*')
+                else:
+                    idlist.append(ids)
+                for idn in idlist:
+                    valsArr.append({'inc':'%s.%s' % (scope,idn)})
+            valsTuple = tuple(valsArr)
+            #print valsTuple
+            with cursorContext() as cur:
+                stmt3 = "insert into limit_identifier values(%(inc)s);"
+                cur.executemany(stmt3, valsTuple)
+
+
+
+
 ## *****************************************************************************
 class QueryPasta(ArcpyTool):
     """  """
@@ -1337,7 +1424,8 @@ class Tool(ArcpyTool):
 
 
 #this list is imported into Toolbox.pyt file and used to instantiate tools
-toolclasses =  [QueryPasta,
+toolclasses =  [Setup,
+                QueryPasta,
                 UnpackPackages,
                 CheckSpatialData,
                 LoadVectorTypes,
