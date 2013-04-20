@@ -92,12 +92,13 @@ class Setup(ArcpyTool):
             limitStrings = limitsParam.split(';')
             limits = [lim.split(' ') for lim in limitStrings]
             for item in limits:
-                scope = str(item[0]).strip()
+                scope = 'knb-lter-%s' % (str(item[0]).strip(),)
                 idlist = []
                 ids = str(item[1]).strip()
                 if ',' in ids:
                     for idnum in ids.split(','):
-                        idlist.append(idnum.strip())
+                        if idnum.isdigit():
+                            idlist.append(idnum.strip())
                 elif '-' in ids:
                     rng = ids.split('-')
                     low = int(rng[0].strip())
@@ -107,7 +108,8 @@ class Setup(ArcpyTool):
                 elif '#' in ids or ids == '':
                     idlist.append('*')
                 else:
-                    idlist.append(ids)
+                    if ids.isdigit():
+                        idlist.append(ids)
                 for idn in idlist:
                     valsArr.append({'inc':'%s.%s' % (scope,idn)})
             valsTuple = tuple(valsArr)
@@ -174,7 +176,7 @@ class QueryPasta(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Get packageId list")
-    def getPackageIds(self, scope):
+    def getPackageIds(self, scope, limitIdents):
         """ Returns list of latest revision only of packages in the given scope. """
         baseURL = "http://pasta.lternet.edu/package/eml"
         retval = []
@@ -188,7 +190,11 @@ class QueryPasta(ArcpyTool):
         else:
             return retval
         del resp
-        for i in identList:
+        if limitIdents:
+            limitedIdentList = [ident for ident in identList if str(ident) in limitIdents]
+        else:
+            limitedIdentList = identList
+        for i in limitedIdentList:
             revUrl = "%s/%s/%s" % (baseURL, scope, str(i))
             resp = urllib2.urlopen(revUrl)
             if resp.getcode() == 200:
@@ -280,12 +286,26 @@ class QueryPasta(ArcpyTool):
         """
         super(QueryPasta, self).execute(parameters, messages)
         packageDir = self.getParamAsText(parameters,2)
-        scopes = self.getScopeList()
+        #check db for limits to scopes/identifiers
+        with cursorContext(self.logger) as cur:
+            stmt = "select * from limit_identifier;"
+            cur.execute(stmt)
+            rows = cur.fetchall()
+            limits = [r[0] for r in rows]
+        if limits:
+            scopelimit = [lim.split('.')[0] for lim in limits]
+        allscopes = self.getScopeList()
+        if scopelimit:
+            scopes = [s for s in allscopes if s in scopelimit]
+        else:
+            scopes = allscopes
         for scope in scopes:
-            if not scope in [ 'knb-lter-knz']:
-                continue
+            if limits:
+                identArray = [lim.split('.')[1] for lim in limits if lim.split('.')[0] == scope]
+            else:
+                identArray = []
             try:
-                pids = self.getPackageIds(scope)
+                pids = self.getPackageIds(scope, identArray)
                 #pids = ['knb-lter-knz.2.7', 'knb-lter-knz.3.9', 'knb-lter-knz.4.8', 'knb-lter-knz.5.7', 'knb-lter-knz.6.7', 'knb-lter-knz.7.7', 'knb-lter-knz.9.8', 'knb-lter-knz.10.7', 'knb-lter-knz.11.7', 'knb-lter-knz.12.7', 'knb-lter-knz.13.7', 'knb-lter-knz.14.7', 'knb-lter-knz.16.7', 'knb-lter-knz.17.6', 'knb-lter-knz.18.6', 'knb-lter-knz.19.6', 'knb-lter-knz.23.6', 'knb-lter-knz.24.6', 'knb-lter-knz.25.6', 'knb-lter-knz.26.6', 'knb-lter-knz.27.6', 'knb-lter-knz.28.6', 'knb-lter-knz.29.6', 'knb-lter-knz.30.6', 'knb-lter-knz.32.6', 'knb-lter-knz.33.6', 'knb-lter-knz.34.6', 'knb-lter-knz.37.6', 'knb-lter-knz.38.6', 'knb-lter-knz.46.4', 'knb-lter-knz.47.4', 'knb-lter-knz.49.4', 'knb-lter-knz.50.4', 'knb-lter-knz.51.4', 'knb-lter-knz.55.6', 'knb-lter-knz.57.4', 'knb-lter-knz.58.4', 'knb-lter-knz.59.4', 'knb-lter-knz.60.4', 'knb-lter-knz.61.4', 'knb-lter-knz.63.4', 'knb-lter-knz.64.4', 'knb-lter-knz.66.4', 'knb-lter-knz.68.4', 'knb-lter-knz.70.4', 'knb-lter-knz.76.6', 'knb-lter-knz.77.6', 'knb-lter-knz.95.4', 'knb-lter-knz.200.3', 'knb-lter-knz.201.3', 'knb-lter-knz.202.3', 'knb-lter-knz.205.2', 'knb-lter-knz.210.1', 'knb-lter-knz.211.2', 'knb-lter-knz.222.2', 'knb-lter-knz.230.1', 'knb-lter-knz.240.2', 'knb-lter-knz.245.2']
                 #print len(pids)
                 self.packageTableInsert(pids)

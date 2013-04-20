@@ -136,7 +136,7 @@ def testMXD():
 
 if __name__ == '__main__':
     arcpy.env.scratchWorkspace = scratchWS
-    #testQuery()
+    testQuery()
     #testUnpack()
     #testCheckData()
     #testLoadVector()
@@ -144,4 +144,4 @@ if __name__ == '__main__':
     #testUnpackAsTool()
     #testChain()
     #makeSettingsfile()
-    testMXD()
+    #testMXD()
