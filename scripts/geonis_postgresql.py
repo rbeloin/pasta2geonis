@@ -12,7 +12,7 @@ Created on Mar 12, 2013
 import psycopg2
 import datetime, time
 from contextlib import contextmanager
-from geonis_pyconfig import dsnfile, workflowSchema
+from geonis_pyconfig import dsnfile
 from logging import WARN
 
 # some statements now obsolete
@@ -37,7 +37,7 @@ from logging import WARN
 def getEntityInsert():
     """Returns (statement, valueObject) where valueObject is dict with column names and defaults. Fill in values
        and execute statement. """
-    stmt = "INSERT INTO " + workflowSchema + ".entity (packageid, entityname, israster, isvector, entitydescription, status) VALUES(%(packageid)s, %(entityname)s, %(israster)s, %(isvector)s, %(entitydescription)s, %(status)s);"
+    stmt = "INSERT INTO entity (packageid, entityname, israster, isvector, entitydescription, status) VALUES(%(packageid)s, %(entityname)s, %(israster)s, %(isvector)s, %(entitydescription)s, %(status)s);"
     obj = {'packageid':'', 'entityname':'', 'israster':False, 'isvector':False, 'entitydescription':'', 'status':''}
     return (stmt,obj)
 
@@ -97,7 +97,15 @@ def cursorContext(logger = None):
         conn.close()
         del conn
 
-
+def getConfigValue(name):
+    retval = ''
+    with cursorContext() as cur:
+        cur.execute("SELECT strvalue FROM wfconfig WHERE name = %s", (name,))
+        rslt = cur.fetchone()
+        if rslt:
+            retval = rslt[0]
+            del rslt
+    return retval
 
 ##def main():
 ##    pkid = 'knb-lter-rmb.1.2'
@@ -138,33 +146,34 @@ def cursorContext(logger = None):
 ##            print str(r)
 
 def main():
-    limits = [[u'and', u'1, 2, 3'], [u'rmb', u'20 - 25'], [u'xyz', u'200 '], [u'emp', u'#']]
-    valsArr = []
-    for item in limits:
-        scope = str(item[0]).strip()
-        idlist = []
-        #print scope
-        ids = str(item[1]).strip()
-        if ',' in ids:
-            for idnum in ids.split(','):
-                idlist.append(idnum.strip())
-        elif '-' in ids:
-            rng = ids.split('-')
-            low = int(rng[0].strip())
-            hi = int(rng[1].strip()) + 1
-            for i in range(low,hi):
-                idlist.append(str(i))
-        elif '#' in ids or ids == '':
-            idlist.append('*')
-        else:
-            idlist.append(ids)
-        for idn in idlist:
-            valsArr.append({'inc':'%s.%s' % (scope,idn)})
-    valsTuple = tuple(valsArr)
-    print valsTuple
-    with cursorContext() as cur:
-        stmt = "insert into limit_identifier values(%(inc)s);"
-        cur.executemany(stmt, valsTuple)
+    print getConfigValue("dnsfile")
+##    limits = [[u'and', u'1, 2, 3'], [u'rmb', u'20 - 25'], [u'xyz', u'200 '], [u'emp', u'#']]
+##    valsArr = []
+##    for item in limits:
+##        scope = str(item[0]).strip()
+##        idlist = []
+##        #print scope
+##        ids = str(item[1]).strip()
+##        if ',' in ids:
+##            for idnum in ids.split(','):
+##                idlist.append(idnum.strip())
+##        elif '-' in ids:
+##            rng = ids.split('-')
+##            low = int(rng[0].strip())
+##            hi = int(rng[1].strip()) + 1
+##            for i in range(low,hi):
+##                idlist.append(str(i))
+##        elif '#' in ids or ids == '':
+##            idlist.append('*')
+##        else:
+##            idlist.append(ids)
+##        for idn in idlist:
+##            valsArr.append({'inc':'%s.%s' % (scope,idn)})
+##    valsTuple = tuple(valsArr)
+##    print valsTuple
+##    with cursorContext() as cur:
+##        stmt = "insert into limit_identifier values(%(inc)s);"
+##        cur.executemany(stmt, valsTuple)
 
 
 

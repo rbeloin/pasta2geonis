@@ -15,7 +15,7 @@ from copy import deepcopy
 from lxml import etree
 from logging import WARN
 from geonis_helpers import siteFromId
-from geonis_pyconfig import pathToStylesheets
+from geonis_postgresql import getConfigValue
 
 
 unittest = True
@@ -174,6 +174,7 @@ def createEmlSubset(workDir, pathToEML):
         Also, make workingData object with packageId, spatial type,
         and push it into newly created XML. Returns a tubple with the packageId and the number of spatialType nodes found.
     """
+    pathToStylesheets = getConfigValue("pathtostylesheets")
     stylesheet = pathToStylesheets + os.sep + "emlSubset.xsl"
     outputXMLtree = runTransformation(xslPath = stylesheet, inputXMLPath = pathToEML)
     workingData = {"packageId": None, "spatialType" : None, "entityName" : None, "entityDesc" : None, "dataEntityNum" : 0 }
@@ -250,6 +251,7 @@ def createEmlSubsetWithNode(originalDir, newDirectory = None, whichSpatialNode =
 
 def createSuppXML(workDir):
     """ Run XSL transformation on emlSubset.xml with emlSubsetToSupp.xsl to generate emlSupp.xml """
+    pathToStylesheets = getConfigValue("pathtostylesheets")
     stylesheet = pathToStylesheets + os.sep + "emlSubsetToSupp.xsl"
     inputXML = workDir + os.sep + "emlSubset.xml"
     outputXMLtree = runTransformation(xslPath = stylesheet, inputXMLPath = inputXML)
@@ -261,6 +263,7 @@ def createSuppXML(workDir):
 
 def createDictFromEmlSubset(workDir):
     """ Run XSL transformation on emlSubset.xml with emlSubsetToSupp.xsl to generate emlSupp.xml """
+    pathToStylesheets = getConfigValue("pathtostylesheets")
     stylesheet = pathToStylesheets + os.sep + "emlSubsetToDataFields.xsl"
     inputXML = workDir + os.sep + "emlSubset.xml"
     outputXMLtree = runTransformation(xslPath = stylesheet, inputXMLPath = inputXML)

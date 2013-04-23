@@ -25,12 +25,11 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
-from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, geodatabase, workflowSchema
-from geonis_pyconfig import pathToRasterData, pathToRasterMosaicDatasets, pathToStylesheets, dsnfile, pathToMapDoc, layerQueryURI, pubConnection, mapServInfo
+from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, dsnfile, pubConnection
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId, getToken
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
-from geonis_postgresql import cursorContext, getEntityInsert
+from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
 
 
 ## *****************************************************************************
@@ -138,7 +137,7 @@ class QueryPasta(ArcpyTool):
                         displayName = "Directory of Packages",
                         name = "in_dir",
                         datatype = "Folder",
-                        parameterType = "Required",
+                        parameterType = "Optional",
                         direction = "Input"))
         params.append(arcpy.Parameter(
                         displayName = "Directory of Packages",
@@ -207,11 +206,11 @@ class QueryPasta(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Inserts into package table")
     def packageTableInsert(self, pkidList):
-        stmt = "INSERT INTO " + workflowSchema + ".package (packageid) VALUES (%(packageid)s) EXCEPT SELECT packageid FROM " + workflowSchema + ".package;"
+        stmt = "INSERT INTO package (packageid) VALUES (%(packageid)s) EXCEPT SELECT packageid FROM package;"
         with cursorContext(self.logger) as cur:
             dictTupe = tuple([{'packageid':p} for p in pkidList])
             cur.executemany(stmt, dictTupe)
-        stmt2 = "UPDATE " + workflowSchema + ".package SET scope = substring(packageid from 10 for 3),\
+        stmt2 = "UPDATE package SET scope = substring(packageid from 10 for 3),\
                   identifier = CAST( substring(packageid from '\d+') as integer),\
                   revision = CAST (substring (packageid from '\d+$') as integer)\
                   WHERE scope is null;"
@@ -223,7 +222,7 @@ class QueryPasta(ArcpyTool):
     def findSpatialData(self, scope):
         """ Look at eml for spatial nodes, record number in workflow.package """
         baseURL = "http://pasta.lternet.edu/package/metadata/eml"
-        stmt = "SELECT * FROM " + workflowSchema + ".vw_newpackage WHERE scope = %s;"
+        stmt = "SELECT * FROM vw_newpackage WHERE scope = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (scope[9:],))
             rows = cur.fetchall()
@@ -245,7 +244,7 @@ class QueryPasta(ArcpyTool):
                         count += 1
                 #update table with spatial count
                 #print row, count
-                stmt = "UPDATE " + workflowSchema + ".package SET spatialcount = %s WHERE packageid = %s"
+                stmt = "UPDATE package SET spatialcount = %s WHERE packageid = %s"
                 with cursorContext(self.logger) as cur:
                     cur.execute(stmt, (count, pid))
             del resp
@@ -256,7 +255,7 @@ class QueryPasta(ArcpyTool):
     def getEML(self, scope, packageDir):
         """ Query db to get list of packages with spatial, where eml not yet downloaded """
         baseURL = "http://pasta.lternet.edu/package/metadata/eml"
-        stmt = "SELECT * FROM " + workflowSchema + ".vw_newspatialpackage WHERE scope = %s;"
+        stmt = "SELECT * FROM vw_newspatialpackage WHERE scope = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (scope[9:],))
             rows = cur.fetchall()
@@ -271,7 +270,7 @@ class QueryPasta(ArcpyTool):
                 with open(os.path.join(packageDir, pid + '.xml'), 'w') as emlfile:
                     emlfile.writelines(resp.readlines())
                 #update table with downloaded timestamp
-                stmt = "UPDATE " + workflowSchema + ".package SET downloaded = %s WHERE packageid = %s"
+                stmt = "UPDATE package SET downloaded = %s WHERE packageid = %s"
                 with cursorContext(self.logger) as cur:
                     cur.execute(stmt, (datetime.datetime.now(), pid))
             else:
@@ -286,6 +285,8 @@ class QueryPasta(ArcpyTool):
         """
         super(QueryPasta, self).execute(parameters, messages)
         packageDir = self.getParamAsText(parameters,2)
+        if packageDir is None or packageDir == '' or packageDir == '#':
+            packageDir = getConfigValue("pathtodownloadedpkgs")
         #check db for limits to scopes/identifiers
         with cursorContext(self.logger) as cur:
             stmt = "select * from limit_identifier;"
@@ -491,16 +492,7 @@ class UnpackPackages(ArcpyTool):
         #allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.zip']
         allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.xml']
         #loop over packages, handling one at a time. an error will drop the current package and go to the next one
-        #TESTING
-        testPacks = ['knb-lter-knz.222.2.xml']
-##        'knb-lter-knz.230.1.xml',
-##                     'knb-lter-ntl.176.7.xml',
-##                     'knb-lter-ntl.273.7.xml',
-##                     'knb-lter-ntl.177.11.xml',
-##                     'knb-lter-knz.240.2.xml'
-##                     ]
-        allTestPackages = [os.path.join(packageDir,p) for p in testPacks if os.path.join(packageDir,p) in allpackages]
-        for pkg in allTestPackages:
+        for pkg in allpackages:
             self.logger.logMessage(DEBUG, "Starting work on %s" % (pkg,))
             try:
                 workdir = self.unzipPkg(pkg, outputDir)
@@ -772,7 +764,7 @@ class CheckSpatialData(ArcpyTool):
                 finally:
                     #write status msg to workflow.entity. Need both packagid and entityname to be unique
                     if pkgId and entityName:
-                        stmt = "UPDATE " + workflowSchema + ".entity set status = %s WHERE packageid = %s and entityname = %s;"
+                        stmt = "UPDATE entity set status = %s WHERE packageid = %s and entityname = %s;"
                         with cursorContext(self.logger) as cur:
                             cur.execute(stmt, (status[:499], pkgId, entityName))
                     writeWorkingDataToXML(dataDir, emldata, self.logger)
@@ -812,6 +804,7 @@ class LoadVectorTypes(ArcpyTool):
     @errHandledWorkflowTask(taskName="Load shapefile")
     def loadShapefile(self, scope, name, path):
         """call feature class to feature class to copy shapefile to geodatabase"""
+        geodatabase = getConfigValue("geodatabase")
         self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
         #if no dataset, make one
         if not arcpy.Exists(os.path.join(geodatabase,scope)):
@@ -828,6 +821,7 @@ class LoadVectorTypes(ArcpyTool):
     def loadKml(self, scope, name, path):
         """call KML to Layer tool to copy kml contents to file gdb, then loop over features
         and load each to geodatabase"""
+        geodatabase = getConfigValue("geodatabase")
         self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
         #if no dataset, make one
         if not arcpy.Exists(os.path.join(geodatabase,scope)):
@@ -863,6 +857,7 @@ class LoadVectorTypes(ArcpyTool):
             self.logger.logMessage(WARN, "Supplemental metadata file missing in %s" % (workDir,))
             return
         arcpy.env.workspace = workDir
+        pathToStylesheets = getConfigValue("pathtostylesheets")
         result = arcpy.XSLTransform_conversion(loadedFeatureClass, pathToStylesheets + os.sep + "metadataMerge.xsl", "merged_metadata.xml", xmlSuppFile)
         result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", loadedFeatureClass)
 
@@ -872,7 +867,7 @@ class LoadVectorTypes(ArcpyTool):
         if not loadedFeatureClass:
             return
         scope_data = os.sep.join(loadedFeatureClass.split(os.sep)[-2:])
-        stmt = "UPDATE " + workflowSchema + ".entity set storage = %s WHERE packageid = %s and entityname = %s;"
+        stmt = "UPDATE entity set storage = %s WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (scope_data, pkid, entityname))
 
@@ -890,8 +885,7 @@ class LoadVectorTypes(ArcpyTool):
                 entityname = emldata["entityName"]
                 objectName = emldata["objectName"]
                 siteId, n, m = siteFromId(pkgId)
-                #TODO Do we need a way to specify this suffix?
-                scopeWithSuffix = siteId + "_main"
+                scopeWithSuffix = siteId + getConfigValue("datasetscopesuffix")
                 if 'shapefile' in datatype:
                     loadedFeatureClass = self.loadShapefile(scopeWithSuffix, objectName, datafilePath)
                     status = "Loaded shapefile"
@@ -919,7 +913,7 @@ class LoadVectorTypes(ArcpyTool):
             finally:
                 #write status msg to db table
                 if pkgId and entityname:
-                    stmt = "UPDATE " + workflowSchema + ".entity set status = %s WHERE packageid = %s and entityname = %s;"
+                    stmt = "UPDATE entity set status = %s WHERE packageid = %s and entityname = %s;"
                     with cursorContext(self.logger) as cur:
                         cur.execute(stmt, (status[:499], pkgId, entityname))
         #pass the list on
@@ -961,13 +955,14 @@ class LoadRasterTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Prepare storage")
-    def prepareStorage(self, site, datapath, name, dsSuffix = "main"):
+    def prepareStorage(self, site, datapath, name):
         """ Create the directories necessary for storing the raw data, and return path to location.
             Also create mosaic dataset for site if needed.
-            Currently appending '_main' to scope for storage dir and mosaic dataset name (db terms
+            Appends '_main' or '_test' to scope for storage dir and mosaic dataset name (db terms
             not allowed as ds name--I'm looking at you, and)
         """
-        dsName = site + '_' + dsSuffix
+        dsName = site + getConfigValue("datasetscopesuffix")
+        pathToRasterData = getConfigValue("pathtorasterdata")
         siteStore = os.path.join(pathToRasterData,dsName)
         #name, ext =  os.path.splitext( os.path.basename(datapath))
         storageLoc = siteStore + os.sep + name
@@ -975,6 +970,7 @@ class LoadRasterTypes(ArcpyTool):
         if not os.path.exists(siteStore):
             os.mkdir(siteStore)
         #if no mosaic dataset, make it
+        pathToRasterMosaicDatasets = getConfigValue("pathtorastermosaicdatasets")
         siteMosDS = pathToRasterMosaicDatasets + os.sep + dsName
         if not arcpy.Exists(siteMosDS):
             result = arcpy.Copy_management(pathToRasterMosaicDatasets + os.sep + "Template", siteMosDS)
@@ -1038,6 +1034,7 @@ class LoadRasterTypes(ArcpyTool):
             self.logger.logMessage(WARN, "Supplemental metadata file missing in %s" % (workDir,))
             return False
         arcpy.env.workspace = workDir
+        pathToStylesheets = getConfigValue("pathtostylesheets")
         result = arcpy.XSLTransform_conversion(raster, pathToStylesheets + os.sep + "metadataMerge.xsl", "merged_metadata.xml", xmlSuppFile)
         if result.status == 4:
             result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", raster)
@@ -1058,7 +1055,7 @@ class LoadRasterTypes(ArcpyTool):
             loc = os.sep.join(parts[-3:])
         else:
             loc = location[-50:]
-        stmt = "UPDATE " + workflowSchema + ".entity set storage = %s WHERE packageid = %s and entityname = %s;"
+        stmt = "UPDATE entity set storage = %s WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (loc, pkid, entityname))
 
@@ -1108,7 +1105,7 @@ class LoadRasterTypes(ArcpyTool):
             finally:
                 #write status msg to db table
                 if pkgId:
-                    stmt = "UPDATE " + workflowSchema + ".entity set status = %s WHERE packageid = %s;"
+                    stmt = "UPDATE entity set status = %s WHERE packageid = %s;"
                     with cursorContext(self.logger) as cur:
                         cur.execute(stmt, (status[:499], pkgId))
         #pass the list on
@@ -1142,7 +1139,7 @@ class UpdateMXDs(ArcpyTool):
     def addVectorData(self, workDir, workingData):
         """   """
         # see if entry in entity table, and get storage path
-        stmt = "SELECT storage, status FROM " + workflowSchema + ".entity WHERE packageid = %s and entityname = %s;"
+        stmt = "SELECT storage, status FROM entity WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (workingData["packageId"], workingData["entityName"]))
             rows = cur.fetchall()
@@ -1156,6 +1153,7 @@ class UpdateMXDs(ArcpyTool):
         site = siteFromId(workingData["packageId"])[0]
         layerName = workingData["objectName"]
         mxdName = site + ".mxd"
+        pathToMapDoc = getConfigValue("pathtomapdoc")
         mxdfile = pathToMapDoc + os.sep + mxdName
         # check if layer is in mxd, and remove if found
         mxd = arcpy.mapping.MapDocument(mxdfile)
@@ -1168,6 +1166,7 @@ class UpdateMXDs(ArcpyTool):
                 arcpy.mapping.RemoveLayer(layersFrame, layer)
                 mxd.save()
         #now add to map
+        geodatabase = getConfigValue("geodatabase")
         feature = geodatabase + os.sep + store
         scratchFld = arcpy.env.scratchFolder
         arcpy.MakeFeatureLayer_management(in_features = feature, out_layer = layerName)
@@ -1184,10 +1183,10 @@ class UpdateMXDs(ArcpyTool):
     @errHandledWorkflowTask(taskName="Insert into layer table")
     def makeLayerRec(self, workDir, pkgId, name):
         """Insert record into workflow.geonis_layer for this entity  """
-        insstmt = "INSERT INTO " + workflowSchema + ".geonis_layer \
+        insstmt = "INSERT INTO geonis_layer \
          (id, packageid, scope, entityname, entitydescription, title, abstract, purpose, keywords, sourceloc, layername, arcloc, layerid) VALUES \
          (%(id)s, %(pid)s, %(site)s, %(name)s, %(desc)s, %(title)s, %(abstract)s, %(purpose)s, %(keywords)s, %(source)s, %(layer)s, %(arcloc)s, %(layerid)s);"
-        selstmt = "SELECT id, status FROM " + workflowSchema + ".entity WHERE packageid = %s and entityname = %s;"
+        selstmt = "SELECT id, status FROM entity WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(selstmt, (pkgId, name))
             row = cur.fetchone()
@@ -1227,7 +1226,7 @@ class UpdateMXDs(ArcpyTool):
                     pkgId = workingData["packageId"]
                     lName, mxdName = self.addVectorData(dir, workingData)
                     with cursorContext(self.logger) as cur:
-                        stmt = "UPDATE " + workflowSchema + ".entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s, status = 'Added to map' \
+                        stmt = "UPDATE entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s, status = 'Added to map' \
                          WHERE packageid = %(pkgId)s and entityname = %(entityname)s;"
                         cur.execute(stmt,
                          {'mxd': mxdName, 'layername' : lName, 'now' : datetime.datetime.now(), 'pkgId': pkgId, 'entityname' : workingData["entityName"]})
@@ -1242,7 +1241,7 @@ class UpdateMXDs(ArcpyTool):
             finally:
                 #write status msg to db table
                 if workingData:
-                    stmt = "UPDATE " + workflowSchema + ".entity set status = %s WHERE packageid = %s  and entityname = %s;"
+                    stmt = "UPDATE entity set status = %s WHERE packageid = %s  and entityname = %s;"
                     with cursorContext(self.logger) as cur:
                         cur.execute(stmt, (status[:499], workingData["packageId"], workingData["entityName"]))
         #pass the list on
@@ -1275,6 +1274,7 @@ class RefreshMapService(ArcpyTool):
     def draftSD(self, mxdname):
         """Stops service, creates SD draft, modifies it"""
         """http://maps3.lternet.edu:6080/arcgis/admin/services/Test/VectorData.MapServer/stop"""
+        pathToMapDoc = getConfigValue("pathtomapdoc")
         arcpy.env.workspace = os.path.dirname(pathToMapDoc)
         wksp = arcpy.env.workspace
         site, ext = mxdname.split('.')
@@ -1318,6 +1318,7 @@ class RefreshMapService(ArcpyTool):
     @errHandledWorkflowTask(taskName="Replace service")
     def replaceService(self, mxdname, sdDraft):
         """Creates SD, uploads to server"""
+        pathToMapDoc = getConfigValue("pathtomapdoc")
         arcpy.env.workspace = os.path.dirname(pathToMapDoc)
         wksp = arcpy.env.workspace
         mxd = arcpy.mapping.MapDocument(pathToMapDoc + os.sep + mxdname)
@@ -1338,6 +1339,7 @@ class RefreshMapService(ArcpyTool):
         # get list of layer names from service
         available = False
         tries = 0
+        layerQueryURI = getConfigValue("layerqueryuri")
         layersUrl = layerQueryURI % (self.serverInfo["service_folder"], self.serverInfo["service_name"])
         layerInfoJson = urllib2.urlopen(layersUrl)
         layerInfo = json.loads(layerInfoJson.readline())
@@ -1364,21 +1366,28 @@ class RefreshMapService(ArcpyTool):
             lyr["scope"] = site
             lyr["arcloc"] = arcloc
         # update table, set arcloc field for layers that are newly added
-        stmt = "UPDATE " + workflowSchema + ".geonis_layer set arcloc = %s WHERE scope = %s AND (layerid = -1 OR layerid is null);"
+        stmt = "UPDATE geonis_layer set arcloc = %s WHERE scope = %s AND (layerid = -1 OR layerid is null);"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (arcloc, site) )
         # update table with ids of layers for all layers (not just newly added)
         valObj = tuple(layers)
-        stmt = "UPDATE " + workflowSchema + ".geonis_layer set layerid = %(id)s WHERE scope = %(scope)s AND layername = %(name)s and arcloc = %(arcloc)s;"
+        stmt = "UPDATE geonis_layer set layerid = %(id)s WHERE scope = %(scope)s AND layername = %(name)s and arcloc = %(arcloc)s;"
         with cursorContext(self.logger) as cur:
             cur.executemany(stmt, valObj )
 
     def execute(self, parameters, messages):
         super(RefreshMapService, self).execute(parameters, messages)
+        mapServInfoString = getConfigValue("mapservinfo")
+        mapServInfoItems = mapServInfoString.split(';')
+        if len(mapServInfoItems != 4):
+            self.logger.logMessage(WARN,"Wrong number of items in map serv info: %s" % (mapServInfoString,))
+            #maybe we have the name and folder
+            mapServInfoItems = [mapServInfoItems[0],mapServInfoItems[1],"",""]
+        mapServInfo = {'service_name':mapServInfoItems[0], 'service_folder':mapServInfoItems[1], 'tags':mapServInfoItems[2], 'summary':mapServInfoItems[3]}
         self.serverInfo = copy.copy(mapServInfo)
         try:
             #get list of map services where entity record exists, is OK, has mxd, but not in geonis_layer
-            stmt = "SELECT * FROM " + workflowSchema + ".vw_stalemapservices;"
+            stmt = "SELECT * FROM vw_stalemapservices;"
             with cursorContext(self.logger) as cur:
                 cur.execute(stmt)
                 rows = cur.fetchall()
