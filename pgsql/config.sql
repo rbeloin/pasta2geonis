@@ -1,4 +1,3 @@
-
 --create table
 create table if not exists workflow.wfconfig (
 name varchar(50),
@@ -6,14 +5,13 @@ strvalue varchar(500) );
 --reload table
 delete from workflow.wfconfig;
 --reset values for workflow production
-/*
 insert into workflow.wfconfig values
 ('pathtoenvsettings','C:\pasta2geonis\savedEnv.xml'),
 ('geodatabase', 'C:\pasta2geonis\geonisOnMaps3.sde'),
 ('pathtostylesheets','C:\pasta2geonis\stylesheets'),
 ('pathtorasterdata','C:\pasta2geonis\Gis_data\Raster_raw'),
 ('pathtorastermosaicdatasets','C:\pasta2geonis\Gis_data\Raster_md.gdb'),
-('pathtomapdoc','C:\pasta2geonis'),
+('pathtomapdoc','C:\pasta2geonis\Arcmap_mxd'),
 ('layerqueryuri','http://maps3.lternet.edu/arcgis/rest/services/%s/%s/MapServer/layers?f=json'),
 ('scratchws','C:\Temp'),
 ('schema','workflow'),
@@ -21,9 +19,9 @@ insert into workflow.wfconfig values
 ('mapservsuffix','_layers'),
 ('imageservinfo',''),
 ('datasetscopesuffix','_main'),
-('pathtodownloadedpkgs','C:\Temp'),
-('pathtoprocesspkgs','C:\Temp');
-*/
+('pathtodownloadedpkgs','C:\Temp\pasta_pkg'),
+('pathtoprocesspkgs','C:\Temp\valid_pkg');
+/*
 --reset values for dev env (ron's machine)
 insert into workflow.wfconfig values
 ('pathtoenvsettings','C:\Users\ron\Documents\geonis_tests\savedEnv.xml'),
@@ -41,23 +39,24 @@ insert into workflow.wfconfig values
 ('datasetscopesuffix','_main'),
 ('pathtodownloadedpkgs','Z:\docs\local\geonis_testdata\downloaded_pkgs'),
 ('pathtoprocesspkgs','Z:\docs\local\geonis_testdata\pkgs');
-/*
+*/
 create table if not exists workflow_d.wfconfig (LIKE workflow.wfconfig);
 --reset values for workflow testing
+delete from workflow_d.wfconfig;
 insert into workflow_d.wfconfig values
 ('pathtoenvsettings','C:\pasta2geonis\savedEnv.xml'),
 ('geodatabase', 'C:\pasta2geonis\geonisOnMaps3.sde'),
 ('pathtostylesheets','C:\pasta2geonis\stylesheets'),
 ('pathtorasterdata','C:\pasta2geonis\Gis_data\Raster_raw_test'),
 ('pathtorastermosaicdatasets','C:\pasta2geonis\Gis_data\Raster_md_test.gdb'),
-('pathtomapdoc','C:\pasta2geonis\test_mxds'),
+('pathtomapdoc','C:\pasta2geonis\Arcmap_mxd_test'),
 ('layerqueryuri','http://maps3.lternet.edu/arcgis/rest/services/%s/%s/MapServer/layers?f=json'),
 ('scratchws','C:\Temp'),
-('schema','workflow'),
+('schema','workflow_d'),
 ('mapservinfo','placeholder;Test;Test;Test services for vector data'),
 ('mapservsuffix','_layers'),
 ('imageservinfo',''),
 ('datasetscopesuffix','_test'),
-('pathtodownloadedpkgs','C:\Temp'),
-('pathtoprocesspkgs','C:\Temp');
-*/
+('pathtodownloadedpkgs','C:\Temp\pasta_pkg_test'),
+('pathtoprocesspkgs','C:\Temp\valid_pkg_test');
+
