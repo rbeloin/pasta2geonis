@@ -26,6 +26,8 @@ if platform.node() == "Maps3":
     dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
     #publisher conn
     pubConnection = r"C:\pasta2geonis\Maps3.lternet.edu_6080(publisher).ags"
+    #arcgis credentials for script admin of services
+    arcgiscred = r"C:\pasta2geonis\arcgis_cred.txt"
 ##    #path to env settings file. settings loaded by base execute method
 ##    envSettingsPath = r"C:\pasta2geonis\savedEnv.xml"
 ##    #path to stylesheets

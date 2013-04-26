@@ -25,7 +25,7 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
-from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, dsnfile, pubConnection
+from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, dsnfile, pubConnection, arcgiscred
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId, getToken
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
@@ -1278,9 +1278,9 @@ class RefreshMapService(ArcpyTool):
         arcpy.env.workspace = os.path.dirname(pathToMapDoc)
         wksp = arcpy.env.workspace
         site, ext = mxdname.split('.')
-        self.serverInfo["service_name"] = site + "_vectors"
+        self.serverInfo["service_name"] = site + getConfigValue('mapservsuffix')
         #stop service first
-        with open(r"C:\pasta2geonis\arcgis_cred.txt") as f:
+        with open(arcgiscred) as f:
             cred = eval(f.readline())
         token = getToken(cred['username'], cred['password'])
         if token:
