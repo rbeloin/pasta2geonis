@@ -77,13 +77,14 @@ class Setup(ArcpyTool):
         inserts list of scope.identifier values into limit_identifier table for later tool """
         super(Setup, self).execute(parameters, messages)
         testingMode = parameters[2].value
+        # "$user" is required to be first schema to satisfy esri tools
         if testingMode == True:
-            stmt1 = "alter role geonis in database geonis set search_path = public,workflow_d,workflow,sde;"
+            stmt1 = 'alter role geonis in database geonis set search_path = "$user",workflow_d,workflow,sde,public;'
         else:
-            stmt1 = "alter role geonis in database geonis set search_path = public,workflow,sde;"
+            stmt1 = 'alter role geonis in database geonis set search_path = "$user",workflow,sde,public;'
         stmt2 = "delete from limit_identifier;"
         with cursorContext(self.logger) as cur:
-            #cur.execute(stmt1)
+            cur.execute(stmt1)
             cur.execute(stmt2)
         limitsParam = self.getParamAsText(parameters,3)
         if limitsParam and limitsParam != '' and limitsParam != '#':
@@ -885,12 +886,16 @@ class LoadVectorTypes(ArcpyTool):
                 entityname = emldata["entityName"]
                 objectName = emldata["objectName"]
                 siteId, n, m = siteFromId(pkgId)
+                #TODO: must add site and optionally '_d' to feature class name. Must be unique in geonis db
+                fullObjectName = objectName + '_' + siteId
+                if getConfigValue("schema").endswith("_d"):
+                    fullObjectName = fullObjectName + "_d"
                 scopeWithSuffix = siteId + getConfigValue("datasetscopesuffix")
                 if 'shapefile' in datatype:
-                    loadedFeatureClass = self.loadShapefile(scopeWithSuffix, objectName, datafilePath)
+                    loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName, datafilePath)
                     status = "Loaded shapefile"
                 elif 'kml' in datatype:
-                    loadedFeatureClass = self.loadKml(scopeWithSuffix, objectName, datafilePath)
+                    loadedFeatureClass = self.loadKml(scopeWithSuffix, fullObjectName, datafilePath)
                     status = "Loaded from KML"
                 elif 'geodatabase' in datatype:
                     #TODO: copy vector from file geodatabase, for now, leave dir behind
