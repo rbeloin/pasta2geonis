@@ -1280,8 +1280,8 @@ class RefreshMapService(ArcpyTool):
         """Stops service, creates SD draft, modifies it"""
         """http://maps3.lternet.edu:6080/arcgis/admin/services/Test/VectorData.MapServer/stop"""
         pathToMapDoc = getConfigValue("pathtomapdoc")
-        arcpy.env.workspace = os.path.dirname(pathToMapDoc)
-        wksp = arcpy.env.workspace
+        arcpy.env.workspace = pathToMapDoc
+        pathToServiceDoc = arcpy.env.workspace + os.sep + "servicedefs"
         site, ext = mxdname.split('.')
         self.serverInfo["service_name"] = site + getConfigValue('mapservsuffix')
         #stop service first
@@ -1290,6 +1290,7 @@ class RefreshMapService(ArcpyTool):
         token = getToken(cred['username'], cred['password'])
         if token:
             serviceStopURL = "/arcgis/admin/services/%s/%s.MapServer/stop" % (self.serverInfo["service_folder"],self.serverInfo["service_name"])
+            self.logger.logMessage(DEBUG,"stopping %s" % (serviceStopURL,))
             # This request only needs the token and the response formatting parameter
             params = urllib.urlencode({'token': token, 'f': 'json'})
             headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
@@ -1303,18 +1304,22 @@ class RefreshMapService(ArcpyTool):
         else:
              self.logger.logMessage(WARN, "Error while attempting to get admin token.")
         mxd = arcpy.mapping.MapDocument(pathToMapDoc + os.sep + mxdname)
-        sdDraft = wksp + os.sep + self.serverInfo['service_name'] + ".sddraft"
+        sdDraft = pathToServiceDoc + os.sep + self.serverInfo['service_name'] + ".sddraft"
+        self.logger.logMessage(DEBUG,"Draft loc: %s" % (sdDraft,))
         arcpy.mapping.CreateMapSDDraft(mxd, sdDraft, self.serverInfo['service_name'],
         "ARCGIS_SERVER", pubConnection, False, self.serverInfo["service_folder"], self.serverInfo['summary'], self.serverInfo['tags'])
         del mxd
         #now we need to change one tag in the draft to indicate this is a replacement service
+        self.logger.logMessage(DEBUG,"reading back draft to parse xml")
         draftXml = etree.parse(sdDraft)
         typeNode = draftXml.xpath("/SVCManifest/Type")
         if typeNode and etree.iselement(typeNode[0]):
+            self.logger.logMessage(DEBUG,"Found node to modify in draft xml")
             typeNode[0].text = "esriServiceDefinitionType_Replacement"
             with open(sdDraft,'w') as outfile:
                 outfile.write(etree.tostring(draftXml, xml_declaration = False))
             #save backup for debug
+            self.logger.logMessage(DEBUG,"saving backup draft")
             with open(sdDraft + '.bak', 'w') as bakfile:
                 bakfile.write(etree.tostring(draftXml, xml_declaration = False))
         del typeNode, draftXml
@@ -1324,10 +1329,10 @@ class RefreshMapService(ArcpyTool):
     def replaceService(self, mxdname, sdDraft):
         """Creates SD, uploads to server"""
         pathToMapDoc = getConfigValue("pathtomapdoc")
-        arcpy.env.workspace = os.path.dirname(pathToMapDoc)
-        wksp = arcpy.env.workspace
+        arcpy.env.workspace = pathToMapDoc
+        pathToServiceDoc = arcpy.env.workspace + os.sep + "servicedefs"
         mxd = arcpy.mapping.MapDocument(pathToMapDoc + os.sep + mxdname)
-        sdFile =  wksp + os.sep + self.serverInfo['service_name'] + ".sd"
+        sdFile = pathToServiceDoc + os.sep + self.serverInfo['service_name'] + ".sd"
         if os.path.exists(sdFile):
             os.remove(sdFile)
         # by default, writes SD file to same loc as draft, then DELETES DRAFT
@@ -1384,7 +1389,7 @@ class RefreshMapService(ArcpyTool):
         super(RefreshMapService, self).execute(parameters, messages)
         mapServInfoString = getConfigValue("mapservinfo")
         mapServInfoItems = mapServInfoString.split(';')
-        if len(mapServInfoItems != 4):
+        if len(mapServInfoItems) != 4:
             self.logger.logMessage(WARN,"Wrong number of items in map serv info: %s" % (mapServInfoString,))
             #maybe we have the name and folder
             mapServInfoItems = [mapServInfoItems[0],mapServInfoItems[1],"",""]
