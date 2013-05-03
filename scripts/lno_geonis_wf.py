@@ -690,6 +690,37 @@ class CheckSpatialData(ArcpyTool):
                 self.logger.logMessage(WARN, "emlName %s did not match data name %s" % (emlName, dataFileName))
                 return False
 
+    @errHandledWorkflowTask(taskName="Attribute name check")
+    def attributeNames(self, workDir, dataFilePath):
+        emlAttNames = []
+        entityAttNames = []
+        emlTree = etree.parse(os.path.join(workDir,"emlSubset.xml"))
+        attNodes = emlTree.xpath("//attributeList/attribute")
+        for att in attNodes:
+            emlAttNames.append(att.xpath("attributeName")[0].text.upper())
+        del emlTree
+        fields = arcpy.ListFields(dataFilePath)
+        entityAttNames = [str(f.name.upper()) for f in fields]
+        diff = list(set(emlAttNames) ^ set(entityAttNames))
+        if len(diff) > 0:
+            self.logger.logMessage(WARN,"Attribute names in eml and entity did not match. %s", (str(diff),))
+        return diff
+
+    @errHandledWorkflowTask(taskName="Checking precision")
+    def checkPrecision(self, dataFilePath):
+        passed = True
+        fields = arcpy.ListFields(dataFilePath)
+        for fld in fields:
+            if fld.type == u'Double' and fld.precision > 15:
+                passed = False
+            elif fld.type == u'Single' and fld.precision > 6:
+                passed = False
+            elif fld.type == u'Integer' and fld.precision > 10:
+                passed = False
+        if not passed:
+            self.logger.logMessage(WARN,"Precision test failed.")
+        return passed
+
 
     @errHandledWorkflowTask(taskName="Format report")
     def getReport(self, reportText):
@@ -753,6 +784,16 @@ class CheckSpatialData(ArcpyTool):
                         emldata["type"] = "raster dataset"
                     if spatialType == GeoNISDataType.SPATIALVECTOR:
                         emldata["type"] = "vector"
+                    status = "File type assigned"
+                    #get list of mismatches in attribute names
+                    mismatchedAtts = self.attributeNames(dataDir,emldata["datafilePath"])
+                    if  mismatchedAtts != []:
+                        reportText.append({"Fields mismatch":str(mismatchedAtts)})
+                        status = "Found mismatch in attribute names"
+                    else:
+                        status = "Matched all attribute names"
+                    if not checkPrecision(emldata["datafilePath"]):
+                        raise Exception("Precision of field incompatible with geodatabase.")
                 except Exception as err:
                     status = "Failed after %s with %s" % (status, err.message)
                     self.logger.logMessage(WARN, e.message)
