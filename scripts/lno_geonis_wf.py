@@ -437,6 +437,7 @@ class UnpackPackages(ArcpyTool):
         resource = None
         if dataloc is not None:
             try:
+                #TODO: trap httperror, check return code
                 #uri = HTMLParser().unescape(dataloc)
                 uri = dataloc
                 sdatafile = os.path.join(workDir,emldata["shortEntityName"] + '.zip')
@@ -792,13 +793,13 @@ class CheckSpatialData(ArcpyTool):
                         status = "Found mismatch in attribute names"
                     else:
                         status = "Matched all attribute names"
-                    if not checkPrecision(emldata["datafilePath"]):
+                    if not self.checkPrecision(emldata["datafilePath"]):
                         raise Exception("Precision of field incompatible with geodatabase.")
                 except Exception as err:
                     status = "Failed after %s with %s" % (status, err.message)
-                    self.logger.logMessage(WARN, e.message)
+                    self.logger.logMessage(WARN, err.message)
                     reportText.append({"Status":"Failed"})
-                    reportText.append({"Error message":e.message})
+                    reportText.append({"Error message":err.message})
                 else:
                     status = "Passed checks"
                     reportText.append({"Status":"OK"})
