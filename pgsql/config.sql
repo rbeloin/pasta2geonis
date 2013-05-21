@@ -20,7 +20,8 @@ insert into workflow.wfconfig values
 ('imageservinfo',''),
 ('datasetscopesuffix','_main'),
 ('pathtodownloadedpkgs','C:\Temp\pasta_pkg'),
-('pathtoprocesspkgs','C:\Temp\valid_pkg');
+('pathtoprocesspkgs','C:\Temp\valid_pkg'),
+('emailgroup','rbeloin@me.com;rmbeloin@gmail.com');
 /*
 --reset values for dev env (ron's machine)
 insert into workflow.wfconfig values
@@ -38,7 +39,8 @@ insert into workflow.wfconfig values
 ('imageservinfo',''),
 ('datasetscopesuffix','_main'),
 ('pathtodownloadedpkgs','Z:\docs\local\geonis_testdata\downloaded_pkgs'),
-('pathtoprocesspkgs','Z:\docs\local\geonis_testdata\pkgs');
+('pathtoprocesspkgs','Z:\docs\local\geonis_testdata\pkgs'),
+('emailgroup','rbeloin@me.com;rmbeloin@gmail.com');
 */
 create table if not exists workflow_d.wfconfig (LIKE workflow.wfconfig);
 --reset values for workflow testing
@@ -58,5 +60,6 @@ insert into workflow_d.wfconfig values
 ('imageservinfo',''),
 ('datasetscopesuffix','_test'),
 ('pathtodownloadedpkgs','C:\Temp\pasta_pkg_test'),
-('pathtoprocesspkgs','C:\Temp\valid_pkg_test');
+('pathtoprocesspkgs','C:\Temp\valid_pkg_test'),
+('emailgroup','rbeloin@me.com;rmbeloin@gmail.com');
 

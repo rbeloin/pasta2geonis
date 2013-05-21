@@ -24,6 +24,8 @@ tempMetadataFilename = "temp_meta.data"
 if platform.node() == "Maps3":
     #DSN file
     dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
+    # smtp stuff
+    smtpfile = r"C:\pasta2geonis\mailCred.txt"
     #publisher conn
     pubConnection = r"C:\pasta2geonis\Maps3.lternet.edu_6080(publisher).ags"
     #arcgis credentials for script admin of services
@@ -51,6 +53,8 @@ if platform.node() == "Maps3":
 else:
     # dsn to postgresql running on mac host
     dsnfile = r"Z:\docs\local\git\pasta2geonis_sg\geonisDSN.txt"
+    # smtp stuff
+    smtpfile = r"Z:\docs\local\git\pasta2geonis_sg\mailCred.txt"
     #publisher conn is N/A on dev machine
     pubConnection = ""
 ##    #path to env settings file. settings loaded by base execute method

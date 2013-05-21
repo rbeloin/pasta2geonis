@@ -7,7 +7,8 @@ scope     varchar(50),
 identifier integer,
 revision integer,
 spatialcount smallint NOT NULL DEFAULT -1,
-downloaded timestamp );
+downloaded timestamp,
+report text );
 CREATE TABLE workflow_d.entity (
 id serial PRIMARY KEY,
 packageid varchar(50) REFERENCES workflow_d.package(packageid),
@@ -20,6 +21,7 @@ storage varchar(200),
 mxd varchar(200),
 layername varchar(100),
 status varchar(500),
+report text,
 UNIQUE ( packageid, entityname ) );
 CREATE TABLE workflow_d.geonis_layer (
 id integer PRIMARY KEY REFERENCES workflow_d.entity(id),
@@ -51,7 +53,8 @@ scope     varchar(50),
 identifier integer,
 revision integer,
 spatialcount smallint NOT NULL DEFAULT -1,
-downloaded timestamp );
+downloaded timestamp,
+report text );
 CREATE TABLE workflow.entity (
 id serial PRIMARY KEY,
 packageid varchar(50) REFERENCES workflow.package(packageid),
@@ -64,6 +67,7 @@ storage varchar(200),
 mxd varchar(200),
 layername varchar(100),
 status varchar(500),
+report text,
 UNIQUE ( packageid, entityname ) );
 CREATE TABLE workflow.geonis_layer (
 id integer PRIMARY KEY REFERENCES workflow.entity(id),

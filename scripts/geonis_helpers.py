@@ -8,9 +8,12 @@ Created on Jan 28, 2013
 @see https://nis.lternet.edu/NIS/
 '''
 import os
-from geonis_pyconfig import GeoNISDataType
+from geonis_pyconfig import GeoNISDataType, smtpfile
 from functools import partial
 import httplib, urllib, json
+import smtplib
+from email.mime.text import MIMEText
+from logging import WARN
 
 def fileExtensionMatch(extensions, pathToFile):
     name, ext = os.path.splitext(pathToFile)
@@ -90,5 +93,30 @@ def getToken(username, password, serverName = "localhost", serverPort = "6080"):
         # Extract the token from it
         token = json.loads(data)
         return token['token']
+
+
+def sendEmail(toList, messageBody):
+    with open(smtpfile) as mailfile:
+        smtpInfo = mailfile.readline()
+    smtpconfig = eval(smtpInfo)
+    msg = "Do not reply to this message.\n\n" + messageBody
+    body = MIMEText(msg)
+    body['Subject'] = 'Report from GeoNIS on submitted spatial data'
+    body['To'] = ', '.join(toList)
+    body['From'] = smtpconfig['originator']
+    svr = None
+    try:
+        svr = smtplib.SMTP(host=smtpconfig['host'],port=smtpconfig['port'])
+        svr.ehlo()
+        svr.starttls()
+        svr.ehlo()
+        svr.login(smtpconfig['user'],smtpconfig['password'])
+        svr.sendmail(smtpconfig['originator'], toList, body.as_string())
+        return ''
+    except Exception as err:
+        return err.message
+    finally:
+        if svr is not None:
+            svr.quit()
 
 

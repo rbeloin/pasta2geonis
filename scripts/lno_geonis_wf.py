@@ -27,7 +27,7 @@ from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, dsnfile, pubConnection, arcgiscred
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
-from geonis_helpers import siteFromId, getToken
+from geonis_helpers import siteFromId, getToken, sendEmail
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
 from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
 
@@ -449,7 +449,7 @@ class UnpackPackages(ArcpyTool):
                 with open(sdatafile,'wb') as dest:
                     copyfileobj(resource,dest)
             except Exception as e:
-                raise Exception(e.message)
+                raise Exception("Error attempting to download data.\n" + e.message)
             finally:
                 if resource:
                     resource.close()
@@ -514,6 +514,11 @@ class UnpackPackages(ArcpyTool):
                         self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (dir, err.message))
             except Exception as err:
                 self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (pkg, err.message))
+                emldata = readWorkingData(workDir, self.logger)
+                pkgId = emldata["packageId"]
+                if pkgId:
+                    with cursorContext(self.logger) as cur:
+                        cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,pkgId))
         arcpy.SetParameterAsText(4,  ";".join(carryForwardList))
 
 
@@ -724,10 +729,15 @@ class CheckSpatialData(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Format report")
-    def getReport(self, reportText):
+    def getReport(self, pkgId, reportText):
         """eventually when we know the report format, this could be an XSLT from emlSubset+workingData
         to the formatted report, perhaps json, xml, or html """
-        return ""
+        if pkgId is None or len(reportText) == 0:
+            return ""
+        retval = "Package ID with issue: " + pkgId + "\n\n"
+        for item in reportText:
+            retval += str(item) + str(reportText[item]) + "\n\n"
+        return retval
 
     def execute(self, parameters, messages):
         super(CheckSpatialData, self).execute(parameters, messages)
@@ -802,7 +812,8 @@ class CheckSpatialData(ArcpyTool):
                     reportText.append({"Error message":err.message})
                 else:
                     status = "Passed checks"
-                    reportText.append({"Status":"OK"})
+                    #empty reportText => no issues
+                    #reportText.append({"Status":"OK"})
                     self.outputDirs.append(dataDir)
                 finally:
                     #write status msg to workflow.entity. Need both packagid and entityname to be unique
@@ -811,9 +822,14 @@ class CheckSpatialData(ArcpyTool):
                         with cursorContext(self.logger) as cur:
                             cur.execute(stmt, (status[:499], pkgId, entityName))
                     writeWorkingDataToXML(dataDir, emldata, self.logger)
-                    formattedReport = self.getReport(reportText)
+                    formattedReport = self.getReport(pkgId, reportText)
+                    if formattedReport != '':
+                        if pkgId and entityName:
+                            with cursorContext(self.logger) as cur:
+                                stmt2 = "UPDATE entity set report = %s WHERE packageid = %s and entityname = %s;"
+                                cur.execute(stmt2, (formattedReport, pkgId, entityName))
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
-            arcpy.SetParameterAsText(4,str(reportText))
+            arcpy.SetParameterAsText(4,str(formattedReport))
         except AssertionError:
             self.logger.logMessage(CRITICAL, "expected parameter not found")
             sys.exit(1)
