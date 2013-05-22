@@ -89,7 +89,7 @@ def errHandledWorkflowTask(taskName = ""):
             except Exception as e:
                 logger.logMessage(logging.WARN, "error type: " + str(type(e)))
                 logger.logMessage(logging.WARN, e.message)
-                raise Exception(taskName + " terminated with exception.")
+                raise Exception(taskName + " terminated: " + e.message)
         return errHandlingWrapper
     return decorate
 

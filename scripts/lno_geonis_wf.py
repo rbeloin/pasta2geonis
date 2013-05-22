@@ -441,13 +441,15 @@ class UnpackPackages(ArcpyTool):
                 #uri = HTMLParser().unescape(dataloc)
                 uri = dataloc
                 sdatafile = os.path.join(workDir,emldata["shortEntityName"] + '.zip')
-                resource = urllib2.urlopen(uri)
-##                waittime = 60
-##                while not resource and waittime > 0:
-##                    time.sleep(1)
-##                    waittime -= 1
-                with open(sdatafile,'wb') as dest:
-                    copyfileobj(resource,dest)
+                try:
+                    resource = urllib2.urlopen(uri)
+                except urllib2.HTTPError as httperr:
+                    raise Exception("Request to %s returned error, code %i" % (uri,httperr.code) )
+                if resource and resource.getcode() == 200:
+                    with open(sdatafile,'wb') as dest:
+                        copyfileobj(resource,dest)
+                else:
+                    raise Exception("Request to %s failed." % (uri,) )
             except Exception as e:
                 raise Exception("Error attempting to download data.\n" + e.message)
             finally:
@@ -506,12 +508,21 @@ class UnpackPackages(ArcpyTool):
                         if initWorkingData["spatialType"] is None:
                             self.logger.logMessage(WARN, "No EML spatial node. The data in %s with id %s will not be processed." % (pkg, packageId))
                             continue
+                    except Exception as err:
+                        self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (dir, err.message))
+                        if packageId:
+                            with cursorContext(self.logger) as cur:
+                                cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
+                    try:
                         self.readURL(dir)
                         self.retrieveData(dir)
                         self.makeEntityRec(dir)
                         carryForwardList.append(dir)
                     except Exception as err:
                         self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (dir, err.message))
+                        if packageId:
+                            with cursorContext(self.logger) as cur:
+                                cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
             except Exception as err:
                 self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (pkg, err.message))
                 emldata = readWorkingData(workDir, self.logger)
@@ -736,7 +747,8 @@ class CheckSpatialData(ArcpyTool):
             return ""
         retval = "Package ID with issue: " + pkgId + "\n\n"
         for item in reportText:
-            retval += str(item) + str(reportText[item]) + "\n\n"
+            for kys in item:
+                retval += str(kys) + str(item[kys]) + "\n\n"
         return retval
 
     def execute(self, parameters, messages):
@@ -745,6 +757,7 @@ class CheckSpatialData(ArcpyTool):
             assert self.inputDirs != None
             assert self.outputDirs != None
             reportText = []
+            formattedReport = ''
             for dataDir in self.inputDirs:
                 self.logger.logMessage(INFO, "working in: " + dataDir)
                 try:
