@@ -526,8 +526,9 @@ class UnpackPackages(ArcpyTool):
                         contact = emldata["contact"]
                         if packageId:
                             with cursorContext(self.logger) as cur:
-                                cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
-                                cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (packageId,contact))
+                                cur.execute("SELECT addpackageerrorreport(%s,%s,%s);", (packageId, contact, err.message ))
+                                #cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
+                                #cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (packageId,contact))
             except Exception as err:
                 self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (pkg, err.message))
                 emldata = readWorkingData(workdir, self.logger)
@@ -535,8 +536,9 @@ class UnpackPackages(ArcpyTool):
                 contact = emldata["contact"]
                 if pkgId:
                     with cursorContext(self.logger) as cur:
-                        cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,pkgId))
-                        cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (pkgId,contact))
+                        cur.execute("SELECT addpackageerrorreport(%s,%s,%s);", (pkgId, contact, err.message ))
+                        #cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,pkgId))
+                        #cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (pkgId,contact))
         arcpy.SetParameterAsText(4,  ";".join(carryForwardList))
 
 
@@ -846,8 +848,9 @@ class CheckSpatialData(ArcpyTool):
                     if formattedReport != '':
                         if pkgId and entityName:
                             with cursorContext(self.logger) as cur:
-                                stmt2 = "UPDATE entity set report = %s WHERE packageid = %s and entityname = %s;"
-                                cur.execute(stmt2, (formattedReport, pkgId, entityName))
+                                cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, emldata["contact"], formattedReport ))
+                                #stmt2 = "UPDATE entity set report = %s WHERE packageid = %s and entityname = %s;"
+                                #cur.execute(stmt2, (formattedReport, pkgId, entityName))
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
             arcpy.SetParameterAsText(4,str(formattedReport))
         except AssertionError:
