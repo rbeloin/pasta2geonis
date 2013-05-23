@@ -177,12 +177,16 @@ def createEmlSubset(workDir, pathToEML):
     pathToStylesheets = getConfigValue("pathtostylesheets")
     stylesheet = pathToStylesheets + os.sep + "emlSubset.xsl"
     outputXMLtree = runTransformation(xslPath = stylesheet, inputXMLPath = pathToEML)
-    workingData = {"packageId": None, "spatialType" : None, "entityName" : None, "entityDesc" : None, "dataEntityNum" : 0 }
+    workingData = {"packageId": None, "spatialType" : None, "entityName" : None, "entityDesc" : None, "dataEntityNum" : 0, "contact" : None}
     top = outputXMLtree.getroot()
     pId = top.get("packageId")
     workingData["packageId"] = pId
     spTypeHit = outputXMLtree.xpath("//*[local-name()='spatialRaster' or local-name()='spatialVector']")
     workingData["dataEntityNum"] = len(spTypeHit)
+    contactHit = outputXMLtree.xpath("//electronicMailAddress")
+    if len(contactHit) > 0:
+        email = contactHit[0].text
+        workingData["contact"] = email
 ##    if len(spTypeHit) == 1:
 ##        spType = spTypeHit[0].tag
 ##        workingData["spatialType"] = spType

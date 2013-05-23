@@ -26,7 +26,8 @@
 						 dataset/title         |
 						 dataset/abstract      |
 						 dataset/purpose       |
-						 dataset/keywordSet">
+						 dataset/keywordSet    |
+                         dataset/contact/electronicMailAddress">
 		<xsl:copy-of select="." />
 	</xsl:template>
 	

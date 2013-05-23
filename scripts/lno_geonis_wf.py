@@ -27,7 +27,7 @@ from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, dsnfile, pubConnection, arcgiscred
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
-from geonis_helpers import siteFromId, getToken, sendEmail
+from geonis_helpers import siteFromId, getToken, sendEmail, composeMessage
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
 from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
 
@@ -290,8 +290,10 @@ class QueryPasta(ArcpyTool):
             packageDir = getConfigValue("pathtodownloadedpkgs")
         #check db for limits to scopes/identifiers
         with cursorContext(self.logger) as cur:
-            stmt = "select * from limit_identifier;"
-            cur.execute(stmt)
+            stmt1 = "delete from errornotify;"
+            cur.execute(stmt1)
+            stmt2 = "select * from limit_identifier;"
+            cur.execute(stmt2)
             rows = cur.fetchall()
             limits = [r[0] for r in rows]
         if limits:
@@ -520,16 +522,21 @@ class UnpackPackages(ArcpyTool):
                         carryForwardList.append(dir)
                     except Exception as err:
                         self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (dir, err.message))
+                        emldata = readWorkingData(dir, self.logger)
+                        contact = emldata["contact"]
                         if packageId:
                             with cursorContext(self.logger) as cur:
                                 cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
+                                cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (packageId,contact))
             except Exception as err:
                 self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (pkg, err.message))
-                emldata = readWorkingData(workDir, self.logger)
+                emldata = readWorkingData(workdir, self.logger)
                 pkgId = emldata["packageId"]
+                contact = emldata["contact"]
                 if pkgId:
                     with cursorContext(self.logger) as cur:
                         cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,pkgId))
+                        cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (pkgId,contact))
         arcpy.SetParameterAsText(4,  ";".join(carryForwardList))
 
 
@@ -745,10 +752,10 @@ class CheckSpatialData(ArcpyTool):
         to the formatted report, perhaps json, xml, or html """
         if pkgId is None or len(reportText) == 0:
             return ""
-        retval = "Package ID with issue: " + pkgId + "\n\n"
+        retval = "Package ID with issue: " + pkgId + "\n"
         for item in reportText:
             for kys in item:
-                retval += str(kys) + str(item[kys]) + "\n\n"
+                retval += "%s - %s\n" % (kys, item[kys])
         return retval
 
     def execute(self, parameters, messages):
@@ -1456,6 +1463,28 @@ class RefreshMapService(ArcpyTool):
         with cursorContext(self.logger) as cur:
             cur.executemany(stmt, valObj )
 
+
+    @errHandledWorkflowTask(taskName="Send email report")
+    def sendEmailReport(self):
+        stmt = "SELECT DISTINCT * FROM errornotify;"
+        with cursorContext(self.logger) as cur:
+            cur.execute(stmt)
+            rows = cur.fetchall()
+        if rows:
+            group = getConfigValue("emailgroup").split(';')
+            for row in rows:
+                pkgid, contact = row
+                if contact is not None:
+                    toList =[contact]
+                else:
+                    toList = []
+                toList += group
+                self.logger.logMessage(INFO,"Mailing %s about %s." % (str(toList),pkgid))
+                #bypass for testing, ignore contact
+                sendEmail(group, composeMessage(pkgid))
+
+
+
     def execute(self, parameters, messages):
         super(RefreshMapService, self).execute(parameters, messages)
         mapServInfoString = getConfigValue("mapservinfo")
@@ -1475,8 +1504,8 @@ class RefreshMapService(ArcpyTool):
                 mxds = [cols[0] for cols in rows]
             del rows
             if not mxds:
-                self.logger.logMessage(INFO, "No new vector data added any maps.")
-                return
+                self.logger.logMessage(INFO, "No new vector data added to any maps.")
+                #return
             for map in mxds:
                 self.logger.logMessage(INFO, "Refreshing map service %s" % (map,))
                 draft = self.draftSD(map)
@@ -1485,6 +1514,7 @@ class RefreshMapService(ArcpyTool):
                 time.sleep(20)
                 site = map.split('.')[0]
                 self.updateLayerIds(site)
+            self.sendEmailReport()
         except Exception as err:
             self.logger.logMessage(ERROR, err.message)
 

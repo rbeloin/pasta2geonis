@@ -9,6 +9,7 @@ Created on Jan 28, 2013
 '''
 import os
 from geonis_pyconfig import GeoNISDataType, smtpfile
+from geonis_postgresql import getConfigValue
 from functools import partial
 import httplib, urllib, json
 import smtplib
@@ -94,13 +95,20 @@ def getToken(username, password, serverName = "localhost", serverPort = "6080"):
         token = json.loads(data)
         return token['token']
 
+def composeMessage(pkgid):
+    errquery = getConfigValue("errorquery")
+    link = errquery % (pkgid,)
+    msg = "Do not reply to this message.\n\n"
+    msg += "Follow this link (scroll to bottom) to see message pertaining to %s\n\n" % (pkgid,)
+    msg += link
+    msg += "\n\n"
+    return msg
 
 def sendEmail(toList, messageBody):
     with open(smtpfile) as mailfile:
         smtpInfo = mailfile.readline()
     smtpconfig = eval(smtpInfo)
-    msg = "Do not reply to this message.\n\n" + messageBody
-    body = MIMEText(msg)
+    body = MIMEText(messageBody)
     body['Subject'] = 'Report from GeoNIS on submitted spatial data'
     body['To'] = ', '.join(toList)
     body['From'] = smtpconfig['originator']

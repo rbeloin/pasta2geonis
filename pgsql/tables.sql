@@ -37,6 +37,8 @@ sourceloc varchar(2000),
 layername varchar(100),
 arcloc varchar(100),
 layerid integer);
+CREATE TABLE workflow_d.errornotify (packageid varchar(50), contact varchar(200));
+CREATE TABLE workflow_d.limit_identifier (identifier varchar(50));
 */
 --dupe tables without defaults, constraints
 /*
