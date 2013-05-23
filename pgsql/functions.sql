@@ -31,3 +31,15 @@ drop table if exists superseded;
 return packagenum;
 END; $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION workflow.addpackageerrorreport(pkgid varchar(50), contact varchar(150), rep text) RETURNS void AS $$
+BEGIN
+update package set report = rep where packageid = pkgid;
+insert into errornotify values (pkgid, contact);
+END; $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION workflow.addentityerrorreport(pkgid varchar(50), name varchar(50), contact varchar(150), rep text) RETURNS void AS $$
+BEGIN
+update entity set report = rep where packageid = pkgid and entityname = name;
+insert into errornotify values (pkgid, contact);
+END; $$ LANGUAGE plpgsql;
+
