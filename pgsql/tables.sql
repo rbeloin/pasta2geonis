@@ -85,6 +85,8 @@ sourceloc varchar(2000),
 layername varchar(100),
 arcloc varchar(100),
 layerid integer);
+CREATE TABLE workflow.errornotify (packageid varchar(50), contact varchar(200));
+CREATE TABLE workflow.limit_identifier (identifier varchar(50));
 --dupe tables without defaults, constraints
 CREATE TABLE workflow.package_superseded (LIKE workflow.package );
 CREATE TABLE workflow.entity_superseded (LIKE workflow.entity );

@@ -996,7 +996,11 @@ class LoadVectorTypes(ArcpyTool):
             except Exception as err:
                 status = "Failed after %s with %s" % (status, err.message)
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
-            finally:
+                if emldata and pkgId and entityname:
+                    contact = emldata["contact"]
+                    with cursorContext(self.logger) as cur:
+                        cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, contact, err.message ))
+           finally:
                 #write status msg to db table
                 if pkgId and entityname:
                     stmt = "UPDATE entity set status = %s WHERE packageid = %s and entityname = %s;"
@@ -1324,6 +1328,12 @@ class UpdateMXDs(ArcpyTool):
             except Exception as err:
                 status = "Failed after %s with %s" % (status, err.message)
                 self.logger.logMessage(WARN, err.message)
+                if workingData:
+                    contact = workingData["contact"]
+                    pkgId = workingData["packageId"]
+                    entityName = workingData["entityName"]
+                    with cursorContext(self.logger) as cur:
+                        cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, contact, err.message ))
             finally:
                 #write status msg to db table
                 if workingData:
