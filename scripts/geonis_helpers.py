@@ -118,13 +118,30 @@ def sendEmail(toList, messageBody):
         svr.ehlo()
         svr.starttls()
         svr.ehlo()
+    except Exception as err:
+        if err.message:
+            return err.message
+        else:
+            return "Unknown mail error connecting/starting TLS"
+    try:
         svr.login(smtpconfig['user'],smtpconfig['password'])
+    except Exception as err:
+        if err.message:
+            return err.message
+        else:
+            return "Unknown mail error logging in"
+    try:
         svr.sendmail(smtpconfig['originator'], toList, body.as_string())
         return ''
     except Exception as err:
-        return err.message
+        if err.message:
+            return err.message
+        else:
+            return "Unknown error sending mail"
     finally:
         if svr is not None:
             svr.quit()
 
 
+if __name__ == '__main__':
+    print sendEmail(['ronbeloin@gmail.com'],"Mail from geonis system. Do not reply.")

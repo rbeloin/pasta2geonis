@@ -22,7 +22,8 @@ insert into workflow.wfconfig values
 ('pathtodownloadedpkgs','C:\Temp\pasta_pkg'),
 ('pathtoprocesspkgs','C:\Temp\valid_pkg'),
 ('emailgroup','rbeloin@me.com;rmbeloin@gmail.com'),
-('errorquery','http://maps3.lternet.edu/arcgis/rest/services/VectorData/Search/MapServer/2/query?where=packageid=''%s''&outFields=report&f=html');
+('errorquery','http://maps3.lternet.edu/arcgis/rest/services/VectorData/Search/MapServer/2/query?where=packageid=''%s''&outFields=report&f=html'),
+('pastaurl','https://pasta.lternet.edu');
 /*
 --reset values for dev env (ron's machine)
 insert into workflow.wfconfig values
@@ -63,5 +64,6 @@ insert into workflow_d.wfconfig values
 ('pathtodownloadedpkgs','C:\Temp\pasta_pkg_test'),
 ('pathtoprocesspkgs','C:\Temp\valid_pkg_test'),
 ('emailgroup','rbeloin@me.com;rmbeloin@gmail.com'),
-('errorquery','http://maps3.lternet.edu/arcgis/rest/services/Test/Search/MapServer/2/query?where=packageid=''%s''&outFields=report&f=html');
+('errorquery','http://maps3.lternet.edu/arcgis/rest/services/Test/Search/MapServer/2/query?where=packageid=''%s''&outFields=report&f=html'),
+('pastaurl','https://pasta.lternet.edu');
 

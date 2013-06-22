@@ -50,43 +50,102 @@ class Setup(ArcpyTool):
                   direction = 'Input',
                   parameterType = 'Required'))
         params.append(arcpy.Parameter(
+                  displayName = 'Go to PASTA staging server',
+                  name = 'staging',
+                  datatype = 'Boolean',
+                  direction = 'Input',
+                  parameterType = 'Required'))
+        params.append(arcpy.Parameter(
                     displayName = 'Scopes/Identifiers to Include',
                   name = 'include_list',
                   datatype = 'GPValueTable',
                   direction = 'Input',
                   parameterType = 'Optional'))
+        params.append(arcpy.Parameter(
+                  displayName = 'Also remove any matching packages',
+                  name = 'cleanup',
+                  datatype = 'Boolean',
+                  direction = 'Input',
+                  parameterType = 'Required'))
+
         #testing true by default
         params[2].value = True
-        params[3].columns = [['GPString','Scope'],['GPString','Identifier(CSV list or range)']]
+        params[3].value = True
+        params[5].value = False
+        params[4].columns = [['GPString','Scope'],['GPString','Identifier(CSV list or range)']]
         return params
 
     def updateParameters(self, parameters):
         """  """
         super(Setup, self).updateParameters(parameters)
+        if parameters[2].value:
+            parameters[3].enabled = True
+        else:
+            parameters[3].value = False
+            parameters[3].enabled = False
 
     def updateMessages(self, parameters):
         """ puts up warning if running in production """
         super(Setup, self).updateMessages(parameters)
         if not parameters[2].value:
             parameters[2].setWarningMessage("Workflow to run in production mode.")
+            if parameters[5].value:
+                parameters[5].setWarningMessage("About to delete data from production storage.")
+            else:
+                parameters[5].clearMessage()
         else:
             parameters[2].clearMessage()
+            parameters[5].clearMessage()
+
+    @errHandledWorkflowTask(taskName="Setup clean")
+    def cleanUp(self, pkgArray):
+        allPackages = []
+        self.logger.logMessage(DEBUG,str(pkgArray))
+        stmt1 = "SELECT packageid FROM package WHERE packageid LIKE %s;"
+        with cursorContext(self.logger) as cur:
+            for pkgset in pkgArray:
+                if not pkgset['inc']:
+                    continue
+                pkg = pkgset['inc']
+                #handle wildcard, e.g. knb-lter-knz.*
+                #remove *, append %, then select ... where packageid like ...,
+                # 'knb-lter-knz.100%' or 'knb-lter-knz.%'
+                if pkg[-1:] == '*':
+                    srch = pkg[:-1] + '%'
+                else:
+                    srch = pkg + '%'
+                cur.execute(stmt1,(srch,))
+                results = cur.fetchall()
+                self.logger.logMessage(DEBUG,str(results))
+                for result in results:
+                    allPackages.append(result[0])
+                del results
+        self.logger.logMessage(INFO,str(allPackages))
+
 
     def execute(self, parameters, messages):
         """ alters role of geonis to set search_path to point to test tables or production tables.
         inserts list of scope.identifier values into limit_identifier table for later tool """
         super(Setup, self).execute(parameters, messages)
         testingMode = parameters[2].value
+        staging = parameters[3].value
         # "$user" is required to be first schema to satisfy esri tools
         if testingMode == True:
             stmt1 = 'alter role geonis in database geonis set search_path = "$user",workflow_d,workflow,sde,public;'
+            if staging:
+                stmt3 = "update workflow_d.wfconfig set strvalue = 'https://pasta-s.lternet.edu' where name = 'pastaurl';"
+            else:
+                stmt3 = "update workflow_d.wfconfig set strvalue = 'https://pasta.lternet.edu' where name = 'pastaurl';"
         else:
             stmt1 = 'alter role geonis in database geonis set search_path = "$user",workflow,sde,public;'
+            stmt3 = None
         stmt2 = "delete from limit_identifier;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt1)
             cur.execute(stmt2)
-        limitsParam = self.getParamAsText(parameters,3)
+            if stmt3 is not None:
+                cur.execute(stmt3)
+        limitsParam = self.getParamAsText(parameters,4)
         if limitsParam and limitsParam != '' and limitsParam != '#':
             valsArr = []
             limitStrings = limitsParam.split(';')
@@ -117,6 +176,8 @@ class Setup(ArcpyTool):
             with cursorContext() as cur:
                 stmt3 = "insert into limit_identifier values(%(inc)s);"
                 cur.executemany(stmt3, valsTuple)
+            if parameters[5].value:
+                self.cleanUp(valsArr)
 
 
 
@@ -159,7 +220,7 @@ class QueryPasta(ArcpyTool):
     @errHandledWorkflowTask(taskName="Get scope list")
     def getScopeList(self):
         """ """
-        URL = "http://pasta.lternet.edu/package/eml"
+        URL = getConfigValue("pastaurl") + "/package/eml"
         try:
             resp = urllib2.urlopen(URL)
             if resp.getcode() == 200:
@@ -178,7 +239,7 @@ class QueryPasta(ArcpyTool):
     @errHandledWorkflowTask(taskName="Get packageId list")
     def getPackageIds(self, scope, limitIdents):
         """ Returns list of latest revision only of packages in the given scope. """
-        baseURL = "http://pasta.lternet.edu/package/eml"
+        baseURL = getConfigValue("pastaurl") + "/package/eml"
         retval = []
         #get list of identifiers
         self.logger.logMessage(INFO, "Getting all packages in %s" % (scope,))
@@ -190,6 +251,7 @@ class QueryPasta(ArcpyTool):
         else:
             return retval
         del resp
+        #TODO: handle whildcard * in limitIdents
         if limitIdents:
             limitedIdentList = [ident for ident in identList if str(ident) in limitIdents]
         else:
@@ -222,7 +284,7 @@ class QueryPasta(ArcpyTool):
     @errHandledWorkflowTask(taskName="Finding spatial data")
     def findSpatialData(self, scope):
         """ Look at eml for spatial nodes, record number in workflow.package """
-        baseURL = "http://pasta.lternet.edu/package/metadata/eml"
+        baseURL = getConfigValue("pastaurl") + "/package/metadata/eml"
         stmt = "SELECT * FROM vw_newpackage WHERE scope = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (scope[9:],))
@@ -255,7 +317,7 @@ class QueryPasta(ArcpyTool):
     @errHandledWorkflowTask(taskName="Downloading EML")
     def getEML(self, scope, packageDir):
         """ Query db to get list of packages with spatial, where eml not yet downloaded """
-        baseURL = "http://pasta.lternet.edu/package/metadata/eml"
+        baseURL = getConfigValue("pastaurl") + "/package/metadata/eml"
         stmt = "SELECT * FROM vw_newspatialpackage WHERE scope = %s;"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (scope[9:],))
@@ -945,26 +1007,26 @@ class LoadVectorTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Update entity table")
-    def updateTable(self, workDir, loadedFeatureClass, pkid, entityname):
+    def updateTable(self, workDir, loadedFeatureClass, pkid, entityName):
         if not loadedFeatureClass:
             return
         scope_data = os.sep.join(loadedFeatureClass.split(os.sep)[-2:])
         stmt = "UPDATE entity set storage = %s WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, (scope_data, pkid, entityname))
+            cur.execute(stmt, (scope_data, pkid, entityName))
 
 
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
         for dir in self.inputDirs:
-            datafilePath, pkgId, datatype, entityname, objectName = ("" for i in range(5))
+            datafilePath, pkgId, datatype, entityName, objectName = ("" for i in range(5))
             try:
                 status = "Entering load vector"
                 emldata = readWorkingData(dir, self.logger)
                 pkgId = emldata["packageId"]
                 datafilePath = emldata["datafilePath"]
                 datatype = emldata["type"]
-                entityname = emldata["entityName"]
+                entityName = emldata["entityName"]
                 objectName = emldata["objectName"]
                 siteId, n, m = siteFromId(pkgId)
                 #TODO: must add site and optionally '_d' to feature class name. Must be unique in geonis db
@@ -989,23 +1051,23 @@ class LoadVectorTypes(ArcpyTool):
                 # amend metadata
                 self.mergeMetadata(dir, loadedFeatureClass)
                 # update table in geonis db
-                self.updateTable(dir, loadedFeatureClass, pkgId, entityname)
+                self.updateTable(dir, loadedFeatureClass, pkgId, entityName)
                 # add dir for next tool, in any case except exception
                 self.outputDirs.append(dir)
                 status = "Load with metadata complete"
             except Exception as err:
                 status = "Failed after %s with %s" % (status, err.message)
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
-                if emldata and pkgId and entityname:
+                if emldata and pkgId and entityName:
                     contact = emldata["contact"]
                     with cursorContext(self.logger) as cur:
                         cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, contact, err.message ))
-           finally:
+            finally:
                 #write status msg to db table
-                if pkgId and entityname:
+                if pkgId and entityName:
                     stmt = "UPDATE entity set status = %s WHERE packageid = %s and entityname = %s;"
                     with cursorContext(self.logger) as cur:
-                        cur.execute(stmt, (status[:499], pkgId, entityname))
+                        cur.execute(stmt, (status[:499], pkgId, entityName))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
@@ -1138,7 +1200,7 @@ class LoadRasterTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Update entity table")
-    def updateTable(self, location, pkid, entityname):
+    def updateTable(self, location, pkid, entityName):
         # get last three parts of location:  scope, entity dir, entity name
         parts = location.split(os.sep)
         if len(parts) > 3:
@@ -1147,7 +1209,7 @@ class LoadRasterTypes(ArcpyTool):
             loc = location[-50:]
         stmt = "UPDATE entity set storage = %s WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, (loc, pkid, entityname))
+            cur.execute(stmt, (loc, pkid, entityName))
 
 
     def execute(self, parameters, messages):
@@ -1155,7 +1217,7 @@ class LoadRasterTypes(ArcpyTool):
         #TODO: add file gdb to list, and handle. Could be mosaic ds in file gdb, e.g.
         self.supportedTypes = ("tif", "ascii raster", "coverage", "jpg", "raster dataset")
         for dir in self.inputDirs:
-            datafilePath, pkgId, datatype, entityname = ("" for i in range(4))
+            datafilePath, pkgId, datatype, entityName = ("" for i in range(4))
             loadedRaster = None
             try:
                 status = "Entering raster load"
@@ -1163,7 +1225,7 @@ class LoadRasterTypes(ArcpyTool):
                 pkgId = emldata["packageId"]
                 datafilePath = emldata["datafilePath"]
                 datatype = emldata["type"]
-                entityname = emldata["entityName"]
+                entityName = emldata["entityName"]
                 objectName = emldata["objectName"]
                 #check for supported type
                 if not self.isSupported(datatype):
@@ -1174,7 +1236,7 @@ class LoadRasterTypes(ArcpyTool):
                 status = "Storage prepared"
                 os.mkdir(rawDataLoc)
                 raster = self.copyRaster(datafilePath, rawDataLoc)
-                self.updateTable(raster, pkgId, entityname)
+                self.updateTable(raster, pkgId, entityName)
                 status = "Raster copied to permanent storage"
                 # amend metadata in place
                 if self.mergeMetadata(dir, raster):
@@ -1317,9 +1379,9 @@ class UpdateMXDs(ArcpyTool):
                     lName, mxdName = self.addVectorData(dir, workingData)
                     with cursorContext(self.logger) as cur:
                         stmt = "UPDATE entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s, status = 'Added to map' \
-                         WHERE packageid = %(pkgId)s and entityname = %(entityname)s;"
+                         WHERE packageid = %(pkgId)s and entityname = %(entityName)s;"
                         cur.execute(stmt,
-                         {'mxd': mxdName, 'layername' : lName, 'now' : datetime.datetime.now(), 'pkgId': pkgId, 'entityname' : workingData["entityName"]})
+                         {'mxd': mxdName, 'layername' : lName, 'now' : datetime.datetime.now(), 'pkgId': pkgId, 'entityName' : workingData["entityName"]})
                     self.makeLayerRec(dir, pkgId, workingData["entityName"] )
                     status = "Ready for map service"
                 else:
