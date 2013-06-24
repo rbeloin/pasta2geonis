@@ -57,6 +57,7 @@ else:
     smtpfile = r"Z:\docs\local\git\pasta2geonis_sg\mailCred.txt"
     #publisher conn is N/A on dev machine
     pubConnection = ""
+    arcgiscred = ""
 ##    #path to env settings file. settings loaded by base execute method
 ##    envSettingsPath = r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml"
 ##    #file gdb for dev

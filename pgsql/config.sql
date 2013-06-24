@@ -42,7 +42,8 @@ insert into workflow.wfconfig values
 ('datasetscopesuffix','_main'),
 ('pathtodownloadedpkgs','Z:\docs\local\geonis_testdata\downloaded_pkgs'),
 ('pathtoprocesspkgs','Z:\docs\local\geonis_testdata\pkgs'),
-('emailgroup','rbeloin@me.com;rmbeloin@gmail.com');
+('emailgroup','rbeloin@me.com;rmbeloin@gmail.com'),
+('pastaurl','https://pasta.lternet.edu');
 */
 create table if not exists workflow_d.wfconfig (LIKE workflow.wfconfig);
 --reset values for workflow testing
