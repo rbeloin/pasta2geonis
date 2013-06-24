@@ -42,8 +42,7 @@ insert into workflow.wfconfig values
 ('datasetscopesuffix','_main'),
 ('pathtodownloadedpkgs','Z:\docs\local\geonis_testdata\downloaded_pkgs'),
 ('pathtoprocesspkgs','Z:\docs\local\geonis_testdata\pkgs'),
-('emailgroup','rbeloin@me.com;rmbeloin@gmail.com'),
-('pastaurl','https://pasta.lternet.edu');
+('emailgroup','rbeloin@me.com;rmbeloin@gmail.com');
 */
 create table if not exists workflow_d.wfconfig (LIKE workflow.wfconfig);
 --reset values for workflow testing
@@ -67,4 +66,3 @@ insert into workflow_d.wfconfig values
 ('emailgroup','rbeloin@me.com;rmbeloin@gmail.com'),
 ('errorquery','http://maps3.lternet.edu/arcgis/rest/services/Test/Search/MapServer/2/query?where=packageid=''%s''&outFields=report&f=html'),
 ('pastaurl','https://pasta.lternet.edu');
-

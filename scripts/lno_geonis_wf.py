@@ -15,7 +15,7 @@ import json
 import httplib, urllib, urllib2
 from HTMLParser import HTMLParser
 import psycopg2
-from shutil import copyfileobj
+from shutil import copyfileobj, rmtree
 from shutil import copy as copyFileToFileOrDir
 from zipfile import ZipFile
 from lxml import etree
@@ -25,7 +25,7 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
-from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, dsnfile, pubConnection, arcgiscred
+from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, dsnfile, pubConnection, arcgiscred, geodatabase
 from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
 from geonis_helpers import siteFromId, getToken, sendEmail, composeMessage
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
@@ -99,9 +99,30 @@ class Setup(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Setup clean")
     def cleanUp(self, pkgArray):
-        allPackages = []
         self.logger.logMessage(DEBUG,str(pkgArray))
-        stmt1 = "SELECT packageid FROM package WHERE packageid LIKE %s;"
+        
+        # Clear out temp files & folders
+        tempXML = r"C:\TEMP\pasta_pkg"
+        tempDir = r"C:\TEMP\valid_pkg"
+        params = self.getParameterInfo()
+        if params[2].value:
+            tempXML += "_test"
+            tempDir += "_test"
+        for f in os.listdir(tempXML):
+            if f.endswith(".xml"):
+                os.remove(tempXML + os.sep + f)        
+                self.logger.logMessage(INFO, "Removed " + tempXML + os.sep + f)
+        for folder in os.listdir(tempDir):
+            rmtree(tempDir + os.sep + folder)
+            self.logger.logMessage(INFO, "Removed " + tempDir + os.sep + folder)
+            
+        selectFromPackage = "SELECT packageid FROM package WHERE packageid LIKE %s"
+        deleteFromPackage = "DELETE FROM package WHERE packageid = %s"
+        selectFromGeonisLayer = "SELECT layername FROM geonis_layer WHERE packageid = %s"
+        deleteFromGeonisLayer = "DELETE FROM geonis_layer WHERE packageid = %s"
+        selectFromEntity = "SELECT layername, storage FROM entity WHERE packageid = %s"
+        deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
+  
         with cursorContext(self.logger) as cur:
             for pkgset in pkgArray:
                 if not pkgset['inc']:
@@ -114,14 +135,61 @@ class Setup(ArcpyTool):
                     srch = pkg[:-1] + '%'
                 else:
                     srch = pkg + '%'
-                cur.execute(stmt1,(srch,))
-                results = cur.fetchall()
-                self.logger.logMessage(DEBUG,str(results))
-                for result in results:
-                    allPackages.append(result[0])
-                del results
-        self.logger.logMessage(INFO,str(allPackages))
+                cur.execute(selectFromPackage, (srch, ))
+                allPackages = [row[0] for row in cur.fetchall()]
+                for package in allPackages:
+                    site = pkg.split('-')[2].split('.')[0]
+                    
+                    # If this package exists in the map, delete any layers already in the
+                    # geonis_layer table from both the map and geonis_layer
+                    mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
+                    mxd = arcpy.mapping.MapDocument(mxdfile)
+                    layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                    mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                    mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                        
+                    cur.execute(selectFromGeonisLayer, (package, ))
+                    if cur.rowcount:
+                        dbMapLayerList = cur.fetchall()
+                        for layer in dbMapLayerList:
+                            if layer[0] in mapLayerList:
+                                self.logger.logMessage(INFO, "Removing layer: " + layer[0])
+                                layerToRemove = mapLayerObjectList[mapLayerList.index(layer[0])]
+                                arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                        mxd.save()
 
+                        cur.execute(deleteFromGeonisLayer, (package, ))
+                        self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from geonis_layer")
+                        
+                        # If we're using the production db, then restart map service
+                        if not params[2].value:
+                            mapService = pathToMapDoc + os.sep + "servicedefs" + os.sep + site + "_layers.sd"
+                            # TODO: update "services" with the correct folder on the server
+                            arcpy.UploadServiceDefinition_server(
+                                mapService, pubConnection, "", "", "EXISTING", "services"
+                            )
+
+                    del layersFrame, mxd
+                    
+                    # Check entity table for package
+                    cur.execute(selectFromEntity, (package, ))
+                    if cur.rowcount:
+                        results = cur.fetchall()
+                        entityLayers = [row[0] for row in results]
+                        gdbStorage = [row[1] for row in results]
+                        #arcpy.env.workspace = geodatabase
+                        for i, layer in enumerate(entityLayers):
+                            # TODO: drop tables from geodb (can't generate cursor --
+                            # error 000638 workspace not set for geoprocessor --
+                            # does this work on the server??)
+                            #arcpy.SelectCursor(gdbStorage[i])
+                            pass
+                        cur.execute(deleteFromEntity, (package, ))
+                        self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from entity")
+                    
+                    # Finally, delete the rows from the package table
+                    cur.execute(deleteFromPackage, (package, ))
+                    self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from package")
 
     def execute(self, parameters, messages):
         """ alters role of geonis to set search_path to point to test tables or production tables.
@@ -791,7 +859,7 @@ class CheckSpatialData(ArcpyTool):
         entityAttNames = [str(f.name.upper()) for f in fields]
         diff = list(set(emlAttNames) ^ set(entityAttNames))
         if len(diff) > 0:
-            self.logger.logMessage(WARN,"Attribute names in eml and entity did not match. %s", (str(diff),))
+            self.logger.logMessage(WARN,"Attribute names in eml and entity did not match. %s" % str(diff))
         return diff
 
     @errHandledWorkflowTask(taskName="Checking precision")
@@ -1647,4 +1715,3 @@ toolclasses =  [Setup,
                 LoadRasterTypes,
                 UpdateMXDs,
                 RefreshMapService ]
-

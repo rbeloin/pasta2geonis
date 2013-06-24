@@ -21,7 +21,8 @@ defaultVerboseValue = True
 tempMetadataFilename = "temp_meta.data"
 
 # *********** Machine/mode dependent paths and values *************
-if platform.node() == "Maps3":
+if platform.node() == "maps3":
+    baseURL = "http://pasta.lternet.edu/package/eml"
     #DSN file
     dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
     # smtp stuff
@@ -37,7 +38,7 @@ if platform.node() == "Maps3":
 ##    #raster data storage
 ##    pathToRasterData = r"C:\pasta2geonis\Gis_data\Raster_raw"
 ##    #raster mosaic datasets
-##    pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.gdb"
+##    pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.sde"
 ##    #geodatabase connection
 ##    geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
 ##    #map doc
@@ -50,6 +51,35 @@ if platform.node() == "Maps3":
 ##    workflowSchema = "workflow_d"
 ##    #map service info
 ##    mapServInfo = {'service_name':"", 'service_folder':"Test", 'tags':"GEONIS",'summary':"Testing vector data map service."}
+elif platform.node() == "invent":
+    #DSN file
+    dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
+    # smtp stuff
+    smtpfile = r"C:\pasta2geonis\mailCred.txt"
+    #publisher conn
+    pubConnection = r"C:\pasta2geonis\Maps3.lternet.edu_6080(publisher).ags"
+    #arcgis credentials for script admin of services
+    arcgiscred = r"C:\pasta2geonis\arcgis_cred.txt"
+    #path to env settings file. settings loaded by base execute method
+    envSettingsPath = r"C:\pasta2geonis\savedEnv.xml"
+    #path to stylesheets
+    pathToStylesheets = r"C:\pasta2geonis\stylesheets"
+    #raster data storage
+    pathToRasterData = r"C:\pasta2geonis\Gis_data\Raster_raw"
+    #raster mosaic datasets
+    pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.gdb"
+    #geodatabase connection
+    geodatabase = r"C:\pasta2geonis\geonisOnMaps3.gdb"
+    #map doc
+    pathToMapDoc = r"C:\pasta2geonis\Arcmap_mxd"
+    #map service layer query
+    layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/%s/%s/MapServer/layers?f=json"
+    #scratchWorkspace is NOT saved in settings
+    scratchWS = r"C:\TEMP\scratch"
+    #db schema
+    workflowSchema = "workflow_d"
+    #map service info
+    mapServInfo = {'service_name':"", 'service_folder':"Test", 'tags':"GEONIS",'summary':"Testing vector data map service."}
 else:
     # dsn to postgresql running on mac host
     dsnfile = r"Z:\docs\local\git\pasta2geonis_sg\geonisDSN.txt"
@@ -57,7 +87,6 @@ else:
     smtpfile = r"Z:\docs\local\git\pasta2geonis_sg\mailCred.txt"
     #publisher conn is N/A on dev machine
     pubConnection = ""
-    arcgiscred = ""
 ##    #path to env settings file. settings loaded by base execute method
 ##    envSettingsPath = r"C:\Users\ron\Documents\geonis_tests\savedEnv.xml"
 ##    #file gdb for dev
@@ -80,8 +109,6 @@ else:
 ##    pubConnection = None
 ##    #map service info
 ##    mapServInfo = {'service_name':"VectorData",'service_folder':"Test",'tags':"GEONIS",'summary':"Testing vector data map service."}
-
-
 
 class GeoNISDataType:
     """ members of this class serve as both enum type values for data types,

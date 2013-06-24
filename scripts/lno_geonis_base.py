@@ -154,11 +154,14 @@ class ArcpyTool(object):
                 if parameters[n].name == "in_dirlist":
                     indirlist = self.getParamAsText(parameters,n)
                     if indirlist is None or len(indirlist) == 0:
+                        #self.logger.logMessage(WARN, "No input dirs found!")
                         self.inputDirs = []
                     else:
                         self.inputDirs = [d for d in self.getParamAsText(parameters,n).split(';') if os.path.isdir(d)]
                 elif parameters[n].name == "out_dirlist":
                     self.outputDirs = [] # copied here as processing succeeds
+                    #self.outputDirs = ["C:\TEMP\pasta_pkg_test"]
+                    #self.logger.logMessage(WARN, self.outputDirs)
         except AssertionError as asrtErr:
             #if these parameters are not here, tool has not been started correctly
             raise Exception("Unable to create log file. No parameters? " + asrtErr.message)
