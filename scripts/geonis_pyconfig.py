@@ -21,7 +21,7 @@ defaultVerboseValue = True
 tempMetadataFilename = "temp_meta.data"
 
 # *********** Machine/mode dependent paths and values *************
-if platform.node() == "maps3":
+if platform.node().lower() == "maps3":
     baseURL = "http://pasta.lternet.edu/package/eml"
     #DSN file
     dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
@@ -51,7 +51,7 @@ if platform.node() == "maps3":
 ##    workflowSchema = "workflow_d"
 ##    #map service info
 ##    mapServInfo = {'service_name':"", 'service_folder':"Test", 'tags':"GEONIS",'summary':"Testing vector data map service."}
-elif platform.node() == "invent":
+elif platform.node().lower() == "invent":
     #DSN file
     dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
     # smtp stuff
