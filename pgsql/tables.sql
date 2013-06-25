@@ -1,5 +1,5 @@
 --workflow_d
-/*
+
 CREATE TABLE workflow_d.package (
 packageid varchar(50) PRIMARY KEY,
 doi varchar(100),
@@ -39,13 +39,11 @@ arcloc varchar(100),
 layerid integer);
 CREATE TABLE workflow_d.errornotify (packageid varchar(50), contact varchar(200));
 CREATE TABLE workflow_d.limit_identifier (identifier varchar(50));
-*/
+
 --dupe tables without defaults, constraints
-/*
 CREATE TABLE workflow_d.package_superseded (LIKE workflow_d.package );
 CREATE TABLE workflow_d.entity_superseded (LIKE workflow_d.entity );
 CREATE TABLE workflow_d.geonis_layer_superseded (LIKE workflow_d.geonis_layer );
-*/
 
 --workflow
 CREATE TABLE workflow.package (
@@ -92,3 +90,5 @@ CREATE TABLE workflow.package_superseded (LIKE workflow.package );
 CREATE TABLE workflow.entity_superseded (LIKE workflow.entity );
 CREATE TABLE workflow.geonis_layer_superseded (LIKE workflow.geonis_layer );
 
+--for geodb files only (?)
+ALTER TABLE geonis_layer ALTER COLUMN abstract TYPE TEXT;
