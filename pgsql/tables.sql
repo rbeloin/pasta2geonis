@@ -30,7 +30,7 @@ scope     varchar(50),
 entityname varchar(200),
 entitydescription varchar(2000),
 title varchar(1000),
-abstract varchar(1000),
+abstract TEXT,
 purpose varchar(2000),
 keywords varchar(1000),
 sourceloc varchar(2000),
@@ -76,7 +76,7 @@ scope     varchar(50),
 entityname varchar(200),
 entitydescription varchar(2000),
 title varchar(1000),
-abstract varchar(1000),
+abstract TEXT,
 purpose varchar(2000),
 keywords varchar(1000),
 sourceloc varchar(2000),
@@ -89,7 +89,3 @@ CREATE TABLE workflow.limit_identifier (identifier varchar(50));
 CREATE TABLE workflow.package_superseded (LIKE workflow.package );
 CREATE TABLE workflow.entity_superseded (LIKE workflow.entity );
 CREATE TABLE workflow.geonis_layer_superseded (LIKE workflow.geonis_layer );
-
---for geodb files only (?)
-ALTER TABLE workflow.geonis_layer ALTER COLUMN abstract TYPE TEXT;
-ALTER TABLE workflow_d.geonis_layer ALTER COLUMN abstract TYPE TEXT;
