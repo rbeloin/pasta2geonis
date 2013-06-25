@@ -91,4 +91,5 @@ CREATE TABLE workflow.entity_superseded (LIKE workflow.entity );
 CREATE TABLE workflow.geonis_layer_superseded (LIKE workflow.geonis_layer );
 
 --for geodb files only (?)
-ALTER TABLE geonis_layer ALTER COLUMN abstract TYPE TEXT;
+ALTER TABLE workflow.geonis_layer ALTER COLUMN abstract TYPE TEXT;
+ALTER TABLE workflow_d.geonis_layer ALTER COLUMN abstract TYPE TEXT;
