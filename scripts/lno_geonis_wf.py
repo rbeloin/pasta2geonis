@@ -100,22 +100,7 @@ class Setup(ArcpyTool):
     @errHandledWorkflowTask(taskName="Setup clean")
     def cleanUp(self, pkgArray):
         self.logger.logMessage(DEBUG,str(pkgArray))
-        
-        # Clear out temp files & folders
-        tempXML = r"C:\TEMP\pasta_pkg"
-        tempDir = r"C:\TEMP\valid_pkg"
-        params = self.getParameterInfo()
-        if params[2].value:
-            tempXML += "_test"
-            tempDir += "_test"
-        for f in os.listdir(tempXML):
-            if f.endswith(".xml"):
-                os.remove(tempXML + os.sep + f)        
-                self.logger.logMessage(INFO, "Removed " + tempXML + os.sep + f)
-        for folder in os.listdir(tempDir):
-            rmtree(tempDir + os.sep + folder)
-            self.logger.logMessage(INFO, "Removed " + tempDir + os.sep + folder)
-            
+                    
         selectFromPackage = "SELECT packageid FROM package WHERE packageid LIKE %s"
         deleteFromPackage = "DELETE FROM package WHERE packageid = %s"
         selectFromGeonisLayer = "SELECT layername FROM geonis_layer WHERE packageid = %s"
@@ -162,7 +147,7 @@ class Setup(ArcpyTool):
                         self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from geonis_layer")
                         
                         # If we're using the production db, then restart map service
-                        if not params[2].value:
+                        if not self.getParameterInfo()[2]:
                             mapService = pathToMapDoc + os.sep + "servicedefs" + os.sep + site + "_layers.sd"
                             # TODO: update "services" with the correct folder on the server
                             arcpy.UploadServiceDefinition_server(
@@ -413,8 +398,24 @@ class QueryPasta(ArcpyTool):
 
     def execute(self, parameters, messages):
         """
+        Fetches a list of updated packages, and inserts their ID's into the
+		package table.  Searches the EML metadata for spatial data marked by
+		"spatialVector" or "spatialRaster" tags, then inserts the count of
+		entities containing spatial information into the package table.
         """
         super(QueryPasta, self).execute(parameters, messages)
+        
+        # Clear out temp files & folders
+        tempXML = getConfigValue("pathtodownloadedpkgs")
+        tempDir = getConfigValue("pathtoprocesspkgs")
+        for f in os.listdir(tempXML):
+            if f.endswith(".xml"):
+                os.remove(tempXML + os.sep + f)        
+                self.logger.logMessage(INFO, "Removed " + tempXML + os.sep + f)
+        for folder in os.listdir(tempDir):
+            rmtree(tempDir + os.sep + folder)
+            self.logger.logMessage(INFO, "Removed " + tempDir + os.sep + folder)
+       
         packageDir = self.getParamAsText(parameters,2)
         if packageDir is None or packageDir == '' or packageDir == '#':
             packageDir = getConfigValue("pathtodownloadedpkgs")
