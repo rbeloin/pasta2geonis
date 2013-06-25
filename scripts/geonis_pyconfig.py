@@ -31,26 +31,26 @@ if platform.node().lower() == "maps3":
     pubConnection = r"C:\pasta2geonis\Maps3.lternet.edu_6080(publisher).ags"
     #arcgis credentials for script admin of services
     arcgiscred = r"C:\pasta2geonis\arcgis_cred.txt"
-##    #path to env settings file. settings loaded by base execute method
-##    envSettingsPath = r"C:\pasta2geonis\savedEnv.xml"
-##    #path to stylesheets
-##    pathToStylesheets = r"C:\pasta2geonis\stylesheets"
-##    #raster data storage
-##    pathToRasterData = r"C:\pasta2geonis\Gis_data\Raster_raw"
-##    #raster mosaic datasets
-##    pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.sde"
-##    #geodatabase connection
-##    geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
-##    #map doc
-##    pathToMapDoc = r"C:\pasta2geonis\Arcmap_mxd"
-##    #map service layer query
-##    layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/%s/%s/MapServer/layers?f=json"
-##    #scratchWorkspace is NOT saved in settings
-##    scratchWS = r"C:\Temp"
-##    #db schema
-##    workflowSchema = "workflow_d"
-##    #map service info
-##    mapServInfo = {'service_name':"", 'service_folder':"Test", 'tags':"GEONIS",'summary':"Testing vector data map service."}
+    #path to env settings file. settings loaded by base execute method
+    envSettingsPath = r"C:\pasta2geonis\savedEnv.xml"
+    #path to stylesheets
+    pathToStylesheets = r"C:\pasta2geonis\stylesheets"
+    #raster data storage
+    pathToRasterData = r"C:\pasta2geonis\Gis_data\Raster_raw"
+    #raster mosaic datasets
+    pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.sde"
+    #geodatabase connection
+    geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
+    #map doc
+    pathToMapDoc = r"C:\pasta2geonis\Arcmap_mxd"
+    #map service layer query
+    layerQueryURI = "http://maps3.lternet.edu/arcgis/rest/services/%s/%s/MapServer/layers?f=json"
+    #scratchWorkspace is NOT saved in settings
+    scratchWS = r"C:\Temp"
+    #db schema
+    workflowSchema = "workflow_d"
+    #map service info
+    mapServInfo = {'service_name':"", 'service_folder':"Test", 'tags':"GEONIS",'summary':"Testing vector data map service."}
 elif platform.node().lower() == "invent":
     #DSN file
     dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
