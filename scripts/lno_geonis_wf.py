@@ -30,6 +30,7 @@ from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster,
 from geonis_helpers import siteFromId, getToken, sendEmail, composeMessage
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
 from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
+import pdb
 
 
 ## *****************************************************************************
@@ -127,34 +128,33 @@ class Setup(ArcpyTool):
                     
                     # If this package exists in the map, delete any layers already in the
                     # geonis_layer table from both the map and geonis_layer
-                    mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
-                    mxd = arcpy.mapping.MapDocument(mxdfile)
-                    layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
-                    mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
-                    mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                        
-                    cur.execute(selectFromGeonisLayer, (package, ))
-                    if cur.rowcount:
-                        dbMapLayerList = cur.fetchall()
-                        for layer in dbMapLayerList:
-                            if layer[0] in mapLayerList:
-                                self.logger.logMessage(INFO, "Removing layer: " + layer[0])
-                                layerToRemove = mapLayerObjectList[mapLayerList.index(layer[0])]
-                                arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-                        mxd.save()
+                    if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
+                        mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
+                        mxd = arcpy.mapping.MapDocument(mxdfile)
+                        layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                        mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                        mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                        cur.execute(selectFromGeonisLayer, (package, ))
+                        if cur.rowcount:
+                            dbMapLayerList = cur.fetchall()
+                            for layer in dbMapLayerList:
+                                if layer[0] in mapLayerList:
+                                    self.logger.logMessage(INFO, "Removing layer: " + layer[0])
+                                    layerToRemove = mapLayerObjectList[mapLayerList.index(layer[0])]
+                                    arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                            mxd.save()
 
-                        cur.execute(deleteFromGeonisLayer, (package, ))
-                        self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from geonis_layer")
-                        
-                        # If we're using the production db, then restart map service
-                        if not self.getParameterInfo()[2]:
-                            mapService = pathToMapDoc + os.sep + "servicedefs" + os.sep + site + "_layers.sd"
-                            # TODO: update "services" with the correct folder on the server
-                            arcpy.UploadServiceDefinition_server(
-                                mapService, pubConnection, "", "", "EXISTING", "services"
-                            )
-
-                    del layersFrame, mxd
+                            cur.execute(deleteFromGeonisLayer, (package, ))
+                            self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from geonis_layer")
+                            
+                            # If we're using the production db, then restart map service
+                            if not self.getParameterInfo()[2]:
+                                mapService = pathToMapDoc + os.sep + "servicedefs" + os.sep + site + "_layers.sd"
+                                # TODO: update "services" with the correct folder on the server
+                                arcpy.UploadServiceDefinition_server(
+                                    mapService, pubConnection, "", "", "EXISTING", "services"
+                                )
+                        del layersFrame, mxd
                     
                     # Check entity table for package
                     cur.execute(selectFromEntity, (package, ))

@@ -51,6 +51,7 @@ class EvtLog(object):
         try:
             assert self.evtLogger
             self.evtLogger.log(level, msg)
+            print msg
             # if running not optimized, log everthing, changing level as needed
             if __debug__ and not self.evtLogger.isEnabledFor(level):
                 self.evtLogger.log(self.evtLogger.getEffectiveLevel(), "<debug mode>" + msg)
