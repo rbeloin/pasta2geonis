@@ -57,7 +57,7 @@ class Setup(ArcpyTool):
                   direction = 'Input',
                   parameterType = 'Required'))
         params.append(arcpy.Parameter(
-                    displayName = 'Scopes/Identifiers to Include',
+                  displayName = 'Scopes/Identifiers to Include',
                   name = 'include_list',
                   datatype = 'GPValueTable',
                   direction = 'Input',
@@ -68,7 +68,7 @@ class Setup(ArcpyTool):
                   datatype = 'Boolean',
                   direction = 'Input',
                   parameterType = 'Required'))
-
+                  
         #testing true by default
         params[2].value = True
         params[3].value = True
@@ -101,14 +101,14 @@ class Setup(ArcpyTool):
     @errHandledWorkflowTask(taskName="Setup clean")
     def cleanUp(self, pkgArray):
         self.logger.logMessage(DEBUG,str(pkgArray))
-                    
+
         selectFromPackage = "SELECT packageid FROM package WHERE packageid LIKE %s"
         deleteFromPackage = "DELETE FROM package WHERE packageid = %s"
         selectFromGeonisLayer = "SELECT layername FROM geonis_layer WHERE packageid = %s"
         deleteFromGeonisLayer = "DELETE FROM geonis_layer WHERE packageid = %s"
         selectFromEntity = "SELECT layername, storage FROM entity WHERE packageid = %s"
         deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
-  
+   
         with cursorContext(self.logger) as cur:
             for pkgset in pkgArray:
                 if not pkgset['inc']:
@@ -224,6 +224,8 @@ class Setup(ArcpyTool):
                         idlist.append(ids)
                 for idn in idlist:
                     valsArr.append({'inc':'%s.%s' % (scope,idn)})
+            # Insert values manually for testing
+            # valsArr.append({'inc': 'knb-lter-knz.230'})
             valsTuple = tuple(valsArr)
             #print valsTuple
             with cursorContext() as cur:
