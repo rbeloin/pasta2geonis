@@ -77,8 +77,6 @@ tool.execute(params, [])
 
 print "************"
 
-'''
-
 tool = lno_geonis_wf.LoadRasterTypes()
 tool._isRunningAsTool = False
 params = tool.getParameterInfo()
@@ -96,32 +94,3 @@ params[0].value = True
 params[1].value = logfile
 params[2].value = ""
 tool.execute(params, [])
-
-print "************"
-
-arcpy.Setup_geonis(Verbose, geonis_wf_log, testing, stagingServer, scopeID, cleanUp)
-
-# Process: S1. Query PASTA
-print "QueryPasta"
-arcpy.QueryPasta_geonis(Verbose, geonis_wf_log, "")
-
-# Process: S2. Unpack Packages
-print "UnpackPackages"
-arcpy.UnpackPackages_geonis("true", "", Directory_of_Packages, valid_pkg_test)
-
-# Process: S3. Check Spatial Data
-print "CheckSpatialData"
-arcpy.CheckSpatialData_geonis("true", "", Output_Directories)
-
-# Process: S4. Load Vector
-print "LoadVector"
-arcpy.LoadVectorTypes_geonis("true", "", Output_Directories__2_)
-
-# Process: S5. Load Raster
-print "LoadRaster"
-arcpy.LoadRasterTypes_geonis("true", "", Output_Directories__3_)
-
-# Process: S6. Update MXD
-print "UpdateMXD"
-arcpy.UpdateMXDs_geonis("true", "", Output_Directories__4_)
-'''
