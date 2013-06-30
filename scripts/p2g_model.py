@@ -82,7 +82,7 @@ tool._isRunningAsTool = False
 params = tool.getParameterInfo()
 params[0].value = True
 params[1].value = logfile
-params[2].value = ""
+params[2].value = input_dirs
 tool.execute(params, [])
 
 print "************"
@@ -92,5 +92,5 @@ tool._isRunningAsTool = False
 params = tool.getParameterInfo()
 params[0].value = True
 params[1].value = logfile
-params[2].value = ""
+params[2].value = input_dirs
 tool.execute(params, [])
