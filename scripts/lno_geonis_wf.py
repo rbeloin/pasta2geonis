@@ -159,20 +159,16 @@ class Setup(ArcpyTool):
                     # Check entity table for package
                     cur.execute(selectFromEntity, (package, ))
                     if cur.rowcount:
-                        results = cur.fetchall()
-                        entityLayers = [row[0] for row in results]
-                        gdbStorage = [row[1] for row in results]
-                        #arcpy.env.workspace = geodatabase
-                        for i, layer in enumerate(entityLayers):
-                            # TODO: drop tables from geodb (can't generate cursor --
-                            # error 000638 workspace not set for geoprocessor --
-                            # does this work on the server??)
-                            #arcpy.SelectCursor(gdbStorage[i])
-                            pass
                         cur.execute(deleteFromEntity, (package, ))
                         self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from entity")
+                        
+                    # Drop tables from geodb (TODO: verify that this works for SDE)
+                    geodbTable = getConfigValue('geodatabase') + os.sep + site + getConfigValue('datasetscopesuffix')
+                    if arcpy.Exists(geodbTable):
+                        arcpy.Delete_management(geodbTable)
+                        self.logger.logMessage(INFO, "Dropped " + geodbTable + " from geodatabase")
                     
-                    # Finally, delete the rows from the package table
+                    # Delete rows from the package table
                     cur.execute(deleteFromPackage, (package, ))
                     self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from package")
 
@@ -225,7 +221,7 @@ class Setup(ArcpyTool):
                 for idn in idlist:
                     valsArr.append({'inc':'%s.%s' % (scope,idn)})
             # Insert values manually for testing
-            # valsArr.append({'inc': 'knb-lter-knz.230'})
+            valsArr.append({'inc': 'knb-lter-knz.230'})
             valsTuple = tuple(valsArr)
             #print valsTuple
             with cursorContext() as cur:

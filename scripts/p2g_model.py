@@ -27,8 +27,8 @@ tool._isRunningAsTool = False
 params = tool.getParameterInfo()
 params[0].value = verbose # verbose
 params[1].value = logfile # logfile
-params[2].value = True # testing workflow
-params[3].value = False # staging server
+params[2].value = True # testing workflow (workflow_d schema)
+params[3].value = False # staging server (pasta-s)
 params[4].value = [[u'knz', u'230']] # this doesn't work; set value manually instead
 params[5].value = True # cleanup
 tool.execute(params, [])
@@ -72,7 +72,7 @@ tool._isRunningAsTool = False
 params = tool.getParameterInfo()
 params[0].value = True
 params[1].value = logfile
-params[2].value = ""
+params[2].value = input_dirs
 tool.execute(params, [])
 
 print "************"
