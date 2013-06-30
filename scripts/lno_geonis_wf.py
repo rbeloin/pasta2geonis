@@ -221,7 +221,9 @@ class Setup(ArcpyTool):
                 for idn in idlist:
                     valsArr.append({'inc':'%s.%s' % (scope,idn)})
             # Insert values manually for testing
-            # valsArr.append({'inc': 'knb-lter-knz.230'})
+            if not self._isRunningAsTool:
+                #valsArr.append({'inc': 'knb-lter-knz.230'})
+                valsArr.append({'inc': 'knb-lter-and.5031'})
             valsTuple = tuple(valsArr)
             #print valsTuple
             with cursorContext() as cur:

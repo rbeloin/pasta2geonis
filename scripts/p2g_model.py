@@ -13,24 +13,25 @@ import lno_geonis_wf
 from geonis_pyconfig import envSettingsPath, scratchWS
 import pdb
 
-# Local variables:
-valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
-logfile = "C:\\TEMP\\geonis_wf.log"
-#logfile = None
 verbose = True
+logfile = "C:\\TEMP\\geonis_wf.log"
+testing_workflow = True
+staging_server = True
+cleanup = True
 Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
+valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
 
 print "************"
 
 tool = lno_geonis_wf.Setup()
 tool._isRunningAsTool = False
 params = tool.getParameterInfo()
-params[0].value = verbose # verbose
-params[1].value = logfile # logfile
-params[2].value = True # testing workflow (workflow_d schema)
-params[3].value = False # staging server (pasta-s)
+params[0].value = verbose
+params[1].value = logfile
+params[2].value = testing_workflow
+params[3].value = staging_server
 params[4].value = [[u'knz', u'230']] # this doesn't work; set value manually instead
-params[5].value = True # cleanup
+params[5].value = cleanup
 tool.execute(params, [])
 
 print "************"
