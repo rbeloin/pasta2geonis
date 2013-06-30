@@ -12,7 +12,7 @@ import sys, os, re
 import copy
 import time, datetime
 import json
-import httplib, urllib, urllib2
+import httplib, urllib, urllib2, urlparse
 from HTMLParser import HTMLParser
 import psycopg2
 from shutil import copyfileobj, rmtree
@@ -31,6 +31,7 @@ from geonis_helpers import siteFromId, getToken, sendEmail, composeMessage
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
 from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
 import pdb
+import platform
 
 
 ## *****************************************************************************
@@ -162,7 +163,7 @@ class Setup(ArcpyTool):
                         cur.execute(deleteFromEntity, (package, ))
                         self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from entity")
                         
-                    # Drop tables from geodb (TODO: verify that this works for SDE)
+                    # Drop tables from geodb
                     geodbTable = getConfigValue('geodatabase') + os.sep + site + getConfigValue('datasetscopesuffix')
                     if arcpy.Exists(geodbTable):
                         arcpy.Delete_management(geodbTable)
@@ -221,7 +222,7 @@ class Setup(ArcpyTool):
                 for idn in idlist:
                     valsArr.append({'inc':'%s.%s' % (scope,idn)})
             # Insert values manually for testing
-            if not self._isRunningAsTool:
+            if not self._isRunningAsTool and platform.node().lower() == 'invent':
                 #valsArr.append({'inc': 'knb-lter-knz.230'})
                 valsArr.append({'inc': 'knb-lter-and.5031'})
             valsTuple = tuple(valsArr)
@@ -575,12 +576,34 @@ class UnpackPackages(ArcpyTool):
                 uri = dataloc
                 sdatafile = os.path.join(workDir,emldata["shortEntityName"] + '.zip')
                 try:
-                    resource = urllib2.urlopen(uri)
+                    resource = urllib2.urlopen(uri)                                      
+                    contentLength = resource.info().get('Content-Length', '')
+                    try:
+                        contentLength = int(contentLength)
+                    except ValueError:
+                        contentLength = None
+                    self.logger.logMessage(INFO, "Content-Length: " + str(contentLength))
+
                 except urllib2.HTTPError as httperr:
                     raise Exception("Request to %s returned error, code %i" % (uri,httperr.code) )
+                
                 if resource and resource.getcode() == 200:
                     with open(sdatafile,'wb') as dest:
-                        copyfileobj(resource,dest)
+                        copyfileobj(resource, dest)
+                    
+                    # Check file size
+                    dataLength = os.stat(sdatafile).st_size
+                    self.logger.logMessage(INFO, str(dataLength) + " bytes read")
+                    if contentLength is not None and contentLength != dataLength:
+                        self.logger.logMessage(WARN, "Incomplete download")
+                        raise urllib2.URLError('Incomplete download')
+                        
+                    # Check magic number
+                    with open(sdatafile, 'rb') as dest:
+                        magicNum = dest.read(4)
+                        if magicNum != '\x50\x4b\x03\x04':
+                            self.logger.logMessage(WARN, "Zipfile magic number mismatch: " + magicNumber)
+                    
                 else:
                     raise Exception("Request to %s failed." % (uri,) )
             except Exception as e:
