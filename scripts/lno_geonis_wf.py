@@ -17,6 +17,8 @@ from HTMLParser import HTMLParser
 import psycopg2
 from shutil import copyfileobj, rmtree
 from shutil import copy as copyFileToFileOrDir
+import zipfile
+from cStringIO import StringIO
 from zipfile import ZipFile
 from lxml import etree
 import arcpy
@@ -602,7 +604,7 @@ class UnpackPackages(ArcpyTool):
                     with open(sdatafile, 'rb') as dest:
                         magicNum = dest.read(4)
                         if magicNum != '\x50\x4b\x03\x04':
-                            self.logger.logMessage(WARN, "Zipfile magic number mismatch: " + magicNumber)
+                            self.logger.logMessage(WARN, "Zipfile magic number mismatch: " + repr(magicNum))
                     
                 else:
                     raise Exception("Request to %s failed." % (uri,) )
@@ -613,12 +615,28 @@ class UnpackPackages(ArcpyTool):
                     resource.close()
             if not os.path.exists(sdatafile):
                 raise Exception("spatial data file %s missing after download" % (sdatafile,))
-            with ZipFile(sdatafile) as sdata:
-                if sdata.testzip() is None:
-                    sdata.extractall(workDir)
-                else:
-                    self.logger.logMessage(WARN,"%s did not pass zip test." % (sdatafile,))
-                    raise Exception("Zip test fail.")
+
+            with ZipFile(sdatafile, 'r') as sdata:
+                for name in sdata.namelist():
+                
+                    # Check for nested zip files
+                    if re.search(r'\.zip$', name) != None:
+                        sdataread = StringIO(sdata.read(name))
+                        with ZipFile(sdataread) as sdataInner:
+                            if sdataInner.testzip() is None:
+                                sdataInner.extractall(workDir)
+                            else:
+                                self.logger.logMessage(WARN,"%s did not pass zip test." % (sdatafile,))
+                                raise Exception("Zip test fail.")                           
+                            
+                    # Otherwise, check for errors and extract to working directory
+                    else:
+                        if sdata.testzip() is None:
+                            sdata.extractall(workDir)
+                        else:
+                            self.logger.logMessage(WARN,"%s did not pass zip test." % (sdatafile,))
+                            raise Exception("Zip test fail.")
+
             #TODO: check to see if only a dir after unpacking. Its contents may need to be raised to the current dir level
         else:
             self.logger.logMessage(WARN, "URL for data source missing.")
