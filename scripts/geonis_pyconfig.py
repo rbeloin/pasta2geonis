@@ -38,7 +38,7 @@ if platform.node().lower() == "maps3":
     #raster data storage
     pathToRasterData = r"C:\pasta2geonis\Gis_data\Raster_raw"
     #raster mosaic datasets
-    pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.sde"
+    pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.gdb"
     #geodatabase connection
     geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
     #map doc

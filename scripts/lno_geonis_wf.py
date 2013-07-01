@@ -584,7 +584,6 @@ class UnpackPackages(ArcpyTool):
                         contentLength = int(contentLength)
                     except ValueError:
                         contentLength = None
-                    self.logger.logMessage(INFO, "Content-Length: " + str(contentLength))
 
                 except urllib2.HTTPError as httperr:
                     raise Exception("Request to %s returned error, code %i" % (uri,httperr.code) )
@@ -595,11 +594,12 @@ class UnpackPackages(ArcpyTool):
                     
                     # Check file size
                     dataLength = os.stat(sdatafile).st_size
-                    self.logger.logMessage(INFO, str(dataLength) + " bytes read")
                     if contentLength is not None and contentLength != dataLength:
-                        self.logger.logMessage(WARN, "Incomplete download")
+                        self.logger.logMessage(WARN, str(dataLength) + " bytes read, incomplete download (content-length: " + str(contentLength) + ")")
                         raise urllib2.URLError('Incomplete download')
-                        
+                    else:
+                        self.logger.logMessage(INFO, str(dataLength) + " bytes read, content-length ok")
+
                     # Check magic number
                     with open(sdatafile, 'rb') as dest:
                         magicNum = dest.read(4)
@@ -617,27 +617,21 @@ class UnpackPackages(ArcpyTool):
                 raise Exception("spatial data file %s missing after download" % (sdatafile,))
 
             with ZipFile(sdatafile, 'r') as sdata:
-                for name in sdata.namelist():
                 
-                    # Check for nested zip files
+                # Check for nested zip files
+                nestedZip = False
+                for name in sdata.namelist():
                     if re.search(r'\.zip$', name) != None:
+                        nestedZip = True
                         sdataread = StringIO(sdata.read(name))
                         with ZipFile(sdataread) as sdataInner:
                             if sdataInner.testzip() is None:
                                 sdataInner.extractall(workDir)
                             else:
                                 self.logger.logMessage(WARN,"%s did not pass zip test." % (sdatafile,))
-                                raise Exception("Zip test fail.")                           
-                            
-                    # Otherwise, check for errors and extract to working directory
+                                raise Exception("Zip test fail.")                    
                     else:
-                        if sdata.testzip() is None:
-                            sdata.extractall(workDir)
-                        else:
-                            self.logger.logMessage(WARN,"%s did not pass zip test." % (sdatafile,))
-                            raise Exception("Zip test fail.")
-
-            #TODO: check to see if only a dir after unpacking. Its contents may need to be raised to the current dir level
+                        sdata.extract(name, workDir)
         else:
             self.logger.logMessage(WARN, "URL for data source missing.")
             raise Exception("No URL for data in %s" % (workDir,))
@@ -745,8 +739,10 @@ class CheckSpatialData(ArcpyTool):
     def examineEMLforType(self, emldata):
         spatialTypeItem = emldata["spatialType"]
         if spatialTypeItem == "spatialVector":
+            self.logger.logMessage(INFO, "Found spatialVector tag")
             retval = GeoNISDataType.SPATIALVECTOR
         elif spatialTypeItem == "spatialRaster":
+            self.logger.logMessage(INFO, "Found spatialRaster tag")
             retval = GeoNISDataType.SPATIALRASTER
         else:
             self.logger.logMessage(WARN,"EML spatial type is %s, should be either 'spatialVector' or 'spatialRaster'." % (spatialTypeItem,))
@@ -883,6 +879,7 @@ class CheckSpatialData(ArcpyTool):
         else:
             name, ext = os.path.splitext(dataFileName)
             if emlName.lower() == name:
+                self.logger.logMessage(INFO, "emlName %s matched data name %s" % (emlName, dataFileName))
                 return True
             else:
                 self.logger.logMessage(WARN, "emlName %s did not match data name %s" % (emlName, dataFileName))
@@ -890,6 +887,7 @@ class CheckSpatialData(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Attribute name check")
     def attributeNames(self, workDir, dataFilePath):
+        # (datadir, datafilepath)
         emlAttNames = []
         entityAttNames = []
         emlTree = etree.parse(os.path.join(workDir,"emlSubset.xml"))
@@ -899,6 +897,8 @@ class CheckSpatialData(ArcpyTool):
         del emlTree
         fields = arcpy.ListFields(dataFilePath)
         entityAttNames = [str(f.name.upper()) for f in fields]
+        self.logger.logMessage(INFO, "EML: " + str(emlAttNames))
+        self.logger.logMessage(INFO, "Entity: " + str(entityAttNames))
         diff = list(set(emlAttNames) ^ set(entityAttNames))
         if len(diff) > 0:
             self.logger.logMessage(WARN,"Attribute names in eml and entity did not match. %s" % str(diff))
@@ -940,7 +940,7 @@ class CheckSpatialData(ArcpyTool):
             reportText = []
             formattedReport = ''
             for dataDir in self.inputDirs:
-                self.logger.logMessage(INFO, "working in: " + dataDir)
+                self.logger.logMessage(INFO, "***working in: " + dataDir + "***")
                 try:
                     status = "Entering data checks."
                     emldata = readWorkingData(dataDir, self.logger)
@@ -991,6 +991,8 @@ class CheckSpatialData(ArcpyTool):
                         emldata["type"] = "vector"
                     status = "File type assigned"
                     #get list of mismatches in attribute names
+                    #self.logger.logMessage(INFO, "emldata['datafilepath'] = " + emldata["datafilePath"])
+                    #self.logger.logMessage(INFO, "dataDir = " + dataDir)
                     mismatchedAtts = self.attributeNames(dataDir,emldata["datafilePath"])
                     if  mismatchedAtts != []:
                         reportText.append({"Fields mismatch":str(mismatchedAtts)})
