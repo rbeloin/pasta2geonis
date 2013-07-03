@@ -28,7 +28,7 @@ from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, dsnfile, pubConnection, arcgiscred, geodatabase
-from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection
+from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection, isIdrisiRaster
 from geonis_helpers import siteFromId, getToken, sendEmail, composeMessage
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
 from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
@@ -109,7 +109,7 @@ class Setup(ArcpyTool):
         deleteFromPackage = "DELETE FROM package WHERE packageid = %s"
         selectFromGeonisLayer = "SELECT layername FROM geonis_layer WHERE packageid = %s"
         deleteFromGeonisLayer = "DELETE FROM geonis_layer WHERE packageid = %s"
-        selectFromEntity = "SELECT layername, storage FROM entity WHERE packageid = %s"
+        selectFromEntity = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
         deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
    
         with cursorContext(self.logger) as cur:
@@ -161,7 +161,9 @@ class Setup(ArcpyTool):
                     
                     # Check entity table for package
                     cur.execute(selectFromEntity, (package, ))
+                    layersInEntity = None
                     if cur.rowcount:
+                        layersInEntity = [row[0] for row in cur.fetchall()]
                         cur.execute(deleteFromEntity, (package, ))
                         self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from entity")
                         
@@ -174,6 +176,17 @@ class Setup(ArcpyTool):
                     # Delete rows from the package table
                     cur.execute(deleteFromPackage, (package, ))
                     self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from package")
+                    
+                    # Delete entries from raster mosaic datasets
+                    mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + site + getConfigValue('datasetscopesuffix')
+                    if arcpy.Exists(mosaicDataset) and layersInEntity:
+                        for layer in layersInEntity:
+                            if layer:
+                                try:
+                                    arcpy.RemoveRastersFromMosaicDataset_management(mosaicDataset, "Name='%s'" % layer)
+                                    self.logger.logMessage(INFO, "Raster mosaic: %s" % layer)
+                                except:
+                                    pass
 
     def execute(self, parameters, messages):
         """ alters role of geonis to set search_path to point to test tables or production tables.
@@ -224,9 +237,10 @@ class Setup(ArcpyTool):
                 for idn in idlist:
                     valsArr.append({'inc':'%s.%s' % (scope,idn)})
             # Insert values manually for testing
-            if not self._isRunningAsTool and platform.node().lower() == 'invent':
+            if not self._isRunningAsTool:# and platform.node().lower() == 'invent':
                 #valsArr.append({'inc': 'knb-lter-knz.230'})
                 valsArr.append({'inc': 'knb-lter-and.5031'})
+                #valsArr.append({'inc': 'knb-lter-pie.10000'})
             valsTuple = tuple(valsArr)
             #print valsTuple
             with cursorContext() as cur:
@@ -814,6 +828,8 @@ class CheckSpatialData(ArcpyTool):
                 allPotentialFiles.append((afile, GeoNISDataType.ASCIIRASTER))
             elif isProjection(afile):
                 allPotentialFiles.append((afile, GeoNISDataType.PRJ))
+            elif isIdrisiRaster(afile):
+                allPotentialFiles.append((afile, GeoNISDataType.RST))
         for afolder in (f for f in contents if os.path.isdir(f)):
             if isFileGDB(afolder):
                 allPotentialFiles.append((afolder, GeoNISDataType.FILEGEODB))
@@ -897,11 +913,11 @@ class CheckSpatialData(ArcpyTool):
         del emlTree
         fields = arcpy.ListFields(dataFilePath)
         entityAttNames = [str(f.name.upper()) for f in fields]
-        self.logger.logMessage(INFO, "EML: " + str(emlAttNames))
-        self.logger.logMessage(INFO, "Entity: " + str(entityAttNames))
         diff = list(set(emlAttNames) ^ set(entityAttNames))
         if len(diff) > 0:
             self.logger.logMessage(WARN,"Attribute names in eml and entity did not match. %s" % str(diff))
+            self.logger.logMessage(WARN, "EML: " + str(emlAttNames))
+            self.logger.logMessage(WARN, "Entity: " + str(entityAttNames))
         return diff
 
     @errHandledWorkflowTask(taskName="Checking precision")
@@ -1336,13 +1352,13 @@ class LoadRasterTypes(ArcpyTool):
                 emldata = readWorkingData(dir, self.logger)
                 pkgId = emldata["packageId"]
                 datafilePath = emldata["datafilePath"]
-                datatype = emldata["type"]
+                #datatype = emldata["type"]
                 entityName = emldata["entityName"]
                 objectName = emldata["objectName"]
                 #check for supported type
-                if not self.isSupported(datatype):
-                    self.outputDirs.append(dir)
-                    continue
+                #if not self.isSupported(datatype):
+                #    self.outputDirs.append(dir)
+                #    continue
                 siteId, n, m = siteFromId(pkgId)
                 rawDataLoc, mosaicDS = self.prepareStorage(siteId, datafilePath, objectName)
                 status = "Storage prepared"
@@ -1364,6 +1380,7 @@ class LoadRasterTypes(ArcpyTool):
                 else:
                     self.logger.logMessage(WARN, "Metadata function returned False.\n")
             except Exception as err:
+                #pdb.set_trace()
                 status = "Failed after %s with %s" % (status, err.message)
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
             finally:

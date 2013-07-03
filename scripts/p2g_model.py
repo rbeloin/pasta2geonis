@@ -58,7 +58,11 @@ tool.execute(params, [])
 
 # CheckSpatialData
 print "************"
-input_dirs = [valid_pkg_test + os.sep + d for d in os.listdir(valid_pkg_test)[1:]]
+pkg_subdirs = os.listdir(valid_pkg_test)
+if len(pkg_subdirs) > 1:
+    input_dirs = [valid_pkg_test + os.sep + d for d in os.listdir(valid_pkg_test)[1:]]
+else:
+    input_dirs = [valid_pkg_test + os.sep + d for d in os.listdir(valid_pkg_test)]
 tool = lno_geonis_wf.CheckSpatialData()
 tool._isRunningAsTool = False
 params = tool.getParameterInfo()

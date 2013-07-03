@@ -31,6 +31,7 @@ isJpeg = partial(fileExtensionMatch, GeoNISDataType.JPEG)
 isJpegWorld = partial(fileExtensionMatch, GeoNISDataType.JPGW)
 isEsriE00 = partial(fileExtensionMatch, GeoNISDataType.ESRIE00)
 isProjection = partial(fileExtensionMatch, GeoNISDataType.PRJ)
+isIdrisiRaster = partial(fileExtensionMatch, GeoNISDataType.RST)
 
 '''
 Bit more work needed for some

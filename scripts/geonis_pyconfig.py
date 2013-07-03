@@ -127,5 +127,6 @@ class GeoNISDataType:
     JPGW = ('.jgw',)
     ESRIE00 = ('.e00',)
     PRJ = ('.prj',)
+    RST = ('.rst',) # IDRISI raster format
 
 

@@ -16,7 +16,7 @@ from lxml import etree
 from logging import WARN
 from geonis_helpers import siteFromId
 from geonis_postgresql import getConfigValue
-
+import pdb
 
 unittest = True
 
