@@ -163,7 +163,9 @@ class Setup(ArcpyTool):
                     cur.execute(selectFromEntity, (package, ))
                     layersInEntity = None
                     if cur.rowcount:
-                        layersInEntity = [row[0] for row in cur.fetchall() if row[0] is not None]
+                        result = cur.fetchall()
+                        layersInEntity = [row[0] for row in result if row[0] is not None]
+                        layersInEntity.extend([row[1] for row in result if row[1] is not None])
                         cur.execute(deleteFromEntity, (package, ))
                         self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from entity")
                         
@@ -179,13 +181,14 @@ class Setup(ArcpyTool):
                     
                     # Delete folders in the raster data folder
                     rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
-                    rasterSubfolders = os.listdir(rasterFolder)
-                    if rasterSubfolders is not None and layersInEntity is not None:
-                        for layer in layersInEntity:
-                            for f in rasterSubfolders:
-                                if f.startswith(layer):
-                                    rmtree(rasterFolder + os.sep + f)
-                                    self.logger.logMessage(INFO, "Removed %s" % rasterFolder + os.sep + f)
+                    if os.path.isdir(rasterFolder):
+                        rasterSubfolders = os.listdir(rasterFolder)
+                        if rasterSubfolders is not None and layersInEntity is not None:
+                            for layer in layersInEntity:
+                                for f in rasterSubfolders:
+                                    if f.startswith(layer):
+                                        rmtree(rasterFolder + os.sep + f)
+                                        self.logger.logMessage(INFO, "Removed %s" % rasterFolder + os.sep + f)
                     
                     # Delete entries from raster mosaic datasets
                     mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWF
@@ -248,8 +251,9 @@ class Setup(ArcpyTool):
             # Insert values manually for testing
             if not self._isRunningAsTool:# and platform.node().lower() == 'invent':
                 #valsArr.append({'inc': 'knb-lter-knz.230'})
-                valsArr.append({'inc': 'knb-lter-and.5031'})
-                #valsArr.append({'inc': 'knb-lter-pie.10000'})
+                #valsArr.append({'inc': 'knb-lter-and.5031'})
+                valsArr.append({'inc': 'knb-lter-pie.10000'})
+                #[valsArr.append({'inc': 'knb-lter-knz.' + str(j)}) for j in xrange(1, 1000)]
                 #[valsArr.append({'inc': 'knb-lter-ntl.' + str(j)}) for j in xrange(1, 1000)]
             valsTuple = tuple(valsArr)
             #print valsTuple
@@ -984,8 +988,11 @@ class CheckSpatialData(ArcpyTool):
                         raise Exception("No compatible data found in %s" % dataDir)
                     emldata["datafilePath"] = foundFile
                     status = "Found acceptable data file."
-                    nameMatch = self.entityNameMatch(objectName, foundFile)
-                    emldata["datafileMatchesEntity"] = nameMatch
+                    if emldata['spatialType'] == 'spatialVector':
+                        nameMatch = self.entityNameMatch(objectName, foundFile)
+                        emldata["datafileMatchesEntity"] = nameMatch
+                    else:
+                        emldata["datafileMatchesEntity"] = True
                     #force objectName to have data file path, and use objectName for layer and database
                     if not nameMatch:
                         datafilename = os.path.splitext(os.path.basename(foundFile))[0]
@@ -1366,8 +1373,8 @@ class LoadRasterTypes(ArcpyTool):
                 # If there's a 'type' tag in the EML, then use that as a description of the data;
                 # otherwise, just make sure it's raster data
                 if 'type' in emldata.keys():
-                    datatype = emldata["type"]
-                elif 'spatialRaster' in emldata.keys():
+                    datatype = emldata['type']
+                elif 'spatialType' in emldata.keys() and emldata['spatialType'] == 'spatialRaster':
                     datatype = "raster dataset"
                 else:
                     datatype = "vector"
