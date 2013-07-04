@@ -17,7 +17,6 @@ from HTMLParser import HTMLParser
 import psycopg2
 from shutil import copyfileobj, rmtree
 from shutil import copy as copyFileToFileOrDir
-import zipfile
 from cStringIO import StringIO
 from zipfile import ZipFile
 from lxml import etree
@@ -128,6 +127,7 @@ class Setup(ArcpyTool):
                 allPackages = [row[0] for row in cur.fetchall()]
                 for package in allPackages:
                     site = pkg.split('-')[2].split('.')[0]
+                    siteWF = site + getConfigValue('datasetscopesuffix')
                     
                     # If this package exists in the map, delete any layers already in the
                     # geonis_layer table from both the map and geonis_layer
@@ -163,12 +163,12 @@ class Setup(ArcpyTool):
                     cur.execute(selectFromEntity, (package, ))
                     layersInEntity = None
                     if cur.rowcount:
-                        layersInEntity = [row[0] for row in cur.fetchall()]
+                        layersInEntity = [row[0] for row in cur.fetchall() if row[0] is not None]
                         cur.execute(deleteFromEntity, (package, ))
                         self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from entity")
                         
                     # Drop tables from geodb
-                    geodbTable = getConfigValue('geodatabase') + os.sep + site + getConfigValue('datasetscopesuffix')
+                    geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
                     if arcpy.Exists(geodbTable):
                         arcpy.Delete_management(geodbTable)
                         self.logger.logMessage(INFO, "Dropped " + geodbTable + " from geodatabase")
@@ -177,16 +177,25 @@ class Setup(ArcpyTool):
                     cur.execute(deleteFromPackage, (package, ))
                     self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from package")
                     
-                    # Delete entries from raster mosaic datasets
-                    mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + site + getConfigValue('datasetscopesuffix')
-                    if arcpy.Exists(mosaicDataset) and layersInEntity:
+                    # Delete folders in the raster data folder
+                    rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
+                    rasterSubfolders = os.listdir(rasterFolder)
+                    if rasterSubfolders is not None and layersInEntity is not None:
                         for layer in layersInEntity:
-                            if layer:
-                                try:
-                                    arcpy.RemoveRastersFromMosaicDataset_management(mosaicDataset, "Name='%s'" % layer)
-                                    self.logger.logMessage(INFO, "Raster mosaic: %s" % layer)
-                                except:
-                                    pass
+                            for f in rasterSubfolders:
+                                if f.startswith(layer):
+                                    rmtree(rasterFolder + os.sep + f)
+                                    self.logger.logMessage(INFO, "Removed %s" % rasterFolder + os.sep + f)
+                    
+                    # Delete entries from raster mosaic datasets
+                    mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWF
+                    if arcpy.Exists(mosaicDataset) and layersInEntity is not None:
+                        for layer in layersInEntity:
+                            try:
+                                arcpy.RemoveRastersFromMosaicDataset_management(mosaicDataset, "Name='%s'" % layer)
+                                self.logger.logMessage(INFO, "Removed %s from raster mosaic %s" % (layer, mosaicDataset))
+                            except ExecuteError:
+                                pass
 
     def execute(self, parameters, messages):
         """ alters role of geonis to set search_path to point to test tables or production tables.
@@ -241,6 +250,7 @@ class Setup(ArcpyTool):
                 #valsArr.append({'inc': 'knb-lter-knz.230'})
                 valsArr.append({'inc': 'knb-lter-and.5031'})
                 #valsArr.append({'inc': 'knb-lter-pie.10000'})
+                #[valsArr.append({'inc': 'knb-lter-ntl.' + str(j)}) for j in xrange(1, 1000)]
             valsTuple = tuple(valsArr)
             #print valsTuple
             with cursorContext() as cur:
@@ -1352,13 +1362,21 @@ class LoadRasterTypes(ArcpyTool):
                 emldata = readWorkingData(dir, self.logger)
                 pkgId = emldata["packageId"]
                 datafilePath = emldata["datafilePath"]
-                #datatype = emldata["type"]
+
+                # If there's a 'type' tag in the EML, then use that as a description of the data;
+                # otherwise, just make sure it's raster data
+                if 'type' in emldata.keys():
+                    datatype = emldata["type"]
+                elif 'spatialRaster' in emldata.keys():
+                    datatype = "raster dataset"
+                else:
+                    datatype = "vector"
                 entityName = emldata["entityName"]
                 objectName = emldata["objectName"]
                 #check for supported type
-                #if not self.isSupported(datatype):
-                #    self.outputDirs.append(dir)
-                #    continue
+                if not self.isSupported(datatype):
+                    self.outputDirs.append(dir)
+                    continue
                 siteId, n, m = siteFromId(pkgId)
                 rawDataLoc, mosaicDS = self.prepareStorage(siteId, datafilePath, objectName)
                 status = "Storage prepared"
@@ -1380,7 +1398,6 @@ class LoadRasterTypes(ArcpyTool):
                 else:
                     self.logger.logMessage(WARN, "Metadata function returned False.\n")
             except Exception as err:
-                #pdb.set_trace()
                 status = "Failed after %s with %s" % (status, err.message)
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
             finally:
