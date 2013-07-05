@@ -33,6 +33,7 @@ from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorki
 from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
 import pdb
 import platform
+from pprint import pprint
 
 
 ## *****************************************************************************
@@ -106,17 +107,21 @@ class Setup(ArcpyTool):
 
         selectFromPackage = "SELECT packageid FROM package WHERE packageid LIKE %s"
         deleteFromPackage = "DELETE FROM package WHERE packageid = %s"
-        selectFromGeonisLayer = "SELECT layername FROM geonis_layer WHERE packageid = %s"
+        selectFromGeonisLayer = "SELECT layername FROM geonis_layer WHERE packageid LIKE %s"
         deleteFromGeonisLayer = "DELETE FROM geonis_layer WHERE packageid = %s"
         selectFromEntity = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
         deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
-        updateLayeridInGeonisLayer = "UPDATE geonis_layer SET layerid = %s WHERE scope = %s"
    
         with cursorContext(self.logger) as cur:
             for pkgset in pkgArray:
                 if not pkgset['inc']:
                     continue
-                pkg = pkgset['inc']
+                pkg = pkgset['inc']               
+                site = pkg.split('-')[2].split('.')[0]
+                siteWF = site + getConfigValue('datasetscopesuffix')
+                
+                print pkg, siteWF
+                
                 #handle wildcard, e.g. knb-lter-knz.*
                 #remove *, append %, then select ... where packageid like ...,
                 # 'knb-lter-knz.100%' or 'knb-lter-knz.%'
@@ -126,104 +131,118 @@ class Setup(ArcpyTool):
                     srch = pkg + '%'
                 cur.execute(selectFromPackage, (srch, ))
                 allPackages = [row[0] for row in cur.fetchall()]
-                for package in allPackages:
-                    site = pkg.split('-')[2].split('.')[0]
-                    siteWF = site + getConfigValue('datasetscopesuffix')
-                    
-                    # If this package exists in the map, delete any layers already in the
-                    # geonis_layer table from both the map and geonis_layer
-                    if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
-                        mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
-                        mxd = arcpy.mapping.MapDocument(mxdfile)
-                        layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
-                        mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
-                        mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                        cur.execute(selectFromGeonisLayer, (package, ))
-                        if cur.rowcount:
-                            dbMapLayerList = cur.fetchall()
-                            for layer in dbMapLayerList:
-                                if layer[0] in mapLayerList:
-                                    self.logger.logMessage(INFO, "Removing layer: " + layer[0])
-                                    layerToRemove = mapLayerObjectList[mapLayerList.index(layer[0])]
-                                    arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-                            mxd.save()
-
-                            cur.execute(deleteFromGeonisLayer, (package, ))
+                                        
+                # If this package exists in the map, delete any layers already in the
+                # geonis_layer table from both the map and geonis_layer
+                if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
+                    print "Found " + site + ".mxd"
+                    mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
+                    print mxdfile
+                    mxd = arcpy.mapping.MapDocument(mxdfile)
+                    layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                    mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                    mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                    pprint(mapLayerList)
+                    cur.execute(selectFromGeonisLayer, (srch, ))
+                    print selectFromGeonisLayer % srch
+                    if cur.rowcount:
+                        print "Cleaning up", site, "mxd"
+                        dbMapLayerList = [row[0] for row in cur.fetchall()]
+                        for layer in dbMapLayerList:
+                            if layer in mapLayerList:
+                                self.logger.logMessage(INFO, "Removing layer: " + layer)
+                                layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                                arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                        mxd.save()
+                        
+                        # Verify that the map service exists
+                        print "Checking", site, "map service"
+                        mapServInfoString = getConfigValue('mapservinfo')
+                        mapServInfoItems = mapServInfoString.split(';')
+                        if len(mapServInfoItems) != 4:
                             self.logger.logMessage(
-                                INFO, 
-                                str(cur.rowcount) + " row(s) deleted from geonis_layer"
+                                WARN, 
+                                "Wrong number of items in map serv info: %s" % mapServInfoString
                             )
-                            
-                            # Verify that the map service exists
-                            mapServInfoString = getConfigValue('mapservinfo')
-                            mapServInfoItems = mapServInfoString.split(';')
-                            if len(mapServInfoItems) != 4:
-                                self.logger.logMessage(
-                                    WARN, 
-                                    "Wrong number of items in map serv info: %s" % mapServInfoString
-                                )
-                                # maybe we have the name and folder
-                                mapServInfoItems = [
-                                    mapServInfoItems[0], 
-                                    mapServInfoItems[1], 
-                                    '', 
-                                    '',
-                                ]
-                            mapServInfo = {
-                                'service_name': mapServInfoItems[0],
-                                'service_folder': mapServInfoItems[1],
-                                'tags': mapServInfoItems[2],
-                                'summary': mapServInfoItems[3]
-                            }
-                            self.serverInfo = copy.copy(mapServInfo)
-                            self.serverInfo["service_name"] = site + getConfigValue('mapservsuffix')
+                            # maybe we have the name and folder
+                            mapServInfoItems = [
+                                mapServInfoItems[0], 
+                                mapServInfoItems[1], 
+                                '', 
+                                '',
+                            ]
+                        mapServInfo = {
+                            'service_name': mapServInfoItems[0],
+                            'service_folder': mapServInfoItems[1],
+                            'tags': mapServInfoItems[2],
+                            'summary': mapServInfoItems[3]
+                        }
+                        self.serverInfo = copy.copy(mapServInfo)
+                        self.serverInfo["service_name"] = site + getConfigValue('mapservsuffix')
 
-                            available = False
-                            tries = 0
-                            layerQueryURI = getConfigValue("layerqueryuri")
-                            layersUrl = layerQueryURI % (
-                                self.serverInfo["service_folder"], 
-                                self.serverInfo["service_name"]
-                            )
+                        available = False
+                        tries = 0
+                        layerQueryURI = getConfigValue("layerqueryuri")
+                        layersUrl = layerQueryURI % (
+                            self.serverInfo["service_folder"], 
+                            self.serverInfo["service_name"]
+                        )
+                        layerInfoJson = urllib2.urlopen(layersUrl)
+                        layerInfo = json.loads(layerInfoJson.readline())
+                        del layerInfoJson
+                        available = "error" not in layerInfo
+                        # service might still be starting up
+                        while not available and tries < 10:
+                            time.sleep(5)
+                            tries += 1
                             layerInfoJson = urllib2.urlopen(layersUrl)
                             layerInfo = json.loads(layerInfoJson.readline())
-                            del layerInfoJson
                             available = "error" not in layerInfo
-                            # service might still be starting up
-                            while not available and tries < 10:
-                                time.sleep(5)
-                                tries += 1
-                                layerInfoJson = urllib2.urlopen(layersUrl)
-                                layerInfo = json.loads(layerInfoJson.readline())
-                                available = "error" not in layerInfo
-                            if not available:
-                                self.logger.logMessage(
-                                    WARN, 
-                                    "Could not connect to %s" % (layersUrl, )
-                                )
-                                continue
-                                
-                            # Set layerid to -1 in geonis_layer to force mxd to appear in
-                            # view vw_stalemapservices
-                            cur.execute("SELECT * FROM vw_stalemapservices")
-                            if cur.rowcount:
-                                serviceList = [row[0] for row in cur.fetchall()]
-                                self.logger.logMessage(
-                                    INFO, 
-                                    "Restarting %s.mxd map service(s)" % str(serviceList)
-                                )
-                                cur.execute(updateLayeridInGeonisLayer, ('-1', site))
-                                
-                                # Restart map service, pulling info from the updated tables
-                                RMS = RestartMapService()
-                                RMS._isRunningAsTool = False
-                                paramsRMS = RMS.getParameterInfo()
-                                paramsRMS[0].value = True
-                                paramsRMS[1].value = "C:\\TEMP\\geonis_wf.log"
-                                RMS.execute(params, [])
+                        if not available:
+                            self.logger.logMessage(
+                                WARN, 
+                                "Could not connect to %s" % (layersUrl, )
+                            )
+                            continue
                             
-                        del layersFrame, mxd
-                    
+                        # Set layerid to -1 in geonis_layer to force mxd to appear in
+                        # view vw_stalemapservices
+                        #print "Getting stale maps"
+                        #cur.execute("SELECT * FROM vw_stalemapservices")
+                        #results = cur.fetchall()
+                        #print str(results)
+                        #if cur.rowcount:
+                        #   print "Found", cur.rowcount, "stale maps"
+                        #    serviceList = [row[0] for row in cur.fetchall()]
+                        #    pprint(serviceList)
+                        #    self.logger.logMessage(
+                        #        INFO, 
+                        #        "Restarting %s.mxd map service(s)" % str(serviceList)
+                        #    )
+                        cur.execute(
+                            "UPDATE geonis_layer SET layerid = %s WHERE scope = %s", 
+                            ('-1', site)
+                        )
+                        print "UPDATE geonis_layer SET layerid = %s WHERE scope = %s" % ('-1', site)
+                        print cur.rowcount, "rows modified"
+                        # Refresh map service, pulling info from the updated tables
+                        RMS = RefreshMapService()
+                        RMS._isRunningAsTool = False
+                        paramsRMS = RMS.getParameterInfo()
+                        paramsRMS[0].value = True
+                        paramsRMS[1].value = "C:\\TEMP\\geonis_wf.log"
+                        RMS.execute(paramsRMS, [])
+                            
+                    del layersFrame, mxd
+                
+                for package in allPackages:
+                
+                    cur.execute(deleteFromGeonisLayer, (package, ))
+                    self.logger.logMessage(
+                        INFO, 
+                        str(cur.rowcount) + " row(s) deleted from geonis_layer"
+                    )
+                
                     # Check entity table for package
                     cur.execute(selectFromEntity, (package, ))
                     layersInEntity = None
@@ -316,8 +335,8 @@ class Setup(ArcpyTool):
             # Insert values manually for testing
             if not self._isRunningAsTool:# and platform.node().lower() == 'invent':
                 #valsArr.append({'inc': 'knb-lter-knz.230'})
-                #valsArr.append({'inc': 'knb-lter-and.5031'})
-                valsArr.append({'inc': 'knb-lter-pie.10000'})
+                valsArr.append({'inc': 'knb-lter-and.5031'})
+                #valsArr.append({'inc': 'knb-lter-pie.10000'})
                 #[valsArr.append({'inc': 'knb-lter-knz.' + str(j)}) for j in xrange(1, 1000)]
                 #[valsArr.append({'inc': 'knb-lter-ntl.' + str(j)}) for j in xrange(1, 1000)]
                 #[valsArr.append({'inc': 'knb-lter-nwt.' + str(j)}) for j in xrange(1, 1000)]
