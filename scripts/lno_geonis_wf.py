@@ -110,6 +110,7 @@ class Setup(ArcpyTool):
         deleteFromGeonisLayer = "DELETE FROM geonis_layer WHERE packageid = %s"
         selectFromEntity = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
         deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
+        updateLayeridInGeonisLayer = "UPDATE geonis_layer SET layerid = %s WHERE scope = %s"
    
         with cursorContext(self.logger) as cur:
             for pkgset in pkgArray:
@@ -148,15 +149,79 @@ class Setup(ArcpyTool):
                             mxd.save()
 
                             cur.execute(deleteFromGeonisLayer, (package, ))
-                            self.logger.logMessage(INFO, str(cur.rowcount) + " row(s) deleted from geonis_layer")
+                            self.logger.logMessage(
+                                INFO, 
+                                str(cur.rowcount) + " row(s) deleted from geonis_layer"
+                            )
                             
-                            # If we're using the production db, then restart map service
-                            if not self.getParameterInfo()[2]:
-                                mapService = pathToMapDoc + os.sep + "servicedefs" + os.sep + site + "_layers.sd"
-                                # TODO: update "services" with the correct folder on the server
-                                arcpy.UploadServiceDefinition_server(
-                                    mapService, pubConnection, "", "", "EXISTING", "services"
+                            # Verify that the map service exists
+                            mapServInfoString = getConfigValue('mapservinfo')
+                            mapServInfoItems = mapServInfoString.split(';')
+                            if len(mapServInfoItems) != 4:
+                                self.logger.logMessage(
+                                    WARN, 
+                                    "Wrong number of items in map serv info: %s" % mapServInfoString
                                 )
+                                # maybe we have the name and folder
+                                mapServInfoItems = [
+                                    mapServInfoItems[0], 
+                                    mapServInfoItems[1], 
+                                    '', 
+                                    '',
+                                ]
+                            mapServInfo = {
+                                'service_name': mapServInfoItems[0],
+                                'service_folder': mapServInfoItems[1],
+                                'tags': mapServInfoItems[2],
+                                'summary': mapServInfoItems[3]
+                            }
+                            self.serverInfo = copy.copy(mapServInfo)
+                            self.serverInfo["service_name"] = site + getConfigValue('mapservsuffix')
+
+                            available = False
+                            tries = 0
+                            layerQueryURI = getConfigValue("layerqueryuri")
+                            layersUrl = layerQueryURI % (
+                                self.serverInfo["service_folder"], 
+                                self.serverInfo["service_name"]
+                            )
+                            layerInfoJson = urllib2.urlopen(layersUrl)
+                            layerInfo = json.loads(layerInfoJson.readline())
+                            del layerInfoJson
+                            available = "error" not in layerInfo
+                            # service might still be starting up
+                            while not available and tries < 10:
+                                time.sleep(5)
+                                tries += 1
+                                layerInfoJson = urllib2.urlopen(layersUrl)
+                                layerInfo = json.loads(layerInfoJson.readline())
+                                available = "error" not in layerInfo
+                            if not available:
+                                self.logger.logMessage(
+                                    WARN, 
+                                    "Could not connect to %s" % (layersUrl, )
+                                )
+                                continue
+                                
+                            # Set layerid to -1 in geonis_layer to force mxd to appear in
+                            # view vw_stalemapservices
+                            cur.execute("SELECT * FROM vw_stalemapservices")
+                            if cur.rowcount:
+                                serviceList = [row[0] for row in cur.fetchall()]
+                                self.logger.logMessage(
+                                    INFO, 
+                                    "Restarting %s.mxd map service(s)" % str(serviceList)
+                                )
+                                cur.execute(updateLayeridInGeonisLayer, ('-1', site))
+                                
+                                # Restart map service, pulling info from the updated tables
+                                RMS = RestartMapService()
+                                RMS._isRunningAsTool = False
+                                paramsRMS = RMS.getParameterInfo()
+                                paramsRMS[0].value = True
+                                paramsRMS[1].value = "C:\\TEMP\\geonis_wf.log"
+                                RMS.execute(params, [])
+                            
                         del layersFrame, mxd
                     
                     # Check entity table for package
@@ -255,6 +320,7 @@ class Setup(ArcpyTool):
                 valsArr.append({'inc': 'knb-lter-pie.10000'})
                 #[valsArr.append({'inc': 'knb-lter-knz.' + str(j)}) for j in xrange(1, 1000)]
                 #[valsArr.append({'inc': 'knb-lter-ntl.' + str(j)}) for j in xrange(1, 1000)]
+                #[valsArr.append({'inc': 'knb-lter-nwt.' + str(j)}) for j in xrange(1, 1000)]
             valsTuple = tuple(valsArr)
             #print valsTuple
             with cursorContext() as cur:
@@ -1193,6 +1259,7 @@ class LoadVectorTypes(ArcpyTool):
                     # no vector data here; continue to next dir, placing this one into the output set
                     self.outputDirs.append(dir)
                     continue
+                pdb.set_trace()
                 # amend metadata
                 self.mergeMetadata(dir, loadedFeatureClass)
                 # update table in geonis db
@@ -1710,7 +1777,6 @@ class RefreshMapService(ArcpyTool):
                 self.logger.logMessage(INFO,"Mailing %s about %s." % (str(toList),pkgid))
                 #bypass for testing, ignore contact
                 sendEmail(group, composeMessage(pkgid))
-
 
 
     def execute(self, parameters, messages):
