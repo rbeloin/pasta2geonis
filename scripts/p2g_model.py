@@ -16,7 +16,7 @@ from pprint import pprint
 verbose = True
 logfile = "C:\\TEMP\\geonis_wf.log"
 testing_workflow = True
-staging_server = True
+staging_server = False
 cleanup = True
 Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
 valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
@@ -105,3 +105,12 @@ if run_model.lower() != 'n':
     params[1].value = logfile
     params[2].value = input_dirs
     tool.execute(params, [])
+        
+    # RefreshMapService
+    print "************"
+    RMS = lno_geonis_wf.RefreshMapService()
+    RMS._isRunningAsTool = False
+    paramsRMS = RMS.getParameterInfo()
+    paramsRMS[0].value = True
+    paramsRMS[1].value = logfile
+    RMS.execute(paramsRMS, [])
