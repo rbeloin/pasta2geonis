@@ -369,16 +369,23 @@ class Setup(ArcpyTool):
                         idlist.append(ids)
                 for idn in idlist:
                     valsArr.append({'inc':'%s.%s' % (scope,idn)})
-            # Insert values manually for testing
-            if not self._isRunningAsTool:# and platform.node().lower() == 'invent':
-                valsArr.append({'inc': 'knb-lter-knz.230'})
-                #valsArr.append({'inc': 'knb-lter-and.5031'})
-                #valsArr.append({'inc': 'knb-lter-pie.10000'})
-                #[valsArr.append({'inc': 'knb-lter-knz.' + str(j)}) for j in xrange(1, 1000)]
-                #[valsArr.append({'inc': 'knb-lter-ntl.' + str(j)}) for j in xrange(1, 1000)]
-                #[valsArr.append({'inc': 'knb-lter-nwt.' + str(j)}) for j in xrange(1, 1000)]
+                    
+            # Insert scope and ID values manually for testing
+            if hasattr(self, 'setScopeIdManually') and self.setScopeIdManually:
+                if self.id == 'all' or self.id == '*':
+                    idList = urllib2.urlopen(
+                        getConfigValue('pastaurl') + '/package/eml/knb-lter-' + self.scope
+                    ).read().split('\n')
+                    for id in idList:
+                        valsArr.append({'inc': 'knb-lter-' + self.scope + '.' + id})
+                elif '-' in self.id:
+                    splitId = self.id.split('-')
+                    for j in xrange(int(splitId[0]), int(splitId[1])+1):
+                        valsArr.append({'inc': 'knb-lter-' + self.scope + '.' + str(j)})
+                else:
+                    valsArr.append({'inc': 'knb-lter-' + self.scope + '.' + str(self.id)})
+                    
             valsTuple = tuple(valsArr)
-            #print valsTuple
             with cursorContext() as cur:
                 stmt3 = "insert into limit_identifier values(%(inc)s);"
                 cur.executemany(stmt3, valsTuple)

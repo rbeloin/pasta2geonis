@@ -12,32 +12,37 @@ from geonis_pyconfig import envSettingsPath, scratchWS
 import pdb
 from pprint import pprint
 
-# Parameters
+# Command line parameters: staging server, scope, id, setup, model
+# e.g. python p2g_model.py 1 knz 230 1 1
 verbose = True
 logfile = "C:\\TEMP\\geonis_wf.log"
 testing_workflow = True
-staging_server = False
+staging_server = True if len(sys.argv) > 1 and sys.argv[1] == 'pasta-s' else False
 cleanup = True
 Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
 valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
 
-# Run Setup if user passes True as a commandline argument
-#run_setup = False if len(sys.argv) > 1 and not sys.argv[1] else True
-run_setup = raw_input("Run Setup? [Y/n] ")
+# Setup
+run_setup = 'Y' if len(sys.argv) > 4 and sys.argv[4] == 'run-setup' \
+    else raw_input("Run Setup? [Y/n] ")
 if run_setup.lower() != 'n':
     print "************"
     tool = lno_geonis_wf.Setup()
     tool._isRunningAsTool = False
+    tool.setScopeIdManually = True
+    tool.scope = sys.argv[2]
+    tool.id = sys.argv[3]
     params = tool.getParameterInfo()
     params[0].value = verbose
     params[1].value = logfile
     params[2].value = testing_workflow
     params[3].value = staging_server
-    params[4].value = [[u'knz', u'230']] # this doesn't work; set value manually instead
+    params[4].value = [[tool.scope, tool.id]] # this doesn't work; set value manually instead
     params[5].value = cleanup
     tool.execute(params, [])
 
-run_model = raw_input("Run model? [Y/n] ")
+run_model = 'Y' if len(sys.argv) > 5 and sys.argv[5] == 'run-model' \
+    else raw_input("Run model? [Y/n] ")
 if run_model.lower() != 'n':
 
     # QueryPasta
