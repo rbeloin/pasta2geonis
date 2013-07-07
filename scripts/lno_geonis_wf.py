@@ -35,7 +35,6 @@ import pdb
 import platform
 from pprint import pprint
 
-
 ## *****************************************************************************
 class Setup(ArcpyTool):
     """Setup selects test mode or production mode, and stores optional set of identifiers to process, instead of all identifiers."""
@@ -103,7 +102,8 @@ class Setup(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Setup clean")
     def cleanUp(self, pkgArray):
-        self.logger.logMessage(DEBUG,str(pkgArray))
+        for p in pkgArray:
+            self.logger.logMessage(DEBUG, p.values()[0])
 
         selectFromPackage = "SELECT packageid FROM package WHERE packageid LIKE %s"
         deleteFromPackage = "DELETE FROM package WHERE packageid = %s"
@@ -112,6 +112,7 @@ class Setup(ArcpyTool):
         selectFromEntity = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
         deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
    
+        sitesAlreadyChecked = []
         with cursorContext(self.logger) as cur:
             for pkgset in pkgArray:
                 if not pkgset['inc']:
@@ -130,88 +131,89 @@ class Setup(ArcpyTool):
                     srch = pkg + '%'
                 cur.execute(selectFromPackage, (srch, ))
                 allPackages = [row[0] for row in cur.fetchall()]
-                                                        
+                             
                 for package in allPackages:
-                    
-                    # Verify that the map service exists
-                    self.logger.logMessage(INFO, "Checking for " + site + " map service")
-                    mapServInfoString = getConfigValue('mapservinfo')
-                    mapServInfoItems = mapServInfoString.split(';')
-                    if len(mapServInfoItems) != 4:
-                        self.logger.logMessage(
-                            WARN, 
-                            "Wrong number of items in map serv info: %s" % mapServInfoString
+                    if site not in sitesAlreadyChecked:
+                        sitesAlreadyChecked.append(site)
+                        
+                        # Verify that the map service exists
+                        self.logger.logMessage(INFO, "Checking for " + site + " map service")
+                        mapServInfoString = getConfigValue('mapservinfo')
+                        mapServInfoItems = mapServInfoString.split(';')
+                        if len(mapServInfoItems) != 4:
+                            self.logger.logMessage(
+                                WARN, 
+                                "Wrong number of items in map serv info: %s" % mapServInfoString
+                            )
+                            # maybe we have the name and folder
+                            mapServInfoItems = [
+                                mapServInfoItems[0], 
+                                mapServInfoItems[1], 
+                                '', 
+                                '',
+                            ]
+                        mapServInfo = {
+                            'service_name': mapServInfoItems[0],
+                            'service_folder': mapServInfoItems[1],
+                            'tags': mapServInfoItems[2],
+                            'summary': mapServInfoItems[3]
+                        }
+                        self.serverInfo = copy.copy(mapServInfo)
+                        self.serverInfo["service_name"] = site + getConfigValue('mapservsuffix')
+
+                        available = False
+                        tries = 0
+                        layerQueryURI = getConfigValue("layerqueryuri")
+                        layersUrl = layerQueryURI % (
+                            self.serverInfo["service_folder"], 
+                            self.serverInfo["service_name"]
                         )
-                        # maybe we have the name and folder
-                        mapServInfoItems = [
-                            mapServInfoItems[0], 
-                            mapServInfoItems[1], 
-                            '', 
-                            '',
-                        ]
-                    mapServInfo = {
-                        'service_name': mapServInfoItems[0],
-                        'service_folder': mapServInfoItems[1],
-                        'tags': mapServInfoItems[2],
-                        'summary': mapServInfoItems[3]
-                    }
-                    self.serverInfo = copy.copy(mapServInfo)
-                    self.serverInfo["service_name"] = site + getConfigValue('mapservsuffix')
-
-                    available = False
-                    tries = 0
-                    layerQueryURI = getConfigValue("layerqueryuri")
-                    layersUrl = layerQueryURI % (
-                        self.serverInfo["service_folder"], 
-                        self.serverInfo["service_name"]
-                    )
-                    layerInfoJson = urllib2.urlopen(layersUrl)
-                    layerInfo = json.loads(layerInfoJson.readline())
-                    del layerInfoJson
-                    available = "error" not in layerInfo
-
-                    # Service might still be starting up
-                    while not available and tries < 10:
-                        time.sleep(5)
-                        tries += 1
                         layerInfoJson = urllib2.urlopen(layersUrl)
                         layerInfo = json.loads(layerInfoJson.readline())
+                        del layerInfoJson
                         available = "error" not in layerInfo
-                    if not available:
-                        self.logger.logMessage(
-                            WARN, 
-                            "Could not connect to %s" % (layersUrl, )
-                        )
-                    
-                    # Stop map service
-                    else:
-                        pathToServiceDoc = getConfigValue("pathtomapdoc") + os.sep + "servicedefs"
-                        self.logger.logMessage(
-                            INFO, 
-                            "Found map services %s" % pathToServiceDoc
-                        )
-                        with open(arcgiscred) as f:
-                            cred = eval(f.readline())
-                        token = getToken(cred['username'], cred['password'])
-                        if token:
-                            serviceStopURL = "/arcgis/admin/services/%s/%s.MapServer/stop" % (self.serverInfo["service_folder"],self.serverInfo["service_name"])
-                            self.logger.logMessage(DEBUG,"stopping %s" % (serviceStopURL,))
-                            # This request only needs the token and the response formatting parameter
-                            params = urllib.urlencode({'token': token, 'f': 'json'})
-                            headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
-                            # Connect to URL and post parameters
-                            httpConn = httplib.HTTPConnection("localhost", "6080")
-                            httpConn.request("POST", serviceStopURL, params, headers)
-                            response = httpConn.getresponse()
-                            if (response.status != 200):
-                                self.logger.logMessage(WARN, "Error while attempting to stop service.")
-                            httpConn.close()
+
+                        # Service might still be starting up
+                        while not available and tries < 10:
+                            time.sleep(5)
+                            tries += 1
+                            layerInfoJson = urllib2.urlopen(layersUrl)
+                            layerInfo = json.loads(layerInfoJson.readline())
+                            available = "error" not in layerInfo
+                        if not available:
+                            self.logger.logMessage(
+                                WARN, 
+                                "Could not connect to %s" % (layersUrl, )
+                            )
+                        
+                        # Stop map service
                         else:
-                            self.logger.logMessage(WARN, "Error while attempting to get admin token.")
+                            pathToServiceDoc = getConfigValue("pathtomapdoc") + os.sep + "servicedefs"
+                            self.logger.logMessage(
+                                INFO, 
+                                "Found map services %s" % pathToServiceDoc
+                            )
+                            with open(arcgiscred) as f:
+                                cred = eval(f.readline())
+                            token = getToken(cred['username'], cred['password'])
+                            if token:
+                                serviceStopURL = "/arcgis/admin/services/%s/%s.MapServer/stop" % (self.serverInfo["service_folder"],self.serverInfo["service_name"])
+                                self.logger.logMessage(DEBUG,"stopping %s" % (serviceStopURL,))
+                                # This request only needs the token and the response formatting parameter
+                                params = urllib.urlencode({'token': token, 'f': 'json'})
+                                headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+                                # Connect to URL and post parameters
+                                httpConn = httplib.HTTPConnection("localhost", "6080")
+                                httpConn.request("POST", serviceStopURL, params, headers)
+                                response = httpConn.getresponse()
+                                if (response.status != 200):
+                                    self.logger.logMessage(WARN, "Error while attempting to stop service.")
+                                httpConn.close()
+                            else:
+                                self.logger.logMessage(WARN, "Error while attempting to get admin token.")
                     
                     # If this package exists in the map, delete any layers already in the
                     # geonis_layer table from both the map and geonis_layer
-                    #pdb.set_trace()
                     if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
                         self.logger.logMessage(INFO, "Found " + site + ".mxd")
                         mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
@@ -246,10 +248,10 @@ class Setup(ArcpyTool):
                         
                     # Delete from geonis_layer table
                     cur.execute(deleteFromGeonisLayer, (package, ))
-                    self.logger.logMessage(
-                        INFO, 
-                        str(cur.rowcount) + " row(s) deleted from geonis_layer"
-                    )
+                    #self.logger.logMessage(
+                    #    INFO, 
+                    #    str(cur.rowcount) + " row(s) deleted from geonis_layer"
+                    #)
                     
                     # Check entity table for package
                     cur.execute(selectFromEntity, (package, ))
@@ -259,10 +261,10 @@ class Setup(ArcpyTool):
                         layersInEntity = [row[0] for row in result if row[0] is not None]
                         layersInEntity.extend([row[1] for row in result if row[1] is not None])
                         cur.execute(deleteFromEntity, (package, ))
-                        self.logger.logMessage(
-                            INFO, 
-                            str(cur.rowcount) + " row(s) deleted from entity"
-                        )
+                    #    self.logger.logMessage(
+                    #        INFO, 
+                    #        str(cur.rowcount) + " row(s) deleted from entity"
+                    #    )
                         
                     # Drop tables from geodb
                     geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
@@ -275,10 +277,10 @@ class Setup(ArcpyTool):
                     
                     # Delete rows from the package table
                     cur.execute(deleteFromPackage, (package, ))
-                    self.logger.logMessage(
-                        INFO, 
-                        str(cur.rowcount) + " row(s) deleted from package"
-                    )
+                    #self.logger.logMessage(
+                    #    INFO, 
+                    #    str(cur.rowcount) + " row(s) deleted from package"
+                    #)
                     
                     # Delete folders in the raster data folder
                     rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
@@ -372,18 +374,38 @@ class Setup(ArcpyTool):
                     
             # Insert scope and ID values manually for testing
             if hasattr(self, 'setScopeIdManually') and self.setScopeIdManually:
-                if self.id == 'all' or self.id == '*':
-                    idList = urllib2.urlopen(
-                        getConfigValue('pastaurl') + '/package/eml/knb-lter-' + self.scope
-                    ).read().split('\n')
-                    for id in idList:
-                        valsArr.append({'inc': 'knb-lter-' + self.scope + '.' + id})
-                elif '-' in self.id:
-                    splitId = self.id.split('-')
-                    for j in xrange(int(splitId[0]), int(splitId[1])+1):
-                        valsArr.append({'inc': 'knb-lter-' + self.scope + '.' + str(j)})
+                
+                # "all" or "*" command-line argument means to find all 
+                # packages on pasta or pasta-s server
+                # (limit to all packages beginning with "knb-lter-")
+                if self.scope == 'all' or self.scope == '*':
+                    scopeList = [s.split('-')[-1] for s in urllib2.urlopen(
+                        getConfigValue('pastaurl') + '/package/eml'
+                    ).read().split('\n') if s.startswith('knb-lter-')]
                 else:
-                    valsArr.append({'inc': 'knb-lter-' + self.scope + '.' + str(self.id)})
+                    scopeList = self.scope
+                
+                # Get ids for every site
+                for s in scopeList:
+                
+                    # "all" or "*" command-line argument means find all entities within
+                    # selected packages
+                    if self.id == 'all' or self.id == '*':
+                        idList = urllib2.urlopen(
+                            getConfigValue('pastaurl') + '/package/eml/knb-lter-' + s
+                        ).read().split('\n')
+                        for id in idList:
+                            valsArr.append({'inc': 'knb-lter-' + s + '.' + id})
+                    
+                    # A hyphen in the id argument indicates a range of values
+                    elif '-' in self.id:
+                        splitId = self.id.split('-')
+                        for j in xrange(int(splitId[0]), int(splitId[1])+1):
+                            valsArr.append({'inc': 'knb-lter-' + s + '.' + str(j)})
+                            
+                    # Otherwise, only look up a single id
+                    else:
+                        valsArr.append({'inc': 'knb-lter-' + s + '.' + str(self.id)})
                     
             valsTuple = tuple(valsArr)
             with cursorContext() as cur:
