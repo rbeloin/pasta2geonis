@@ -112,17 +112,13 @@ if run_model.lower() != 'n':
     tool.execute(params, [])
     
     # RefreshMapService
-    try:
-        print "************"
-        RMS = lno_geonis_wf.RefreshMapService()
-        RMS._isRunningAsTool = False
-        paramsRMS = RMS.getParameterInfo()
-        paramsRMS[0].value = True
-        paramsRMS[1].value = logfile
-        if len(sys.argv) > 2 and sys.argv[2] != '*' and sys.argv[2] != 'all':
-            RMS.calledFromScript = sys.argv[2]
-        RMS.sendReport = True
-        RMS.execute(paramsRMS, [])
-    except:
-        e = sys.exc_info()[0]
-        self.logger.logMessage(WARN, "Map service refresh encountered an error: " + e)
+    print "************"
+    RMS = lno_geonis_wf.RefreshMapService()
+    RMS._isRunningAsTool = False
+    paramsRMS = RMS.getParameterInfo()
+    paramsRMS[0].value = True
+    paramsRMS[1].value = logfile
+    if len(sys.argv) > 2 and sys.argv[2] != '*' and sys.argv[2] != 'all':
+        RMS.calledFromScript = sys.argv[2]
+    RMS.sendReport = True
+    RMS.execute(paramsRMS, [])

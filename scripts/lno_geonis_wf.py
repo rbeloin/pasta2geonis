@@ -248,10 +248,6 @@ class Setup(ArcpyTool):
                         
                     # Delete from geonis_layer table
                     cur.execute(deleteFromGeonisLayer, (package, ))
-                    #self.logger.logMessage(
-                    #    INFO, 
-                    #    str(cur.rowcount) + " row(s) deleted from geonis_layer"
-                    #)
                     
                     # Check entity table for package
                     cur.execute(selectFromEntity, (package, ))
@@ -261,10 +257,6 @@ class Setup(ArcpyTool):
                         layersInEntity = [row[0] for row in result if row[0] is not None]
                         layersInEntity.extend([row[1] for row in result if row[1] is not None])
                         cur.execute(deleteFromEntity, (package, ))
-                    #    self.logger.logMessage(
-                    #        INFO, 
-                    #        str(cur.rowcount) + " row(s) deleted from entity"
-                    #    )
                         
                     # Drop tables from geodb
                     geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
@@ -277,10 +269,6 @@ class Setup(ArcpyTool):
                     
                     # Delete rows from the package table
                     cur.execute(deleteFromPackage, (package, ))
-                    #self.logger.logMessage(
-                    #    INFO, 
-                    #    str(cur.rowcount) + " row(s) deleted from package"
-                    #)
                     
                     # Delete folders in the raster data folder
                     rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
@@ -400,8 +388,8 @@ class Setup(ArcpyTool):
                     
                     # A hyphen in the id argument indicates a range of values
                     elif '-' in self.id:
-                        splitId = self.id.split('-')
-                        for j in xrange(int(splitId[0]), int(splitId[1])+1):
+                        idRange = [int(j) for j in self.id.split('-')]
+                        for j in xrange(idRange[0], idRange[1]+1):
                             valsArr.append({'inc': 'knb-lter-' + s + '.' + str(j)})
                             
                     # Otherwise, only look up a single id
@@ -766,7 +754,7 @@ class UnpackPackages(ArcpyTool):
                         contentLength = None
 
                 except urllib2.HTTPError as httperr:
-                    raise Exception("Request to %s returned error, code %i" % (uri,httperr.code) )
+                    raise Exception("Request to %s returned error, code %i" % (uri,httperr.code))
                 
                 if resource and resource.getcode() == 200:
                     with open(sdatafile,'wb') as dest:
@@ -795,6 +783,8 @@ class UnpackPackages(ArcpyTool):
                     resource.close()
             if not os.path.exists(sdatafile):
                 raise Exception("spatial data file %s missing after download" % (sdatafile,))
+
+            pdb.set_trace()
 
             with ZipFile(sdatafile, 'r') as sdata:
                 
@@ -1008,7 +998,19 @@ class CheckSpatialData(ArcpyTool):
                     self.logger.logMessage(WARN, "Only a projection file, %s, was found." % (allPotentialFiles[0][0],))
                     return (None, GeoNISDataType.NA)
                 if hint is not None and hint not in allPotentialFiles[0]:
-                    self.logger.logMessage(WARN, "Expected data type %s is not exactly found data type %s for %s" % (hint, allPotentialFiles[0][1], allPotentialFiles[0][0]))
+                    if hint[0] == 'any raster':
+                        self.logger.logMessage(
+                            WARN, (
+                                "type(eml) has been set to the generic value of 'any raster'; "
+                                "instead of extension " + allPotentialFiles[0][1][0]
+                            )
+                        )
+                    else:
+                        self.logger.logMessage(
+                            WARN, 
+                            "Expected data type %s is not exactly found data type %s for %s" \
+                            % (hint, allPotentialFiles[0][1], allPotentialFiles[0][0])
+                        )
                 return allPotentialFiles[0]
             #found more than one candidate
             #figure out what we really have by certainty
@@ -1140,6 +1142,7 @@ class CheckSpatialData(ArcpyTool):
                         raise Exception("No compatible data found in %s" % dataDir)
                     emldata["datafilePath"] = foundFile
                     status = "Found acceptable data file."
+                    nameMatch = False
                     if emldata['spatialType'] == 'spatialVector':
                         nameMatch = self.entityNameMatch(objectName, foundFile)
                         emldata["datafileMatchesEntity"] = nameMatch
@@ -1152,7 +1155,7 @@ class CheckSpatialData(ArcpyTool):
                             datafilename = stringToValidName(datafilename, max = 31)
                             emldata["objectName"] = datafilename
                     if spatialType == GeoNISDataType.KML:
-                        self.logger.logMessage(INFO, "kml  found")
+                        self.logger.logMessage(INFO, "kml found")
                         emldata["type"] = "kml"
                     if spatialType == GeoNISDataType.SHAPEFILE:
                         self.logger.logMessage(INFO, "shapefile found")
@@ -1165,7 +1168,7 @@ class CheckSpatialData(ArcpyTool):
                         emldata["type"] = "file geodatabase"
                         #need to examine file gdb to see what is there, or rely on EML?
                     if spatialType == GeoNISDataType.ESRIE00:
-                        self.logger.logMessage(WARN, "arcinfo e00  reported. Should have been unpacked.")
+                        self.logger.logMessage(WARN, "arcinfo e00 reported. Should have been unpacked.")
                     if spatialType == GeoNISDataType.TIF:
                         emldata["type"] = "tif"
                     if spatialType == GeoNISDataType.JPEG:
@@ -1175,15 +1178,16 @@ class CheckSpatialData(ArcpyTool):
                     if spatialType == GeoNISDataType.SPATIALVECTOR:
                         emldata["type"] = "vector"
                     status = "File type assigned"
-                    #get list of mismatches in attribute names
-                    #self.logger.logMessage(INFO, "emldata['datafilepath'] = " + emldata["datafilePath"])
-                    #self.logger.logMessage(INFO, "dataDir = " + dataDir)
-                    mismatchedAtts = self.attributeNames(dataDir,emldata["datafilePath"])
-                    if  mismatchedAtts != []:
-                        reportText.append({"Fields mismatch":str(mismatchedAtts)})
-                        status = "Found mismatch in attribute names"
-                    else:
-                        status = "Matched all attribute names"
+                    
+                    # If this is a vector data set, get list of mismatches in attribute names
+                    if emldata['spatialType'] == 'spatialVector':
+                        mismatchedAtts = self.attributeNames(dataDir,emldata["datafilePath"])
+                        if mismatchedAtts != []:
+                            reportText.append({"Fields mismatch":str(mismatchedAtts)})
+                            status = "Found mismatch in attribute names"
+                        else:
+                            status = "Matched all attribute names"
+
                     if not self.checkPrecision(emldata["datafilePath"]):
                         raise Exception("Precision of field incompatible with geodatabase.")
                 except Exception as err:
@@ -1858,6 +1862,7 @@ class RefreshMapService(ArcpyTool):
                     toList =[contact]
                 else:
                     toList = []
+                # Only send to jack@tinybike.net for testing!
                 #toList += group
                 toList = group
                 self.logger.logMessage(INFO,"Mailing %s about %s." % (str(toList),pkgid))
