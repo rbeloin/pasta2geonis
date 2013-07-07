@@ -1880,7 +1880,7 @@ class RefreshMapService(ArcpyTool):
             # If execute has been called programatically, then only
             # refresh the specified services
             if hasattr(self, 'calledFromScript'):
-                mxds = self.calledFromScript + '.mxd'
+                mxds = [self.calledFromScript + '.mxd']
                 
             # Otherwise, get list of map services where entity record 
             # exists, is OK, has mxd, but not in geonis_layer
@@ -1903,7 +1903,8 @@ class RefreshMapService(ArcpyTool):
                 time.sleep(20)
                 site = map.split('.')[0]
                 self.updateLayerIds(site)
-            #self.sendEmailReport()
+            if hasattr(self, 'sendReport') or self._isRunningAsTool:
+                self.sendEmailReport()
         except Exception as err:
             self.logger.logMessage(ERROR, err.message)
 
