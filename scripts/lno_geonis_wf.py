@@ -319,6 +319,7 @@ class Setup(ArcpyTool):
                         paramsRMS = RMS.getParameterInfo()
                         paramsRMS[0].value = True
                         paramsRMS[1].value = self.logfile
+                        RMS.calledFromScript = site
                         RMS.execute(paramsRMS, [])
                         del RMS
 
@@ -383,7 +384,7 @@ class Setup(ArcpyTool):
                         getConfigValue('pastaurl') + '/package/eml'
                     ).read().split('\n') if s.startswith('knb-lter-')]
                 else:
-                    scopeList = self.scope
+                    scopeList = [self.scope]
                 
                 # Get ids for every site
                 for s in scopeList:
@@ -1857,7 +1858,8 @@ class RefreshMapService(ArcpyTool):
                     toList =[contact]
                 else:
                     toList = []
-                toList += group
+                #toList += group
+                toList = group
                 self.logger.logMessage(INFO,"Mailing %s about %s." % (str(toList),pkgid))
                 #bypass for testing, ignore contact
                 sendEmail(group, composeMessage(pkgid))
@@ -1874,13 +1876,22 @@ class RefreshMapService(ArcpyTool):
         mapServInfo = {'service_name':mapServInfoItems[0], 'service_folder':mapServInfoItems[1], 'tags':mapServInfoItems[2], 'summary':mapServInfoItems[3]}
         self.serverInfo = copy.copy(mapServInfo)
         try:
-            #get list of map services where entity record exists, is OK, has mxd, but not in geonis_layer
-            stmt = "SELECT * FROM vw_stalemapservices;"
-            with cursorContext(self.logger) as cur:
-                cur.execute(stmt)
-                rows = cur.fetchall()
-                mxds = [cols[0] for cols in rows]
-            del rows
+            
+            # If execute has been called programatically, then only
+            # refresh the specified services
+            if hasattr(self, 'calledFromScript'):
+                mxds = self.calledFromScript + '.mxd'
+                
+            # Otherwise, get list of map services where entity record 
+            # exists, is OK, has mxd, but not in geonis_layer
+            else:
+                stmt = "SELECT * FROM vw_stalemapservices;"
+                with cursorContext(self.logger) as cur:
+                    cur.execute(stmt)
+                    rows = cur.fetchall()
+                    mxds = [cols[0] for cols in rows]
+                del rows
+                            
             if not mxds:
                 self.logger.logMessage(INFO, "No new vector data added to any maps.")
                 #return
@@ -1892,7 +1903,7 @@ class RefreshMapService(ArcpyTool):
                 time.sleep(20)
                 site = map.split('.')[0]
                 self.updateLayerIds(site)
-            self.sendEmailReport()
+            #self.sendEmailReport()
         except Exception as err:
             self.logger.logMessage(ERROR, err.message)
 

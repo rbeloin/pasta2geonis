@@ -15,6 +15,7 @@ import httplib, urllib, json
 import smtplib
 from email.mime.text import MIMEText
 from logging import WARN
+import pdb
 
 def fileExtensionMatch(extensions, pathToFile):
     name, ext = os.path.splitext(pathToFile)
@@ -114,6 +115,13 @@ def sendEmail(toList, messageBody):
     body['To'] = ', '.join(toList)
     body['From'] = smtpconfig['originator']
     svr = None
+    svr = smtplib.SMTP_SSL(host=smtpconfig['host'], port=smtpconfig['port'])
+    svr.set_debuglevel(False)
+    svr.login(smtpconfig['user'], smtpconfig['password'])
+    svr.sendmail(smtpconfig['originator'], toList, body.as_string())
+    if svr is not None:
+        svr.close()
+    '''
     try:
         svr = smtplib.SMTP(host=smtpconfig['host'],port=smtpconfig['port'])
         svr.ehlo()
@@ -142,7 +150,7 @@ def sendEmail(toList, messageBody):
     finally:
         if svr is not None:
             svr.quit()
-
+    '''
 
 if __name__ == '__main__':
-    print sendEmail(['ronbeloin@gmail.com'],"Mail from geonis system. Do not reply.")
+    print sendEmail(['jack.peterson.516@gmail.com'], "Mail from geonis system. Do not reply.")
