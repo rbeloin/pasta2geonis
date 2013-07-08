@@ -3,70 +3,86 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 <title>GeoNIS Spatial Data Report</title>
-<style type="text/css">
-<!--
-body {
-	color:#000000;
-	background-color:#B3B3B3;
-	margin:0;
-}
-
-#container {
-	margin-left:auto;
-	margin-right:auto;
-	text-align:center;
-	}
-
-a img {
-	border:none;
-}
-
--->
-</style>
-<script type="text/javascript" >
-    function getPID() {
-        var searchStr = window.location.search;
-        if (searchStr.length > 1){
-            searchStr = searchStr.substring(1);
-        }
-        else {
-           return "";
-        }
-        searchItems = searchStr.split('&');
-        for(var i = 0; i < searchItems.length; i++){
-            var item = searchItems[i].split('=');
-            if (item[0] == "packageid"){
-                return item[1];
-            }
-        }
-        return "";
+<link rel="stylesheet" type="text/css" href="css/report.css" />
+<link href='http://fonts.googleapis.com/css?family=Lato:300' rel='stylesheet' type='text/css'>
+<script type="text/javascript">
+function getPID() {
+    var searchStr = window.location.search;
+    if (searchStr.length > 1){
+        searchStr = searchStr.substring(1);
     }
+    else {
+       return "";
+    }
+    searchItems = searchStr.split('&');
+    for(var i = 0; i < searchItems.length; i++){
+        var item = searchItems[i].split('=');
+        if (item[0] == "packageid"){
+            return item[1];
+        }
+    }
+    return "";
+}
 </script>
 </head>
 <body>
+<div class="wrapper">
+<div id="body_wrapper">
+
+    <div id="header">
+        <div id="header-content">
+            <div id="site_title"><h1>GeoNIS Spatial Data Report</h1></div>
+        <div class="cleaner"></div>
+        </div>
+    </div>
+
+    <div id="wrapper">
+        <div id="banner">
+            <h2 id="pid">placeholder</h2>
+            <div id="report"></div>
+            <div class="push"></div>
+        </div>
+
+        <div class="cleaner"></div> 
+    </div>
+    <div class="cleaner"></div>
+</div>
+
 <div id="container">
-<h2 id="pid" >placeholder</h2>
-<script type="text/javascript" >
-    var pid = getPID();
-    if(pid != ""){
-        document.getElementById("pid").innerHTML = pid;
-        var reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/Search/MapServer/2/query?where=packageid+%3D+%27" + pid + "%27&returnGeometry=true&outFields=report&f=pjson"
-        var requestObj = new XMLHttpRequest();
-        requestObj.onreadystatechange = function(){
-            if (requestObj.readyState==4 && (requestObj.status==200 || requestObj.status == 304))
-            {
-                var responseJson = requestObj.responseText;
-                //alert(responseJson);
-                var response = JSON.parse(responseJson);
-                var errReport = response.features[0].attributes.report;
-                document.getElementById("report").innerHTML=errReport;
-            }
-         }
-    requestObj.open("Get",reportUrl,true);
-    requestObj.send();
-    }
-    </script>
     <div id="report"></div>
 </div>
+
+<div id="footer_wrapper">
+    <div id="footer-outer">
+        <div id="footer">
+            <div id="copyright">
+                Copyright &copy; 2013 <a href="http://www.lternet.edu/">Long Term Ecological Research Network</a>
+            </div> 
+        </div> 
+    </div>
+</div>
+
+<script type="text/javascript">
+var pid = getPID();
+if(pid != ""){
+    document.getElementById("pid").innerHTML = pid;
+    var reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/Search/MapServer/2/query?where=packageid+%3D+%27" + pid + "%27&returnGeometry=true&outFields=report&f=pjson"
+    var requestObj = new XMLHttpRequest();
+    requestObj.onreadystatechange = function(){
+        if (requestObj.readyState==4 && (requestObj.status==200 || requestObj.status == 304))
+        {
+            var responseJson = requestObj.responseText;
+            //alert(responseJson);
+            var response = JSON.parse(responseJson);
+            var errReport = response.features[0].attributes.report;
+            document.getElementById("report").innerHTML = "<p>" + errReport + "</p>";
+        }
+     }
+requestObj.open("Get",reportUrl,true);
+requestObj.send();
+}
+</script>
+
+<!-- end of footer wrapper -->
 </body>
 </html>
