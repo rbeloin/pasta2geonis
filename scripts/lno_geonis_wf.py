@@ -754,7 +754,10 @@ class UnpackPackages(ArcpyTool):
                         contentLength = None
 
                 except urllib2.HTTPError as httperr:
-                    raise Exception("Request to %s returned error, code %i" % (uri,httperr.code))
+                    errorText = "Request to %s returned error, code %i." % (uri, httperr.code)
+                    if httperr.code == 404 and r'%' in uri:
+                        errorText += " This address includes special percent-encoded characters, which may make the address invalid."
+                    raise Exception(errorText)
                 
                 if resource and resource.getcode() == 200:
                     with open(sdatafile,'wb') as dest:
@@ -783,8 +786,6 @@ class UnpackPackages(ArcpyTool):
                     resource.close()
             if not os.path.exists(sdatafile):
                 raise Exception("spatial data file %s missing after download" % (sdatafile,))
-
-            pdb.set_trace()
 
             with ZipFile(sdatafile, 'r') as sdata:
                 
