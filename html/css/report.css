@@ -77,8 +77,8 @@ img {
 }
 em {
     color: #000;
-    font-weight: bold;
-    font-style: normal;
+    /*font-weight: bold;*/
+    font-style: italic;
 }
 h1, h2, h3, h4, h5, h6 {
     color: #000;
@@ -144,9 +144,16 @@ h1 {
 #banner h2 {
 	text-align: center;
 	color: #000;
-	margin: 0 0 15px 0;
-    padding: 5px 0;
-	font-size: 23px;
+	margin: 0 0 5px 0;
+    padding: 8px 0;
+	font-size: 22px;
+}
+#banner h3 {
+	text-align: center;
+	color: #000;
+	margin: 0 0 5px 0;
+    padding-bottom: 8px;
+	font-size: 18px;
 }
 #banner p {
 	margin-left: 25px;

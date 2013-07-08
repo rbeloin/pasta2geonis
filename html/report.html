@@ -23,6 +23,11 @@ function getPID() {
     }
     return "";
 }
+
+function createLinks(errReport) {
+    var regex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    return errReport.replace(regex, "<a href='$1'>$1</a>"); 
+}
 </script>
 </head>
 <body>
@@ -64,18 +69,19 @@ function getPID() {
 
 <script type="text/javascript">
 var pid = getPID();
-if(pid != ""){
+if (pid != "") {
     document.getElementById("pid").innerHTML = pid;
     var reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/Search/MapServer/2/query?where=packageid+%3D+%27" + pid + "%27&returnGeometry=true&outFields=report&f=pjson"
     var requestObj = new XMLHttpRequest();
-    requestObj.onreadystatechange = function(){
+    requestObj.onreadystatechange = function() {
         if (requestObj.readyState==4 && (requestObj.status==200 || requestObj.status == 304))
         {
             var responseJson = requestObj.responseText;
             //alert(responseJson);
             var response = JSON.parse(responseJson);
             var errReport = response.features[0].attributes.report;
-            document.getElementById("report").innerHTML = "<p>" + errReport + "</p>";
+            errReport = "<p>" + createLinks(errReport) + "</p>"
+            document.getElementById("report").innerHTML = errReport;
         }
      }
 requestObj.open("Get",reportUrl,true);
