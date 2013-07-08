@@ -1,0 +1,72 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>GeoNIS Spatial Data Report</title>
+<style type="text/css">
+<!--
+body {
+	color:#000000;
+	background-color:#B3B3B3;
+	margin:0;
+}
+
+#container {
+	margin-left:auto;
+	margin-right:auto;
+	text-align:center;
+	}
+
+a img {
+	border:none;
+}
+
+-->
+</style>
+<script type="text/javascript" >
+    function getPID() {
+        var searchStr = window.location.search;
+        if (searchStr.length > 1){
+            searchStr = searchStr.substring(1);
+        }
+        else {
+           return "";
+        }
+        searchItems = searchStr.split('&');
+        for(var i = 0; i < searchItems.length; i++){
+            var item = searchItems[i].split('=');
+            if (item[0] == "packageid"){
+                return item[1];
+            }
+        }
+        return "";
+    }
+</script>
+</head>
+<body>
+<div id="container">
+<h2 id="pid" >placeholder</h2>
+<script type="text/javascript" >
+    var pid = getPID();
+    if(pid != ""){
+        document.getElementById("pid").innerHTML = pid;
+        var reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/Search/MapServer/2/query?where=packageid+%3D+%27" + pid + "%27&returnGeometry=true&outFields=report&f=pjson"
+        var requestObj = new XMLHttpRequest();
+        requestObj.onreadystatechange = function(){
+            if (requestObj.readyState==4 && (requestObj.status==200 || requestObj.status == 304))
+            {
+                var responseJson = requestObj.responseText;
+                //alert(responseJson);
+                var response = JSON.parse(responseJson);
+                var errReport = response.features[0].attributes.report;
+                document.getElementById("report").innerHTML=errReport;
+            }
+         }
+    requestObj.open("Get",reportUrl,true);
+    requestObj.send();
+    }
+    </script>
+    <div id="report"></div>
+</div>
+</body>
+</html>
