@@ -402,8 +402,6 @@ class Setup(ArcpyTool):
                 cur.executemany(stmt3, valsTuple)
             if parameters[5].value:
                 self.cleanUp(valsArr)
-                arcAddErr("TEST ERROR")
-
 
 
 
@@ -1338,7 +1336,21 @@ class LoadVectorTypes(ArcpyTool):
                     fullObjectName = fullObjectName + "_d"
                 scopeWithSuffix = siteId + getConfigValue("datasetscopesuffix")
                 if 'shapefile' in datatype:
-                    loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName, datafilePath)
+
+                    # arcpy.FeatureClassToFeatureClass_conversion returns an ERROR 999999 if
+                    # it receives a fullObjectName that it doesn't like (e.g. GIS300_knz_d
+                    # from the knb-lter-knz.230.2 data set).
+                    # Since this seems deterministic, just add an extra _d to the end if
+                    # loadShapefile() fails as a workaround...
+                    try:
+                        loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName, datafilePath)
+                    except:
+                        loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName + '_d', datafilePath)
+                        self.logger.logMessage(
+                            WARN, 
+                            "Added extra _d suffix in geodatabase due to " + fullObjectName + " returning an error."
+                        )
+
                     status = "Loaded shapefile"
                 elif 'kml' in datatype:
                     loadedFeatureClass = self.loadKml(scopeWithSuffix, fullObjectName, datafilePath)
