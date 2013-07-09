@@ -337,31 +337,7 @@ class Setup(ArcpyTool):
         limitsParam = self.getParamAsText(parameters,4)
         if limitsParam and limitsParam != '' and limitsParam != '#':
             valsArr = []
-            limitStrings = limitsParam.split(';')
-            limits = [lim.split(' ') for lim in limitStrings]
-            for item in limits:
-                scope = 'knb-lter-%s' % (str(item[0]).strip(),)
-                idlist = []
-                ids = str(item[1]).strip()
-                if ',' in ids:
-                    for idnum in ids.split(','):
-                        if idnum.isdigit():
-                            idlist.append(idnum.strip())
-                elif '-' in ids:
-                    rng = ids.split('-')
-                    low = int(rng[0].strip())
-                    hi = int(rng[1].strip()) + 1
-                    for i in range(low,hi):
-                        idlist.append(str(i))
-                elif '#' in ids or ids == '':
-                    idlist.append('*')
-                else:
-                    if ids.isdigit():
-                        idlist.append(ids)
-                for idn in idlist:
-                    valsArr.append({'inc':'%s.%s' % (scope,idn)})
-                    
-            # Insert scope and ID values manually for testing
+# Insert scope and ID values manually for testing
             if hasattr(self, 'setScopeIdManually') and self.setScopeIdManually:
                 
                 # "all" or "*" command-line argument means to find all 
@@ -395,6 +371,31 @@ class Setup(ArcpyTool):
                     # Otherwise, only look up a single id
                     else:
                         valsArr.append({'inc': 'knb-lter-' + s + '.' + str(self.id)})
+
+            else:
+                limitStrings = limitsParam.split(';')
+                limits = [lim.split(' ') for lim in limitStrings]
+                for item in limits:
+                    scope = 'knb-lter-%s' % (str(item[0]).strip(),)
+                    idlist = []
+                    ids = str(item[1]).strip()
+                    if ',' in ids:
+                        for idnum in ids.split(','):
+                            if idnum.isdigit():
+                                idlist.append(idnum.strip())
+                    elif '-' in ids:
+                        rng = ids.split('-')
+                        low = int(rng[0].strip())
+                        hi = int(rng[1].strip()) + 1
+                        for i in range(low,hi):
+                            idlist.append(str(i))
+                    elif '#' in ids or ids == '':
+                        idlist.append('*')
+                    else:
+                        if ids.isdigit():
+                            idlist.append(ids)
+                    for idn in idlist:
+                        valsArr.append({'inc':'%s.%s' % (scope,idn)})
                     
             valsTuple = tuple(valsArr)
             with cursorContext() as cur:
