@@ -8,16 +8,16 @@
 <script type="text/javascript">
 function getPID() {
     var searchStr = window.location.search;
-    if (searchStr.length > 1){
+    if (searchStr.length > 1) {
         searchStr = searchStr.substring(1);
     }
     else {
        return "";
     }
     searchItems = searchStr.split('&');
-    for(var i = 0; i < searchItems.length; i++){
+    for(var i = 0; i < searchItems.length; i++) {
         var item = searchItems[i].split('=');
-        if (item[0] == "packageid"){
+        if (item[0] == "packageid") {
             return item[1];
         }
     }
@@ -49,7 +49,7 @@ function createLinks(errReport) {
         </div>
         <div class="cleaner"></div> 
     </div>
-    
+
     <div class="cleaner"></div>
 </div>
 
@@ -70,21 +70,19 @@ if (pid != "") {
     var reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/Search/MapServer/2/query?where=packageid+%3D+%27" + pid + "%27&returnGeometry=true&outFields=report&f=pjson"
     var requestObj = new XMLHttpRequest();
     requestObj.onreadystatechange = function() {
-        if (requestObj.readyState==4 && (requestObj.status==200 || requestObj.status == 304))
-        {
+        if (requestObj.readyState == 4 && (requestObj.status == 200 || requestObj.status == 304)) {
             var responseJson = requestObj.responseText;
-            //alert(responseJson);
             var response = JSON.parse(responseJson);
             var errReport = response.features[0].attributes.report;
             errReport = "<p>" + createLinks(errReport) + "</p>"
             document.getElementById("report").innerHTML = errReport;
         }
-     }
-requestObj.open("Get",reportUrl,true);
-requestObj.send();
+    }
+    document.getElementById("report").innerHTML = "<p style='text-align: center;'>No errors reported for this data set.</p>"
+    requestObj.open("Get", reportUrl, true);
+    requestObj.send();
 }
 </script>
 
-<!-- end of footer wrapper -->
 </body>
 </html>

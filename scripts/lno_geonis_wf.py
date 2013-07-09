@@ -402,6 +402,7 @@ class Setup(ArcpyTool):
                 cur.executemany(stmt3, valsTuple)
             if parameters[5].value:
                 self.cleanUp(valsArr)
+                arcAddErr("TEST ERROR")
 
 
 
