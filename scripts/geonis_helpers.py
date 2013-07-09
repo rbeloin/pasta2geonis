@@ -98,8 +98,9 @@ def getToken(username, password, serverName = "localhost", serverPort = "6080"):
         return token['token']
 
 def composeMessage(pkgid):
-    errquery = getConfigValue("errorquery")
-    link = errquery % (pkgid,)
+    #errquery = getConfigValue("errorquery")
+    #link = errquery % (pkgid,)
+    link = "http://maps3.lternet.edu/geonis/report.html?packageid=" + pkgid
     msg = "Do not reply to this message.\n\n"
     msg += "Follow this link (scroll to bottom) to see message pertaining to %s\n\n" % (pkgid,)
     msg += link
