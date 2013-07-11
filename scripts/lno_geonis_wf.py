@@ -212,39 +212,39 @@ class Setup(ArcpyTool):
                             else:
                                 self.logger.logMessage(WARN, "Error while attempting to get admin token.")
                     
-                    # If this package exists in the map, delete any layers already in the
-                    # geonis_layer table from both the map and geonis_layer
-                    if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
-                        self.logger.logMessage(INFO, "Found " + site + ".mxd")
-                        mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
+                        # If this package exists in the map, delete any layers already in the
+                        # geonis_layer table from both the map and geonis_layer
+                        if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
+                            self.logger.logMessage(INFO, "Found " + site + ".mxd")
+                            mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
 
-                        mxd = arcpy.mapping.MapDocument(mxdfile)
-                        layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
-                        mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
-                        mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                        
-                        cur.execute(selectFromGeonisLayer, (package, ))
-                        
-                        if cur.rowcount:
-                            dbMapLayerList = [row[0] for row in cur.fetchall()]
-
-                            # Remove layers from the MXD file that are listed in geonis_layer
-                            for layer in dbMapLayerList:
-                                if layer in mapLayerList:
-                                    self.logger.logMessage(INFO, "Removing layer: " + layer)
-                                    layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
-                                    arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-                                    
-                            mxd.save()
-
-                            # Set layerid to -1 in geonis_layer to force mxd to appear in
-                            # view vw_stalemapservices
-                            cur.execute(
-                                "UPDATE geonis_layer SET layerid = %s WHERE scope = %s", 
-                                ('-1', site)
-                            )
+                            mxd = arcpy.mapping.MapDocument(mxdfile)
+                            layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                            mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                            mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
                             
-                        del layersFrame, mxd
+                            cur.execute(selectFromGeonisLayer, (package, ))
+                            
+                            if cur.rowcount:
+                                dbMapLayerList = [row[0] for row in cur.fetchall()]
+
+                                # Remove layers from the MXD file that are listed in geonis_layer
+                                for layer in dbMapLayerList:
+                                    if layer in mapLayerList:
+                                        self.logger.logMessage(INFO, "Removing layer: " + layer)
+                                        layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                                        arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                                        
+                                mxd.save()
+
+                                # Set layerid to -1 in geonis_layer to force mxd to appear in
+                                # view vw_stalemapservices
+                                cur.execute(
+                                    "UPDATE geonis_layer SET layerid = %s WHERE scope = %s", 
+                                    ('-1', site)
+                                )
+                                
+                            del layersFrame, mxd
                         
                     # Delete from geonis_layer table
                     cur.execute(deleteFromGeonisLayer, (package, ))
@@ -299,17 +299,17 @@ class Setup(ArcpyTool):
                                 )
                             except ExecuteError:
                                 pass
-                                
-                    # Now that we're done making changes, refresh the map service
-                    if available:
-                        RMS = RefreshMapService()
-                        RMS._isRunningAsTool = False
-                        paramsRMS = RMS.getParameterInfo()
-                        paramsRMS[0].value = True
-                        paramsRMS[1].value = self.logfile
-                        RMS.calledFromScript = site
-                        RMS.execute(paramsRMS, [])
-                        del RMS
+                    
+        # Now that we're done making changes, refresh the map services
+        #if available:
+        RMS = RefreshMapService()
+        RMS._isRunningAsTool = False
+        paramsRMS = RMS.getParameterInfo()
+        paramsRMS[0].value = True
+        paramsRMS[1].value = self.logfile
+        #    RMS.calledFromScript = site
+        RMS.execute(paramsRMS, [])
+        del RMS
 
     def execute(self, parameters, messages):
         """ alters role of geonis to set search_path to point to test tables or production tables.
@@ -364,9 +364,13 @@ class Setup(ArcpyTool):
                     
                     # A hyphen in the id argument indicates a range of values
                     elif '-' in self.id:
+                        idList = urllib2.urlopen(
+                            getConfigValue('pastaurl') + '/package/eml/knb-lter-' + s
+                        ).read().split('\n')
                         idRange = [int(j) for j in self.id.split('-')]
                         for j in xrange(idRange[0], idRange[1]+1):
-                            valsArr.append({'inc': 'knb-lter-' + s + '.' + str(j)})
+                            if str(j) in idList:
+                                valsArr.append({'inc': 'knb-lter-' + s + '.' + str(j)})
                             
                     # Otherwise, only look up a single id
                     else:
@@ -1846,20 +1850,20 @@ class RefreshMapService(ArcpyTool):
         # which in ArcCatalog is reported as "the base table definition string is invalid"
         # (encountered in ntl.176 as "geonis.geonis.yld_boundary_ntl_d").
         # May be caused when a layer is created only in the map?
-        # Workaround: drop all layers from the map if this error is encountered.
+        # Workaround: drop all non-base layers from the map if this error is encountered.
         try:
             arcpy.StageService_server(sdDraft)
         except Exception as err: 
             if err[0].find('ERROR 001272') != -1:
-                self.logger.logMessage(ERROR, "Encountered ERROR 001272, attempting workaround")
+                self.logger.logMessage(WARN, "Encountered ERROR 001272, attempting workaround")
 
                 # Only drop layers listed in entity table so we don't remove the base layer
                 with cursorContext(self.logger) as cur:
                     cur.execute(
                         "SELECT layername FROM entity WHERE packageid LIKE %s", 
-                        (mxdname.split('.')[0], )
+                        ('%' + mxdname.split('.')[0] + '%', )
                     )
-                    entityLayerList = cur.fetchall()
+                    entityLayerList = [row[0] for row in cur.fetchall()]
 
                 # First drop all layers from the MXD file and save it
                 layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
