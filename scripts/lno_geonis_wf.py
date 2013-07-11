@@ -1697,28 +1697,43 @@ class UpdateMXDs(ArcpyTool):
             with cursorContext(self.logger) as cur:
                 cur.execute(insstmt, insertObj)
 
+    @errHandledWorkflowTask(taskName="Add package info to error report")
     def modifyErrorReport(self):
         with cursorContext(self.logger) as cur:
             selectReports = (
-                "SELECT p.packageid, p.report, e.report, p.scope, p.identifier, p.revision FROM package AS p "
-                "FULL JOIN entity AS e ON p.packageid = e.packageid "
-                "WHERE e.report IS NOT NULL OR p.report IS NOT NULL"
+                "SELECT ep.*, g.title, g.sourceloc FROM ( "
+                    "SELECT "
+                        "p.packageid, p.report, e.report, e.id, p.scope, p.identifier, p.revision, e.entityname, "
+                        "e.layername, p.downloaded, e.israster,  e.isvector, e.mxd, e.status "
+                        "FROM package AS p "
+                    "FULL JOIN "
+                        "entity AS e "
+                        "ON p.packageid = e.packageid "
+                    "WHERE e.report IS NOT NULL OR p.report IS NOT NULL "
+                ") AS ep "
+                "LEFT OUTER JOIN "
+                    "geonis_layer AS g "
+                    "ON ep.id = g.id "
+                "ORDER BY ep.packageid"
             )
             cur.execute(selectReports)
             if cur.rowcount:
                 results = cur.fetchall()
+                cols = [col.name for col in cur.description]
                 for row in results:
                     report = row[1] if row[1] is not None else row[2]
-                    addendum = {
+                    biography = {
                         'pasta': getConfigValue('pastaurl'),
-                        'scope': row[3],
-                        'identifier': row[4],
-                        'revision': row[5],
                         'workflow': getConfigValue('datasetscopesuffix'),
                     }
+                    for idx, d in enumerate(cols):
+                        if d == 'downloaded':
+                            biography[d] = str(row[idx])
+                        elif d != 'report' and d != 'id':
+                            biography[d] = row[idx]
                     cur.execute(
-                        "UPDATE entity SET report = %s WHERE packageid = %s", 
-                        (report + " | " + json.dumps(addendum), row[0])
+                        "UPDATE entity SET report = %s WHERE id = %s", 
+                        (report + " | " + json.dumps(biography), row[3])
                     )
 
     def execute(self, parameters, messages):
@@ -1846,9 +1861,8 @@ class RefreshMapService(ArcpyTool):
         if os.path.exists(sdFile):
             os.remove(sdFile)
         
-        # Check for ERROR 001272: Analyzer errors were encountered (codes = 3, 3, 3),
+        # Check for ERROR 001272: Analyzer errors were encountered (codes = 3, 3, 3, ...),
         # which in ArcCatalog is reported as "the base table definition string is invalid"
-        # (encountered in ntl.176 as "geonis.geonis.yld_boundary_ntl_d").
         # May be caused when map layers do not correspond to db entries.
         # Workaround: drop all non-base layers from the map if this error is encountered.
         try:
@@ -1879,13 +1893,10 @@ class RefreshMapService(ArcpyTool):
                 mxd.save()
                 del layersFrame
 
-                # Now try to stage the service again
-                arcpy.StageService_server(sdDraft)                
-        else:
-            raise
+            # Try to stage the service again
+            arcpy.StageService_server(sdDraft)                
         
         # by default, writes SD file to same loc as draft, then DELETES DRAFT        
-        # arcpy.StageService_server(sdDraft)
         if os.path.exists(sdFile):
             arcpy.UploadServiceDefinition_server(in_sd_file = sdFile, in_server = pubConnection, in_startupType = 'STARTED')
         else:

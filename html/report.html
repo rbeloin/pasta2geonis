@@ -46,6 +46,7 @@ function createLinks(errReport) {
             <h2 id="pid">placeholder</h2>
             <div id="report"></div>
             <div id="biography"></div>
+            <div id="workflow-info"></div>
             <div id="site-report"></div>
             <div class="push"></div>
         </div>
@@ -75,7 +76,7 @@ if (pid != "") {
         if (requestObj.readyState == 4 && (requestObj.status == 200 || requestObj.status == 304)) {
             var responseJson = requestObj.responseText;
             var response = JSON.parse(responseJson);
-
+            
             // The error report is pipe-delimited from other useful info stored in
             // the report field, in stringified-JSON format
             var rawErrReport = response.features[0].attributes.report.split('|');
@@ -87,7 +88,8 @@ if (pid != "") {
             if (biography['scope'] !== 'undefined') {
                 document.getElementById("pid").innerHTML = biography['scope'].toUpperCase() + " " + biography['identifier'] + ", revision " + biography['revision'];
             }
-            /*var showBio = '';
+            
+            var showBio = '';
             for (var key in biography) {
                 if (biography.hasOwnProperty(key)) {
                     showBio = showBio + "<li>" + key + ": " + biography[key] + "</li>";
@@ -95,9 +97,17 @@ if (pid != "") {
             }
             if (showBio) {
                 document.getElementById("biography").innerHTML = '<ul>' + showBio + '</ul>';
-            }*/
-            serverName = (biography['workflow'] === '_test') ? 'staging' : 'live';
-            document.getElementById('biography').innerHTML = "<em>This package was downloaded from the " + serverName + " server, " + biography['pasta'] + ".</em>";
+            }
+
+            if (biography['pasta'].indexOf('pasta-s') !== -1) {
+                serverName = 'staging';
+                baseURL = 'https://pasta-s.lternet.edu';
+            }
+            else {
+                serverName = 'live';
+                baseURL = 'https://pasta.lternet.edu';
+            }
+            document.getElementById('workflow-info').innerHTML = "<em>Package <a href='" + baseURL + "/package/eml/" + biography['packageid'].split('.')[0] + "/" + biography['identifier'] + "/" + biography['revision'] + "'>" + biography['packageid'] + "</a> was downloaded from the " + serverName + " server, " + biography['pasta'] + ", on " + biography['downloaded'].split(' ')[0] + " at " + biography['downloaded'].split(' ')[1].split('.')[0] + " MDT.</em>";
         }
     }
     document.getElementById("report").innerHTML = "<p style='text-align: center;'>No errors reported for this data set.</p>"

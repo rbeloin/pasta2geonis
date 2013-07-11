@@ -168,7 +168,12 @@ h1 {
 }
 #biography ul li {
     /*display: inline;*/
-    padding-right: 50px;
+    /*padding-right: 50px;*/
+}
+#workflow-info {
+    margin-top: 15px;
+    margin-left: 25px;
+    margin-right: 25px;
 }
 #footer_wrapper {
     width: 100%;
