@@ -1849,7 +1849,7 @@ class RefreshMapService(ArcpyTool):
         # Check for ERROR 001272: Analyzer errors were encountered (codes = 3, 3, 3),
         # which in ArcCatalog is reported as "the base table definition string is invalid"
         # (encountered in ntl.176 as "geonis.geonis.yld_boundary_ntl_d").
-        # May be caused when a layer is created only in the map?
+        # May be caused when map layers do not correspond to db entries.
         # Workaround: drop all non-base layers from the map if this error is encountered.
         try:
             arcpy.StageService_server(sdDraft)
@@ -1863,7 +1863,7 @@ class RefreshMapService(ArcpyTool):
                         "SELECT layername FROM entity WHERE packageid LIKE %s", 
                         ('%' + mxdname.split('.')[0] + '%', )
                     )
-                    entityLayerList = [row[0] for row in cur.fetchall()]
+                    entityLayerList = [row[0] for row in cur.fetchall() if row[0] is not None]
 
                 # First drop all layers from the MXD file and save it
                 layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
@@ -1880,7 +1880,9 @@ class RefreshMapService(ArcpyTool):
                 del layersFrame
 
                 # Now try to stage the service again
-                arcpy.StageService_server(sdDraft)
+                arcpy.StageService_server(sdDraft)                
+        else:
+            raise
         
         # by default, writes SD file to same loc as draft, then DELETES DRAFT        
         # arcpy.StageService_server(sdDraft)
