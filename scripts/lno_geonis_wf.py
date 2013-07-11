@@ -1853,23 +1853,33 @@ class RefreshMapService(ArcpyTool):
             if err[0].find('ERROR 001272') != -1:
                 self.logger.logMessage(ERROR, "Encountered ERROR 001272, attempting workaround")
 
+                # Only drop layers listed in entity table so we don't remove the base layer
+                with cursorContext(self.logger) as cur:
+                    cur.execute(
+                        "SELECT layername FROM entity WHERE packageid LIKE %s", 
+                        (mxdname.split('.')[0], )
+                    )
+                    entityLayerList = cur.fetchall()
+
                 # First drop all layers from the MXD file and save it
                 layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
                 mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
                 mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                print mapLayerList
                 for layer in mapLayerList:
-                    self.logger.logMessage(INFO, "Removing layer " + layer)
-                    layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
-                    arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                    if layer in entityLayerList:
+                        self.logger.logMessage(INFO, "Removing layer " + layer)
+                        layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                        arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                    else:
+                        self.logger.logMessage(INFO, "Skipping layer " + layer)
                 mxd.save()
                 del layersFrame
 
                 # Now try to stage the service again
                 arcpy.StageService_server(sdDraft)
-
+        
         # by default, writes SD file to same loc as draft, then DELETES DRAFT        
-        arcpy.StageService_server(sdDraft)
+        # arcpy.StageService_server(sdDraft)
         if os.path.exists(sdFile):
             arcpy.UploadServiceDefinition_server(in_sd_file = sdFile, in_server = pubConnection, in_startupType = 'STARTED')
         else:
