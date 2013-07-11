@@ -162,6 +162,14 @@ h1 {
 #banner a {
 	color: #0B2161;
 }
+#biography {
+    margin-left: 25px;
+    margin-right: 25px;
+}
+#biography ul li {
+    /*display: inline;*/
+    padding-right: 50px;
+}
 #footer_wrapper {
     width: 100%;
     position: absolute;

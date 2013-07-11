@@ -45,6 +45,8 @@ function createLinks(errReport) {
         <div id="banner">
             <h2 id="pid">placeholder</h2>
             <div id="report"></div>
+            <div id="biography"></div>
+            <div id="site-report"></div>
             <div class="push"></div>
         </div>
         <div class="cleaner"></div> 
@@ -73,14 +75,51 @@ if (pid != "") {
         if (requestObj.readyState == 4 && (requestObj.status == 200 || requestObj.status == 304)) {
             var responseJson = requestObj.responseText;
             var response = JSON.parse(responseJson);
-            var errReport = response.features[0].attributes.report;
-            errReport = "<p>" + createLinks(errReport) + "</p>"
+
+            // The error report is pipe-delimited from other useful info stored in
+            // the report field, in stringified-JSON format
+            var rawErrReport = response.features[0].attributes.report.split('|');
+            var errReport = "<p>" + createLinks(rawErrReport[0]) + "</p>";
             document.getElementById("report").innerHTML = errReport;
+
+            // Parse the 'biographical' JSON string stored in the report field
+            var biography = JSON.parse(createLinks(rawErrReport[1]));
+            if (biography['scope'] !== 'undefined') {
+                document.getElementById("pid").innerHTML = biography['scope'].toUpperCase() + " " + biography['identifier'] + ", revision " + biography['revision'];
+            }
+            /*var showBio = '';
+            for (var key in biography) {
+                if (biography.hasOwnProperty(key)) {
+                    showBio = showBio + "<li>" + key + ": " + biography[key] + "</li>";
+                }
+            }
+            if (showBio) {
+                document.getElementById("biography").innerHTML = '<ul>' + showBio + '</ul>';
+            }*/
+            serverName = (biography['workflow'] === '_test') ? 'staging' : 'live';
+            document.getElementById('biography').innerHTML = "<em>This package was downloaded from the " + serverName + " server, " + biography['pasta'] + ".</em>";
         }
     }
     document.getElementById("report").innerHTML = "<p style='text-align: center;'>No errors reported for this data set.</p>"
     requestObj.open("Get", reportUrl, true);
     requestObj.send();
+
+    // Other data sets from the same site
+    /*siteCode = pid.split('.')[0];
+    var otherReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/Search/MapServer/2/query?where=packageid+like+%27" + siteCode + "%%27&returnGeometry=true&outFields=report&f=pjson"
+    var otherRequestObj = new XMLHttpRequest();
+    otherRequestObj.onreadystatechange = function() {
+        if (otherRequestObj.readyState == 4 && (otherRequestObj.status == 200 || otherRequestObj.status == 304)) {
+            var responseJson = otherRequestObj.responseText;
+            var response = JSON.parse(responseJson);
+            var errReport = response.features[0].attributes.report;
+            errReport = "<p>" + createLinks(errReport) + "</p>"
+            document.getElementById("site-report").innerHTML = errReport;
+        }
+    }
+    document.getElementById("site-report").innerHTML = "<p>Other package list goes here</p>" 
+    otherRequestObj.open("Get", otherReportUrl, true);
+    otherRequestObj.send();*/
 }
 </script>
 

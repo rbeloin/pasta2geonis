@@ -40,6 +40,7 @@ if run_setup.lower() != 'n':
     params[4].value = [[tool.scope, tool.id]] # this doesn't work; set value manually instead
     params[5].value = cleanup
     tool.execute(params, [])
+    print "Setup complete."
 
 run_model = 'Y' if len(sys.argv) > 5 and sys.argv[5] == 'run-model' \
     else raw_input("Run model? [Y/n] ")
@@ -120,5 +121,5 @@ if run_model.lower() != 'n':
     paramsRMS[1].value = logfile
     if len(sys.argv) > 2 and sys.argv[2] != '*' and sys.argv[2] != 'all':
         RMS.calledFromScript = sys.argv[2]
-    RMS.sendReport = True
+    #RMS.sendReport = True
     RMS.execute(paramsRMS, [])

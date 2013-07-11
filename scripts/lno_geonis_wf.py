@@ -445,6 +445,7 @@ class QueryPasta(ArcpyTool):
     def getScopeList(self):
         """ """
         URL = getConfigValue("pastaurl") + "/package/eml"
+        resp = None
         try:
             resp = urllib2.urlopen(URL)
             if resp.getcode() == 200:
@@ -1345,12 +1346,14 @@ class LoadVectorTypes(ArcpyTool):
                     # loadShapefile() fails as a workaround...
                     try:
                         loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName, datafilePath)
-                    except:
-                        loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName + '_d', datafilePath)
-                        self.logger.logMessage(
-                            WARN, 
-                            "Added extra _d suffix in geodatabase due to " + fullObjectName + " returning an error."
-                        )
+                    except Exception as err: 
+                        if err[0].find('ERROR 999999') != -1:
+                            loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName + '_d', datafilePath)
+                            self.logger.logMessage(
+                                WARN, 
+                                "Added extra _d suffix in geodatabase due to " \
+                                + fullObjectName + " returning an error."
+                            )
 
                     status = "Loaded shapefile"
                 elif 'kml' in datatype:
@@ -1690,7 +1693,29 @@ class UpdateMXDs(ArcpyTool):
             with cursorContext(self.logger) as cur:
                 cur.execute(insstmt, insertObj)
 
-
+    def modifyErrorReport(self):
+        with cursorContext(self.logger) as cur:
+            selectReports = (
+                "SELECT p.packageid, p.report, e.report, p.scope, p.identifier, p.revision FROM package AS p "
+                "FULL JOIN entity AS e ON p.packageid = e.packageid "
+                "WHERE e.report IS NOT NULL OR p.report IS NOT NULL"
+            )
+            cur.execute(selectReports)
+            if cur.rowcount:
+                results = cur.fetchall()
+                for row in results:
+                    report = row[1] if row[1] is not None else row[2]
+                    addendum = {
+                        'pasta': getConfigValue('pastaurl'),
+                        'scope': row[3],
+                        'identifier': row[4],
+                        'revision': row[5],
+                        'workflow': getConfigValue('datasetscopesuffix'),
+                    }
+                    cur.execute(
+                        "UPDATE entity SET report = %s WHERE packageid = %s", 
+                        (report + " | " + json.dumps(addendum), row[0])
+                    )
 
     def execute(self, parameters, messages):
         super(UpdateMXDs, self).execute(parameters, messages)
@@ -1726,6 +1751,10 @@ class UpdateMXDs(ArcpyTool):
                     stmt = "UPDATE entity set status = %s WHERE packageid = %s  and entityname = %s;"
                     with cursorContext(self.logger) as cur:
                         cur.execute(stmt, (status[:499], workingData["packageId"], workingData["entityName"]))
+
+        # Add extra info to the error report as needed
+        self.modifyErrorReport()
+
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
@@ -1798,7 +1827,7 @@ class RefreshMapService(ArcpyTool):
             #save backup for debug
             self.logger.logMessage(DEBUG,"saving backup draft")
             with open(sdDraft + '.bak', 'w') as bakfile:
-                bakfile.write(etree.tostring(draftXml, xml_declaration = False))
+                bakfile.write(etree.tostring(draftXml, xml_declaration=False))
         del typeNode, draftXml
         return sdDraft
 
@@ -1812,7 +1841,34 @@ class RefreshMapService(ArcpyTool):
         sdFile = pathToServiceDoc + os.sep + self.serverInfo['service_name'] + ".sd"
         if os.path.exists(sdFile):
             os.remove(sdFile)
-        # by default, writes SD file to same loc as draft, then DELETES DRAFT
+        
+        # Check for ERROR 001272: Analyzer errors were encountered (codes = 3, 3, 3),
+        # which in ArcCatalog is reported as "the base table definition string is invalid"
+        # (encountered in ntl.176 as "geonis.geonis.yld_boundary_ntl_d").
+        # May be caused when a layer is created only in the map?
+        # Workaround: drop all layers from the map if this error is encountered.
+        try:
+            arcpy.StageService_server(sdDraft)
+        except Exception as err: 
+            if err[0].find('ERROR 001272') != -1:
+                self.logger.logMessage(ERROR, "Encountered ERROR 001272, attempting workaround")
+
+                # First drop all layers from the MXD file and save it
+                layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                print mapLayerList
+                for layer in mapLayerList:
+                    self.logger.logMessage(INFO, "Removing layer " + layer)
+                    layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                    arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                mxd.save()
+                del layersFrame
+
+                # Now try to stage the service again
+                arcpy.StageService_server(sdDraft)
+
+        # by default, writes SD file to same loc as draft, then DELETES DRAFT        
         arcpy.StageService_server(sdDraft)
         if os.path.exists(sdFile):
             arcpy.UploadServiceDefinition_server(in_sd_file = sdFile, in_server = pubConnection, in_startupType = 'STARTED')
