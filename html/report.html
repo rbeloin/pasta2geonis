@@ -89,7 +89,7 @@ if (pid != "") {
             var replaceBanner = false;
             for (var i = 0; i < response.features.length; i++) {
                 rawErrReport.push(response.features[i].attributes.report.split('|'));
-                errReport.push("<ul><li>" + createLinks(rawErrReport[i][0]));
+                errReport.push("<ul><li>" + rawErrReport[i][0]);
                 if (errReport[i].charAt(errReport[i].length-1) !== '.' && errReport[i].charAt(errReport[i].length-1) !== '!' && errReport[i].charAt(errReport[i].length-1) !== '?') {
                     while (errReport[i].charAt(errReport[i].length-1) == ' ') {
                         errReport[i] = errReport[i].slice(0, -1);
@@ -97,13 +97,13 @@ if (pid != "") {
                     errReport[i] += '.';
                 }
                 errReport[i] += "</li>";
-                
+
                 // Basic 'biographical' info stuff: parse the biography JSON string stored after the pipe
                 if (rawErrReport[i].length > 1) {
-                    var biography = JSON.parse(createLinks(rawErrReport[i][1]));
+                    var biography = JSON.parse(rawErrReport[i][1]);
                     var mapService = (biography['mxd'] === null) ?
                         biography['entityname'] + " is not available as a map service due to errors." :
-                        "<a href='#'>" + biography['entityname'] + " is available as a map service.</a>"
+                        "<a href='" + biography['service'].split('/').slice(0, -1).join('/') + "'>" + biography['entityname'] + " is available as a map service.</a>"
                     var spatialType = (biography['israster'] === 't') ? "raster" : "vector";
                     errReport[i] = "<span class='entity-name'>" + biography['entityname'] + "</span> (" + spatialType + ")" + errReport[i] + "<li>" + mapService + "</li>";
                     if (!replaceBanner) {
@@ -113,11 +113,11 @@ if (pid != "") {
                         }
                         if (biography['pasta'].indexOf('pasta-s') !== -1) {
                             serverName = 'staging';
-                            baseURL = 'https://pasta-s.lternet.edu';
+                            baseURL = 'pasta-s.lternet.edu';
                         }
                         else {
                             serverName = 'live';
-                            baseURL = 'https://pasta.lternet.edu';
+                            baseURL = 'pasta.lternet.edu';
                         }
                     }
                 }
@@ -140,7 +140,7 @@ if (pid != "") {
             }
             
             // Append server information and download link to the bottom of the report
-            document.getElementById('workflow-info').innerHTML = "<hr /><em>Package <a href='" + baseURL + "/package/eml/" + biography['packageid'].split('.')[0] + "/" + biography['identifier'] + "/" + biography['revision'] + "'>" + biography['packageid'] + "</a> was downloaded from the " + serverName + " server, " + biography['pasta'] + ", on " + biography['downloaded'].split(' ')[0] + " at " + biography['downloaded'].split(' ')[1].split('.')[0] + " MDT.</em>";
+            document.getElementById('workflow-info').innerHTML = "<hr /><em>Package <a href='https://" + baseURL + "/package/eml/" + biography['packageid'].split('.')[0] + "/" + biography['identifier'] + "/" + biography['revision'] + "'>" + biography['packageid'] + "</a> was downloaded from the " + serverName + " server (<a href='https://" + baseURL + "'>" + baseURL + "</a>) on " + biography['downloaded'].split(' ')[0] + " at " + biography['downloaded'].split(' ')[1].split('.')[0] + " MDT.</em>";
 
             /*var showBio = '';
             for (var key in biography) {
