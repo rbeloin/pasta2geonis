@@ -1704,7 +1704,7 @@ class UpdateMXDs(ArcpyTool):
                 "SELECT ep.*, g.title, g.sourceloc FROM ( "
                     "SELECT "
                         "p.packageid, p.report, e.report, e.id, p.scope, p.identifier, p.revision, e.entityname, "
-                        "e.layername, p.downloaded, e.israster,  e.isvector, e.mxd, e.status "
+                        "e.layername, p.downloaded, e.israster, e.isvector, e.mxd, e.status "
                         "FROM package AS p "
                     "FULL JOIN "
                         "entity AS e "
@@ -1725,6 +1725,10 @@ class UpdateMXDs(ArcpyTool):
                     biography = {
                         'pasta': getConfigValue('pastaurl'),
                         'workflow': getConfigValue('datasetscopesuffix'),
+                        'service': getConfigValue('layerqueryuri') % (
+                                getConfigValue('mapservinfo').split(';')[1],
+                                row[4] + getConfigValue('mapservsuffix'),
+                            ),
                     }
                     for idx, d in enumerate(cols):
                         if d == 'downloaded':
@@ -1846,7 +1850,7 @@ class RefreshMapService(ArcpyTool):
             #save backup for debug
             self.logger.logMessage(DEBUG,"saving backup draft")
             with open(sdDraft + '.bak', 'w') as bakfile:
-                bakfile.write(etree.tostring(draftXml, xml_declaration=False))
+                bakfile.write(etree.tostring(draftXml, xml_declaration = False))
         del typeNode, draftXml
         return sdDraft
 
