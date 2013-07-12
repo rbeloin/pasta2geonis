@@ -224,10 +224,10 @@ class Setup(ArcpyTool):
                             # First, clear selections
                             df = arcpy.mapping.ListDataFrames(mxd)[0]
                             for lyr in arcpy.mapping.ListLayers(mxd):
-                                print "Clearing selections from", lyr.name
+                                self.logger.logMessage(INFO, "Clearing selections from " + lyr.name)
                                 arcpy.SelectLayerByAttribute_management(lyr, 'CLEAR_SELECTION')
                             for aTable in arcpy.mapping.ListTableViews(mxd):
-                                print "Clearing selections from", aTable.name
+                                self.logger.logMessage(INFO, "Clearing selections from " + aTable.name)
                                 arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
 
                             # Now clear layers
