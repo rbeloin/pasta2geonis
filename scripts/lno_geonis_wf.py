@@ -212,13 +212,25 @@ class Setup(ArcpyTool):
                             else:
                                 self.logger.logMessage(WARN, "Error while attempting to get admin token.")
                     
-                        # If this package exists in the map, delete any layers already in the
-                        # geonis_layer table from both the map and geonis_layer
+                        # If this package exists in the map, (1) delete any layers already in the
+                        # geonis_layer table from both the map and geonis_layer, and (2) clear
+                        # any feature selections (map services will not publish with selected features)
                         if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
                             self.logger.logMessage(INFO, "Found " + site + ".mxd")
                             mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
 
                             mxd = arcpy.mapping.MapDocument(mxdfile)
+                            
+                            # First, clear selections
+                            df = arcpy.mapping.ListDataFrames(mxd)[0]
+                            for lyr in arcpy.mapping.ListLayers(mxd):
+                                print "Clearing selections from", lyr.name
+                                arcpy.SelectLayerByAttribute_management(lyr, 'CLEAR_SELECTION')
+                            for aTable in arcpy.mapping.ListTableViews(mxd):
+                                print "Clearing selections from", aTable.name
+                                arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
+
+                            # Now clear layers
                             layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
                             mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
                             mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
@@ -1439,6 +1451,7 @@ class LoadRasterTypes(ArcpyTool):
         dsName = site + getConfigValue("datasetscopesuffix")
         pathToRasterData = getConfigValue("pathtorasterdata")
         siteStore = os.path.join(pathToRasterData,dsName)
+
         #name, ext =  os.path.splitext( os.path.basename(datapath))
         storageLoc = siteStore + os.sep + name
         #if no site folder, make one
@@ -1568,6 +1581,15 @@ class LoadRasterTypes(ArcpyTool):
                 os.mkdir(rawDataLoc)
                 raster = self.copyRaster(datafilePath, rawDataLoc)
                 self.updateTable(raster, pkgId, entityName)
+
+                # Add objectName to entity table as "layername" so there is a
+                # record of the raster data folder name
+                with cursorContext(self.logger) as cur:
+                    cur.execute(
+                        "UPDATE entity SET layername = %s WHERE entityname = %s", 
+                        (objectName, entityName)
+                    )
+
                 status = "Raster copied to permanent storage"
                 # amend metadata in place
                 if self.mergeMetadata(dir, raster):
