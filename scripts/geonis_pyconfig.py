@@ -131,6 +131,8 @@ class GeoNISDataType:
     ESRIE00 = ('.e00',)
     PRJ = ('.prj',)
     RST = ('.rst',) # IDRISI raster format
+
+class AllRasterTypes:
     IMG = ('.img',)
     MRSID = ('.sid', '.sdw')
     OVR = ('.ovr',)

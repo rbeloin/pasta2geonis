@@ -8,7 +8,7 @@ Created on Jan 28, 2013
 @see https://nis.lternet.edu/NIS/
 '''
 import os
-from geonis_pyconfig import GeoNISDataType, smtpfile
+from geonis_pyconfig import GeoNISDataType, smtpfile, AllRasterTypes
 from geonis_postgresql import getConfigValue
 from functools import partial
 import httplib, urllib, json
@@ -38,7 +38,7 @@ isIdrisiRaster = partial(fileExtensionMatch, GeoNISDataType.RST)
 # Set up allowed raster extensions as a dictionary
 # Should all the extensions be set up this way...?
 checkFileTypes = {}
-for fileType in GeoNISDataType.__dict__.items():
+for fileType in AllRasterTypes.__dict__.items():
     if not fileType[0].startswith('__'):
         checkFileTypes[fileType[0]] = partial(fileExtensionMatch, fileType[1])
 

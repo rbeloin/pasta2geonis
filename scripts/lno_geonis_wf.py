@@ -1115,7 +1115,6 @@ class CheckSpatialData(ArcpyTool):
     @errHandledWorkflowTask(taskName="Checking precision")
     def checkPrecision(self, dataFilePath):
         passed = True
-        #pdb.set_trace()
         fields = arcpy.ListFields(dataFilePath)
         for fld in fields:
             if fld.type == u'Double' and fld.precision > 15:
@@ -1837,7 +1836,6 @@ class RefreshMapService(ArcpyTool):
     def draftSD(self, mxdname):
         """Stops service, creates SD draft, modifies it"""
         """http://maps3.lternet.edu:6080/arcgis/admin/services/Test/VectorData.MapServer/stop"""
-        #pdb.set_trace()
         pathToMapDoc = getConfigValue("pathtomapdoc")
         arcpy.env.workspace = pathToMapDoc
         pathToServiceDoc = arcpy.env.workspace + os.sep + "servicedefs"
