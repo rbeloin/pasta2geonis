@@ -22,8 +22,23 @@ cleanup = True
 Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
 valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
 
+# Refresh map service only
+if len(sys.argv) > 4 and sys.argv[4] == 'refresh-map-service':
+    # RefreshMapService
+    print "************"
+    RMS = lno_geonis_wf.RefreshMapService()
+    RMS._isRunningAsTool = False
+    paramsRMS = RMS.getParameterInfo()
+    paramsRMS[0].value = True
+    paramsRMS[1].value = logfile
+    if len(sys.argv) > 2 and sys.argv[2] != '*' and sys.argv[2] != 'all':
+        RMS.calledFromScript = sys.argv[2]
+    #RMS.sendReport = True
+    RMS.execute(paramsRMS, [])
+    sys.exit("Refreshed map services, exiting.")
+
 # Setup
-run_setup = 'Y' if len(sys.argv) > 4 and sys.argv[4] == 'run-setup' \
+run_setup = 'Y' if len(sys.argv) > 4 and sys.argv[4].startswith('run-setup') \
     else raw_input("Run Setup? [Y/n] ")
 if run_setup.lower() != 'n':
     print "************"
@@ -41,6 +56,8 @@ if run_setup.lower() != 'n':
     params[5].value = cleanup
     tool.execute(params, [])
     print "Setup complete."
+    if len(sys.argv) > 4 and sys.argv[4] == 'run-setup-only':
+        sys.exit()
 
 run_model = 'Y' if len(sys.argv) > 5 and sys.argv[5] == 'run-model' \
     else raw_input("Run model? [Y/n] ")

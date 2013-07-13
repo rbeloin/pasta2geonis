@@ -111,8 +111,11 @@ else:
 ##    mapServInfo = {'service_name':"VectorData",'service_folder':"Test",'tags':"GEONIS",'summary':"Testing vector data map service."}
 
 class GeoNISDataType:
-    """ members of this class serve as both enum type values for data types,
-        and hold simple data for helper function to test for type
+    """ 
+    Members of this class serve as both enum type values for data types,
+    and hold simple data for helper function to test for type.
+    A full list of supported raster data types is at:
+    http://resources.arcgis.com/en/help/main/10.1/index.html#//009t0000000q000000
     """
     NA = object() # not acceptable type
     SPATIALVECTOR = ('any vector',) # for expected type, from EML
@@ -128,5 +131,56 @@ class GeoNISDataType:
     ESRIE00 = ('.e00',)
     PRJ = ('.prj',)
     RST = ('.rst',) # IDRISI raster format
-
-
+    IMG = ('.img',)
+    MRSID = ('.sid', '.sdw')
+    OVR = ('.ovr',)
+    LGG = ('.lgg',)
+    BAND = ('.bil', '.bip', '.bsq')
+    BAG = ('.bag',)
+    BT = ('.bt',)
+    BMP = ('.bmp',)
+    BSB = ('.bsb', '.cap', '.kap')
+    RAW = ('.raw')
+    DTED = ('.dt0', '.dt1', '.dt2')
+    ELAS = ('.elas',)
+    ECW = ('.ecw',)
+    FST = ('.fst',)
+    ERS = ('.ers',)
+    GIS = ('.gis',)
+    LAN = ('.lan',)
+    IGE = ('.ige',)
+    STK = ('.stk',)
+    SDF = ('.sdf',)
+    FLT = ('.flt',)
+    VRT = ('.vrt',)
+    GRD = ('.grd',)
+    GIF = ('.gif',)
+    GRB = ('.grb',)
+    GXF = ('.gxf',)
+    HDF = ('.hdf', '.h5', '.hdf5')
+    HF = ('.hf2',)
+    HGT = ('.hgt',)
+    CUB = ('.cub',)
+    MPR = ('.mpr',)
+    CIT = ('.cit',)
+    COT = ('.cot',)
+    JAXA = ('.5gud', '.1__a')
+    JPEG2000 = ('.jp2', '.j2c', '.j2k', '.jpx')
+    BLXXLB = ('.blx', '.xlb')
+    MAP = ('.map',)
+    NTF = ('.ntf',)
+    NOAAPOD = ('.1b', '.sv', '.gc')
+    AUX = ('.aux',)
+    PIX = ('.pix',)
+    PERSONALGEODB = ('.mdb',)
+    LBL = ('.lbl',)
+    PNG = ('.png',)
+    GFF = ('.gff',)
+    SAGA = ('.sdat', '.sgrd')
+    HGT = ('.hgt',)
+    DDF = ('.ddf',)
+    TERRAIN = ('.ter', '.terrain')
+    GTX = ('.gtx',)
+    DEM = ('.dem',)
+    DOQ = ('.doq', '.nes', '.nws', '.ses', '.sws')
+    XPM = ('.xpm',)

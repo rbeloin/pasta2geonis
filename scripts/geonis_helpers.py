@@ -24,6 +24,7 @@ def fileExtensionMatch(extensions, pathToFile):
 '''
 File extension enough to identify a spatial data file
 '''
+
 isShapefile = partial(fileExtensionMatch, GeoNISDataType.SHAPEFILE)
 isKML = partial(fileExtensionMatch, GeoNISDataType.KML)
 isTif = partial(fileExtensionMatch, GeoNISDataType.TIF)
@@ -33,6 +34,13 @@ isJpegWorld = partial(fileExtensionMatch, GeoNISDataType.JPGW)
 isEsriE00 = partial(fileExtensionMatch, GeoNISDataType.ESRIE00)
 isProjection = partial(fileExtensionMatch, GeoNISDataType.PRJ)
 isIdrisiRaster = partial(fileExtensionMatch, GeoNISDataType.RST)
+
+# Set up allowed raster extensions as a dictionary
+# Should all the extensions be set up this way...?
+checkFileTypes = {}
+for fileType in GeoNISDataType.__dict__.items():
+    if not fileType[0].startswith('__'):
+        checkFileTypes[fileType[0]] = partial(fileExtensionMatch, fileType[1])
 
 '''
 Bit more work needed for some

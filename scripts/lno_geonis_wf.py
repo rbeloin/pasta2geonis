@@ -27,8 +27,9 @@ from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, dsnfile, pubConnection, arcgiscred, geodatabase
-from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection, isIdrisiRaster
-from geonis_helpers import siteFromId, getToken, sendEmail, composeMessage
+#from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection, isIdrisiRaster
+from geonis_helpers import *
+#from geonis_helpers import siteFromId, getToken, sendEmail, composeMessage
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
 from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
 import pdb
@@ -224,10 +225,10 @@ class Setup(ArcpyTool):
                             # First, clear selections
                             df = arcpy.mapping.ListDataFrames(mxd)[0]
                             for lyr in arcpy.mapping.ListLayers(mxd):
-                                self.logger.logMessage(INFO, "Clearing selections from " + lyr.name)
+                                self.logger.logMessage(INFO, "Clear selection: " + lyr.name)
                                 arcpy.SelectLayerByAttribute_management(lyr, 'CLEAR_SELECTION')
                             for aTable in arcpy.mapping.ListTableViews(mxd):
-                                self.logger.logMessage(INFO, "Clearing selections from " + aTable.name)
+                                self.logger.logMessage(INFO, "Clear selection: " + aTable.name)
                                 arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
 
                             # Now clear layers
@@ -1004,6 +1005,11 @@ class CheckSpatialData(ArcpyTool):
                 allPotentialFiles.append((afile, GeoNISDataType.PRJ))
             elif isIdrisiRaster(afile):
                 allPotentialFiles.append((afile, GeoNISDataType.RST))
+            else:
+                for fileType, isFileType in checkFileTypes.items():
+                    if isFileType(afile):
+                        allPotentialFiles.append((afile, fileType))
+                        
         for afolder in (f for f in contents if os.path.isdir(f)):
             if isFileGDB(afolder):
                 allPotentialFiles.append((afolder, GeoNISDataType.FILEGEODB))
@@ -1109,6 +1115,7 @@ class CheckSpatialData(ArcpyTool):
     @errHandledWorkflowTask(taskName="Checking precision")
     def checkPrecision(self, dataFilePath):
         passed = True
+        #pdb.set_trace()
         fields = arcpy.ListFields(dataFilePath)
         for fld in fields:
             if fld.type == u'Double' and fld.precision > 15:
@@ -1830,6 +1837,7 @@ class RefreshMapService(ArcpyTool):
     def draftSD(self, mxdname):
         """Stops service, creates SD draft, modifies it"""
         """http://maps3.lternet.edu:6080/arcgis/admin/services/Test/VectorData.MapServer/stop"""
+        #pdb.set_trace()
         pathToMapDoc = getConfigValue("pathtomapdoc")
         arcpy.env.workspace = pathToMapDoc
         pathToServiceDoc = arcpy.env.workspace + os.sep + "servicedefs"
@@ -1894,7 +1902,7 @@ class RefreshMapService(ArcpyTool):
         try:
             arcpy.StageService_server(sdDraft)
         except Exception as err: 
-            if err[0].find('ERROR 001272') != -1:
+            if err[0].find('ERROR 001272') and err[0].find('codes = 3') != -1:
                 self.logger.logMessage(WARN, "Encountered ERROR 001272, attempting workaround")
 
                 # Only drop layers listed in entity table so we don't remove the base layer
