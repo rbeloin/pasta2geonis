@@ -1749,24 +1749,34 @@ class UpdateMXDs(ArcpyTool):
                 results = cur.fetchall()
                 cols = [col.name for col in cur.description]
                 for row in results:
-                    report = row[1] if row[1] is not None else row[2]
                     biography = {
                         'pasta': getConfigValue('pastaurl'),
                         'workflow': getConfigValue('datasetscopesuffix'),
                         'service': getConfigValue('layerqueryuri') % (
-                                getConfigValue('mapservinfo').split(';')[1],
-                                row[4] + getConfigValue('mapservsuffix'),
-                            ),
+                            getConfigValue('mapservinfo').split(';')[1],
+                            row[4] + getConfigValue('mapservsuffix'),
+                        ),
                     }
                     for idx, d in enumerate(cols):
                         if d == 'downloaded':
                             biography[d] = str(row[idx])
                         elif d != 'report' and d != 'id':
                             biography[d] = row[idx]
-                    cur.execute(
-                        "UPDATE entity SET report = %s WHERE id = %s", 
-                        (report + " | " + json.dumps(biography), row[3])
-                    )
+
+                    # Update the entity and/or package tables
+                    if row[2] is not None:
+                        report = row[2]
+                        cur.execute(
+                            "UPDATE entity SET report = %s WHERE id = %s", 
+                            (report + " | " + json.dumps(biography), row[3])
+                        )
+                    if row[1] is not None:
+                        report = row[1]
+                        cur.execute(
+                            "UPDATE package SET report = %s WHERE packageid = %s", 
+                            (report + " | " + json.dumps(biography), row[0])
+                        )
+
 
     def execute(self, parameters, messages):
         super(UpdateMXDs, self).execute(parameters, messages)
@@ -1899,8 +1909,8 @@ class RefreshMapService(ArcpyTool):
         # Workaround: drop all non-base layers from the map if this error is encountered.
         try:
             arcpy.StageService_server(sdDraft)
-        except Exception as err: 
-            if err[0].find('ERROR 001272') and err[0].find('codes = 3') != -1:
+        except Exception as err:
+            if err[0].find('ERROR 001272') != -1 and err[0].find('codes = 3') != -1:
                 self.logger.logMessage(WARN, "Encountered ERROR 001272, attempting workaround")
 
                 # Only drop layers listed in entity table so we don't remove the base layer

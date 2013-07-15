@@ -5,6 +5,7 @@
 <title>GeoNIS Spatial Data Report</title>
 <link rel="stylesheet" type="text/css" href="css/report.css" />
 <link href='http://fonts.googleapis.com/css?family=Lato:300' rel='stylesheet' type='text/css'>
+<script src="js/jquery-1.10.2.min.js" type="text/javascript"></script>
 <script type="text/javascript">
 function getPID() {
     var searchStr = window.location.search;
@@ -33,6 +34,89 @@ function createLinks(errReport) {
         return errReport;
     }
 }
+
+/**
+ * Parse the raw error report which we fetched from the database using the
+ * Search service, which has the following pipe-delimited structure:
+ * error report | JSON string containing various package + entity information
+ */
+function parseReport(rawReport) {
+    splitPipe = rawReport.split('|');
+    report = "<ul><li>" + splitPipe[0];
+    var validEnding = report.charAt(report.length-1) !== '.' && 
+        report.charAt(report.length-1) !== '!' && 
+        report.charAt(report.length-1) !== '?';
+    if (validEnding) {
+        while (report.charAt(report.length-1) == ' ') {
+            report = report.slice(0, -1);
+        }
+        report += '.';
+    }
+    report += "</li>";
+    return {
+        'report': report,
+        'biography': JSON.parse(splitPipe[1])
+    };
+}
+
+/** 
+ * Check the package and entity tables for error reports, and append them to the
+ * active error report if found.
+ */
+function checkTables(biography, report) {
+    report = (biography['entityname'] === null) ? 
+        checkPackage(biography, report) : checkEntity(biography, report);
+    return report;
+}
+
+/**
+ * Check for report entries in the entity table, and append them to its error report.
+ */
+function checkPackage(biography, report) {
+    report = "<span class='entity-name'>Package " + biography['packageid'] + 
+            "</span>" + report;
+    return report;
+}
+
+/**
+ * Check for report entries in the entity table, and append them to its error report.
+ */
+function checkEntity(biography, report) {
+    var mapService = (biography['mxd'] === null) ?
+        biography['entityname'] + " is not available as a map service due to errors." :
+        "<a href='" + biography['service'].split('/').slice(0, -1).join('/') + "'>" + 
+            biography['entityname'] + " is available as a map service.</a>"
+    var spatialType = (biography['israster'] === 't') ? "raster" : "vector";
+    report = "<span class='entity-name'>" + biography['entityname'] + "</span> \
+        (" + spatialType + ")" + report + "<li>" + mapService + "</li>";
+    return report;
+}
+
+/**
+ * Replaces the default "Searching for package..." with a readable site ID: revision
+ * banner, and determines whether this package was retrieved from the staging
+ * (pasta-s.lternet.edu) or live (pasta.lternet.edu) server.
+ */
+function generateBanner(biography) {
+    if (biography['scope'] !== 'undefined') {
+        document.getElementById("pid").innerHTML = biography['scope'].toUpperCase() + 
+            " " + biography['identifier'] + ", revision " + biography['revision'];
+    }
+    var serverInfo;
+    if (biography['pasta'].indexOf('pasta-s') !== -1) {
+        serverInfo = {
+            'server': 'staging',
+            'baseURL': 'pasta-s.lternet.edu'
+        };
+    }
+    else {
+        serverInfo = {
+            'server': 'live',
+            'baseURL': 'pasta.lternet.edu'
+        };
+    }
+    return serverInfo;
+}
 </script>
 </head>
 <body>
@@ -52,9 +136,9 @@ function createLinks(errReport) {
             <div id="report"></div>
             <!--<div id="biography"></div>-->
             <div id="workflow-info"></div>
-            <!--<div id="site-report"></div>-->
             <div class="push"></div>
         </div>
+        <div id="site-report"></div>
         <div class="cleaner"></div> 
     </div>
 
@@ -84,63 +168,44 @@ if (pid != "") {
 
             // The error report is pipe-delimited from other useful info stored in
             // the report field, in stringified-JSON format
-            var rawErrReport = new Array();
-            var errReport = new Array();
             var replaceBanner = false;
             for (var i = 0; i < response.features.length; i++) {
-                rawErrReport.push(response.features[i].attributes.report.split('|'));
-                errReport.push("<ul><li>" + rawErrReport[i][0]);
-                if (errReport[i].charAt(errReport[i].length-1) !== '.' && errReport[i].charAt(errReport[i].length-1) !== '!' && errReport[i].charAt(errReport[i].length-1) !== '?') {
-                    while (errReport[i].charAt(errReport[i].length-1) == ' ') {
-                        errReport[i] = errReport[i].slice(0, -1);
-                    }
-                    errReport[i] += '.';
-                }
-                errReport[i] += "</li>";
 
-                // Basic 'biographical' info stuff: parse the biography JSON string stored after the pipe
-                if (rawErrReport[i].length > 1) {
-                    var biography = JSON.parse(rawErrReport[i][1]);
-                    var mapService = (biography['mxd'] === null) ?
-                        biography['entityname'] + " is not available as a map service due to errors." :
-                        "<a href='" + biography['service'].split('/').slice(0, -1).join('/') + "'>" + biography['entityname'] + " is available as a map service.</a>"
-                    var spatialType = (biography['israster'] === 't') ? "raster" : "vector";
-                    errReport[i] = "<span class='entity-name'>" + biography['entityname'] + "</span> (" + spatialType + ")" + errReport[i] + "<li>" + mapService + "</li>";
-                    if (!replaceBanner) {
-                        if (biography['scope'] !== 'undefined') {
-                            document.getElementById("pid").innerHTML = biography['scope'].toUpperCase() + " " + biography['identifier'] + ", revision " + biography['revision'];
-                            replaceBanner = true;
-                        }
-                        if (biography['pasta'].indexOf('pasta-s') !== -1) {
-                            serverName = 'staging';
-                            baseURL = 'pasta-s.lternet.edu';
-                        }
-                        else {
-                            serverName = 'live';
-                            baseURL = 'pasta.lternet.edu';
-                        }
-                    }
-                }
-                else {
-                    continue;
+                // First parse the raw report
+                parsedReport = parseReport(response.features[i].attributes.report);
+                var report = parsedReport.report;
+                var biography = parsedReport.biography;
+                report = checkTables(biography, report);
+                
+                // Generate a banner with the site name, id, and revision, if we haven't
+                // done so already
+                if (!replaceBanner) {
+                    var serverInfo = generateBanner(biography);
+                    replaceBanner = true;
                 }
 
-                // Error reports
+                // Insert the reports into the report div
                 if (i == 0) {
-                    document.getElementById('report').innerHTML = "<p>" + errReport[i] + "</p></ul>";
+                    document.getElementById('report').innerHTML = "<p>" + report + "</p></ul>";
                 }
                 else {
                     var nextReport = document.createElement('div');
-                    nextReport.innerHTML = "<p>" + errReport[i] + "</p></ul>";
+                    nextReport.innerHTML = "<p>" + report + "</p></ul>";
                     while (nextReport.firstChild) {
                         document.getElementById('report').appendChild(nextReport.firstChild);
                     }
                 }
-
             }
             
             // Append server information and download link to the bottom of the report
-            document.getElementById('workflow-info').innerHTML = "<hr /><em>Package <a href='https://" + baseURL + "/package/eml/" + biography['packageid'].split('.')[0] + "/" + biography['identifier'] + "/" + biography['revision'] + "'>" + biography['packageid'] + "</a> was downloaded from the " + serverName + " server (<a href='https://" + baseURL + "'>" + baseURL + "</a>) on " + biography['downloaded'].split(' ')[0] + " at " + biography['downloaded'].split(' ')[1].split('.')[0] + " MDT.</em>";
+            var packageLink = "<a href='https://" + serverInfo['baseURL'] + "/package/eml/" +
+                biography['packageid'].split('.')[0] + "/" + biography['identifier'] +
+                "/" + biography['revision'] + "'>" + biography['packageid'] + "</a>";
+            document.getElementById('workflow-info').innerHTML = "<hr />\
+                <em>Package " + packageLink + " was downloaded from the " + serverInfo.server + 
+                " server (<a href='https://" + serverInfo.baseURL + "'>" + serverInfo.baseURL + 
+                "</a>) on " + biography['downloaded'].split(' ')[0] + " at " + 
+                biography['downloaded'].split(' ')[1].split('.')[0] + " MDT.</em>";
 
             /*var showBio = '';
             for (var key in biography) {
@@ -158,7 +223,7 @@ if (pid != "") {
     requestObj.send();
 
     // Other data sets from the same site
-    /*siteCode = pid.split('.')[0];
+    siteCode = pid.split('.')[0];
     var otherReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/Search/MapServer/2/query?where=packageid+like+%27" + siteCode + "%%27&returnGeometry=true&outFields=report&f=pjson"
     var otherRequestObj = new XMLHttpRequest();
     otherRequestObj.onreadystatechange = function() {
@@ -172,7 +237,7 @@ if (pid != "") {
     }
     document.getElementById("site-report").innerHTML = "<p>Other package list goes here</p>" 
     otherRequestObj.open("Get", otherReportUrl, true);
-    otherRequestObj.send();*/
+    otherRequestObj.send();
 }
 </script>
 
