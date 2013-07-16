@@ -1725,9 +1725,11 @@ class UpdateMXDs(ArcpyTool):
             with cursorContext(self.logger) as cur:
                 cur.execute(insstmt, insertObj)
 
-    @errHandledWorkflowTask(taskName="Add package info to error report")
+    @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self):
+        noErrorsFound = "no errors found"
         with cursorContext(self.logger) as cur:
+            # May have to remove joins if tables get very large...
             selectReports = (
                 "SELECT ep.*, g.title, g.sourceloc FROM ( "
                     "SELECT "
@@ -1737,7 +1739,7 @@ class UpdateMXDs(ArcpyTool):
                     "FULL JOIN "
                         "entity AS e "
                         "ON p.packageid = e.packageid "
-                    "WHERE e.report IS NOT NULL OR p.report IS NOT NULL "
+                    #"WHERE e.report IS NOT NULL OR p.report IS NOT NULL "
                 ") AS ep "
                 "LEFT OUTER JOIN "
                     "geonis_layer AS g "
@@ -1763,19 +1765,18 @@ class UpdateMXDs(ArcpyTool):
                         elif d != 'report' and d != 'id':
                             biography[d] = row[idx]
 
-                    # Update the entity and/or package tables
-                    if row[2] is not None:
-                        report = row[2]
-                        cur.execute(
-                            "UPDATE entity SET report = %s WHERE id = %s", 
-                            (report + " | " + json.dumps(biography), row[3])
-                        )
-                    if row[1] is not None:
-                        report = row[1]
-                        cur.execute(
-                            "UPDATE package SET report = %s WHERE packageid = %s", 
-                            (report + " | " + json.dumps(biography), row[0])
-                        )
+                    # Update the entity and package tables
+                    report = row[2] if row[2] is not None else noErrorsFound
+                    cur.execute(
+                        "UPDATE entity SET report = %s WHERE id = %s", 
+                        (report + " | " + json.dumps(biography), row[3])
+                    )
+
+                    report = row[1] if row[1] is not None else noErrorsFound
+                    cur.execute(
+                        "UPDATE package SET report = %s WHERE packageid = %s", 
+                        (report + " | " + json.dumps(biography), row[0])
+                    )
 
 
     def execute(self, parameters, messages):

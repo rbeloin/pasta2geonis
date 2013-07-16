@@ -54,7 +54,7 @@ function parseReport(rawReport) {
     }*/
     report += "</li>";
     return {
-        'report': report,
+        'report': report.replace(/\n/g, '<br />'),
         'biography': JSON.parse(splitPipe[1])
     };
 }
@@ -73,8 +73,7 @@ function checkTables(biography, report) {
  * Check for report entries in the entity table, and append them to its error report.
  */
 function checkPackage(biography, report) {
-    report = "<span class='entity-name'>Package " + biography['packageid'] + 
-            "</span>" + report;
+    report = "<span class='entity-name'>Package report</span>" + report;
     return report;
 }
 
@@ -133,6 +132,45 @@ function insertReport(report, reportDiv, isFirstReport) {
         }
     }
 }
+
+Array.prototype.getUnique = function () {
+    var u = {}, a = [];
+    for(var i = 0, l = this.length; i < l; ++i){
+        if(u.hasOwnProperty(this[i])) {
+            continue;
+        }
+        a.push(this[i]);
+        u[this[i]] = 1;
+    }
+    return a;
+}
+
+Array.prototype.sortNumeric = function () {
+    var tempArr = [], n;
+    for (var i in this) {
+        tempArr[i] = this[i].toString().match(/([^0-9]+)|([0-9]+)/g);
+        for (var j in tempArr[i]) {
+            if (!isNaN(n = parseInt(tempArr[i][j]))){
+                tempArr[i][j] = n;
+            }
+        }
+    }
+    tempArr.sort(function (x, y) {
+        for (var i in x) {
+            if (y.length < i || x[i] < y[i]) {
+                return -1; // x is longer
+            }
+            if (x[i] > y[i]) {
+                return 1;
+            }
+        }
+        return 0;
+    });
+    for (var i in tempArr) {
+        this[i] = tempArr[i].join('');
+    }
+    return this;
+}
 </script>
 </head>
 <body>
@@ -168,7 +206,7 @@ function insertReport(report, reportDiv, isFirstReport) {
     <div class="push"></div>
 </div>
 
-<div id="footer_wrapper">
+<!--<div id="footer_wrapper">
     <div id="footer-outer">
         <div id="footer">
             <div id="copyright">
@@ -176,7 +214,7 @@ function insertReport(report, reportDiv, isFirstReport) {
             </div> 
         </div> 
     </div>
-</div>
+</div>-->
 
 <script type="text/javascript">
 var pid = getPID();
@@ -228,7 +266,7 @@ if (pid != "") {
 
         }
     }
-    document.getElementById("report").innerHTML = "<p style='text-align: center;'>No errors reported for this data set.</p>"
+    document.getElementById("report").innerHTML = "<p style='text-align: center;'>Data set not found.</p>"
     requestObj.open("Get", reportUrl, true);
     requestObj.send();
 
@@ -240,10 +278,18 @@ if (pid != "") {
         if (otherRequestObj.readyState == 4 && (otherRequestObj.status == 200 || otherRequestObj.status == 304)) {
             var responseJson = otherRequestObj.responseText;
             var response = JSON.parse(responseJson);
-            document.getElementById('site-report-title').innerHTML = "<p><span class='entity-name'>" + siteCode.split('-').slice(-1)[0].toUpperCase() + " (" + response.features.length + " packages)</span></p>";
-            var sitePackages = '';
+            sitePackageArray = [];
             for (var i = 0; i < response.features.length; i++) {
-                sitePackages += '<li>' + response.features[i].attributes.packageid + '</li>';
+                sitePackageArray.push(response.features[i].attributes.packageid);
+            }
+            sitePackageArray = sitePackageArray.getUnique().sortNumeric();
+            document.getElementById('site-report-title').innerHTML = "<p><span class='entity-name'>" + 
+                siteCode.split('-').slice(-1)[0].toUpperCase() + " (" + sitePackageArray.length + 
+                " packages)</span></p>";
+            var sitePackages = '';
+            for (var i = 0; i < sitePackageArray.length; i++) {
+                sitePackages += '<li><a href="report.html?packageid=' + sitePackageArray[i] + '">' + 
+                    sitePackageArray[i] + '</a></li>';
             }
             document.getElementById('site-report').innerHTML = '<ul>' + sitePackages + '</ul>';
         }

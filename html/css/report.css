@@ -182,20 +182,10 @@ h1 {
     line-height: normal;
     text-align: center;
 }
-.leftbar h2 {
-    color: #000;
-    margin: 0 0 5px 0;
-    padding: 8px 0;
-    font-size: 22px;
-}
 .leftbar h3 {
     color: #000;
-    margin: 0 0 5px 0;
     padding-bottom: 8px;
     font-size: 18px;
-}
-.leftbar p {
-    margin-left: 10px;
 }
 .leftbar ul {
     border-bottom: 1px solid #ccc;
@@ -211,6 +201,9 @@ h1 {
 }
 .leftbar a {
     color: #0B2161;
+}
+.leftbar a:hover {
+    text-decoration: none;
 }
 
 /*.banner {
