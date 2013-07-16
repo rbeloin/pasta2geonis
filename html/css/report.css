@@ -130,9 +130,10 @@ h1 {
     line-height: 22pt;
     color: #fff;
 }
-#banner {
+.banner {
 	clear: both;
-	width: 100%;
+    float: right;
+	width: 82%;
 	font-size: 14px;
 	color: #000;
 	margin-top: 10px;
@@ -142,31 +143,114 @@ h1 {
 	margin-bottom: 10px;
     line-height: normal;
 }
-#banner h2 {
+.banner h2 {
 	text-align: center;
 	color: #000;
 	margin: 0 0 5px 0;
     padding: 8px 0;
 	font-size: 22px;
 }
-#banner h3 {
+.banner h3 {
 	text-align: center;
 	color: #000;
 	margin: 0 0 5px 0;
     padding-bottom: 8px;
 	font-size: 18px;
 }
-#banner p {
+.banner p {
 	margin-left: 25px;
 	margin-right: 25px;
 }
-#banner ul li {
+.banner ul li {
     margin-left: 50px;
     margin-right: 25px;
 }
-#banner a {
+.banner a {
 	color: #0B2161;
 }
+
+.leftbar {
+    clear: left;
+    float: left;
+    width: 16%;
+    font-size: 14px;
+    color: #000;
+    margin-top: 10px;
+    padding-top: 12px;
+    padding-bottom: 16px;
+    margin-bottom: 10px;
+    line-height: normal;
+    text-align: center;
+}
+.leftbar h2 {
+    color: #000;
+    margin: 0 0 5px 0;
+    padding: 8px 0;
+    font-size: 22px;
+}
+.leftbar h3 {
+    color: #000;
+    margin: 0 0 5px 0;
+    padding-bottom: 8px;
+    font-size: 18px;
+}
+.leftbar p {
+    margin-left: 10px;
+}
+.leftbar ul {
+    border-bottom: 1px solid #ccc;
+}
+.leftbar ul li {
+    border-top: 1px solid #ccc;
+    border-left: 1px solid #ccc;
+    border-right: 1px solid #ccc;
+    line-height: 18pt;
+}
+.leftbar ul li:hover {
+    background-color: #CEECF5;
+}
+.leftbar a {
+    color: #0B2161;
+}
+
+/*.banner {
+    clear: both;
+    width: 100%;
+    font-size: 14px;
+    color: #000;
+    margin-top: 10px;
+    padding-top: 12px;
+    padding-bottom: 16px;
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+    line-height: normal;
+}
+.banner h2 {
+    text-align: center;
+    color: #000;
+    margin: 0 0 5px 0;
+    padding: 8px 0;
+    font-size: 22px;
+}
+.banner h3 {
+    text-align: center;
+    color: #000;
+    margin: 0 0 5px 0;
+    padding-bottom: 8px;
+    font-size: 18px;
+}
+.banner p {
+    margin-left: 25px;
+    margin-right: 25px;
+}
+.banner ul li {
+    margin-left: 50px;
+    margin-right: 25px;
+}
+.banner a {
+    color: #0B2161;
+}*/
+
 #biography {
     margin-left: 25px;
     margin-right: 25px;
