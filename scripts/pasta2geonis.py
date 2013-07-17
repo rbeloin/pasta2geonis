@@ -63,7 +63,7 @@ def parse_parameters(argv, parameters):
             print "Error: command line parameter", opt, "not recognized."
             print usage
             sys.exit(2)
-        return parameters
+    return parameters
 
 
 def setup(parameters):
