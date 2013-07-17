@@ -19,9 +19,11 @@ cleanup = True
 Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
 valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
 
+argv = [j for j in sys.argv[1:] if not j.endswith('.py') and not j.endswith('.pyc')]
+
 try:
     opts, args = getopt.getopt(
-        sys.argv[1:],
+        argv,
         'hp:s:i:SMRO',
         ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only']
     )
