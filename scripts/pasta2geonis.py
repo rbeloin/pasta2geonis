@@ -10,17 +10,9 @@ import getopt
 import lno_geonis_wf
 
 
-def main(argv):
-    verbose = True
-    logfile = "C:\\TEMP\\geonis_wf.log"
-    testing_workflow = True
-    cleanup = True
-    Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
-    valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
-
+def parse_parameters(argv, parameters):
     usage = "Usage: pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
     argv = [j for j in argv if not j.endswith('.py') and not j.endswith('.pyc')]
-
     try:
         opts, args = getopt.getopt(
             argv,
@@ -30,7 +22,6 @@ def main(argv):
     except getopt.GetoptError:
         print usage
         sys.exit(2)
-
     optlist = [j[0] for j in opts]
     if '-s' not in optlist or '-i' not in optlist:
         print "Error: you must specify a site code (or * for all) and ID (or * for all)."
@@ -38,155 +29,180 @@ def main(argv):
         sys.exit(2)
     if '-p' not in optlist:
         print "Warning: no pasta server specified, defaulting to pasta-s.lternet.edu"
-        staging_server = True
-
-    run_setup_arg, run_model_arg, rfm_only_arg, rso_arg = False, False, False, False
+        parameters['staging_server'] = True
+    for j in ('run_setup_arg', 'run_model_arg', 'rfm_only_arg', 'rso_arg'):
+        parameters[j] = False
     for opt, arg in opts:
         if opt == '-h':
             print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
             sys.exit()
         elif opt == '-p':
             if arg.lower() == 'pasta':
-                staging_server = False
+                parameters['staging_server'] = False
             elif arg.lower() == 'pasta-s':
-                staging_server = True
+                parameters['staging_server'] = True
             else:
                 print "Error: pasta server", arg, "not recognized."
                 print usage
                 sys.exit(2)
         elif opt == '-s':
-            site_code = arg
+            parameters['site_code'] = arg
         elif opt == '-i':
-            data_id = arg
+            parameters['data_id'] = arg
         elif opt in ('-S', '--run-setup'):
-            run_setup_arg = True
+            parameters['run_setup_arg'] = True
         elif opt in ('-M', '--run-model'):
-            run_model_arg = True
+            parameters['run_model_arg'] = True
         elif opt in ('-R', '--refresh-map-service'):
-            rfm_only_arg = True
+            parameters['rfm_only_arg'] = True
         elif opt in ('-O', '--run-setup-only'):
-            rso_arg = True
+            parameters['rso_arg'] = True
         else:
             print "Error: command line parameter", opt, "not recognized."
             print usage
             sys.exit(2)
+        return parameters
+
+
+def setup(parameters):
+    print "************"
+    tool = lno_geonis_wf.Setup()
+    tool._isRunningAsTool = False
+    tool.setScopeIdManually = True
+    tool.scope = parameters['site']
+    tool.id = parameters['id']
+    params = tool.getParameterInfo()
+    params[0].value = parameters['verbose']
+    params[1].value = parameters['logfile']
+    params[2].value = parameters['testing_workflow']
+    params[3].value = parameters['staging_server']
+    params[4].value = None
+    params[5].value = parameters['cleanup']
+    tool.execute(params, [])
+    print "Setup complete."
+
+
+def query_pasta(parameters):
+    print "************"
+    tool = lno_geonis_wf.QueryPasta()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = parameters['verbose']
+    params[1].value = parameters['logfile']
+    params[2].value = parameters['package_directory']
+    tool.execute(params, [])
+
+
+def unpack_packages(parameters):
+    print "************"
+    tool = lno_geonis_wf.UnpackPackages()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = parameters['verbose']
+    params[1].value = parameters['logfile']
+    params[2].value = parameters['package_directory']
+    params[3].value = parameters['valid_pkg_test']
+    tool.execute(params, [])
+
+
+def check_spatial_data(parameters):
+    print "************"
+    pkg_subdirs = os.listdir(parameters['valid_pkg_test'])
+    if len(pkg_subdirs) > 1:
+        parameters['input_dirs'] = [parameters['valid_pkg_test'] + os.sep + d for d in os.listdir(parameters['valid_pkg_test'])[1:]]
+    else:
+        parameters['input_dirs'] = [parameters['valid_pkg_test'] + os.sep + d for d in os.listdir(parameters['valid_pkg_test'])]
+    tool = lno_geonis_wf.CheckSpatialData()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = parameters['verbose']
+    params[1].value = parameters['logfile']
+    params[2].value = parameters['input_dirs']
+    tool.execute(params, [])
+    return parameters
+
+
+def load_vector_types(parameters):
+    print "************"
+    tool = lno_geonis_wf.LoadVectorTypes()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = True
+    params[1].value = parameters['logfile']
+    params[2].value = parameters['input_dirs']
+    tool.execute(params, [])
+
+
+def load_raster_types(parameters):
+    print "************"
+    tool = lno_geonis_wf.LoadRasterTypes()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = True
+    params[1].value = parameters['logfile']
+    params[2].value = parameters['input_dirs']
+    tool.execute(params, [])
+
+
+def update_mxds(parameters):
+    print "************"
+    tool = lno_geonis_wf.UpdateMXDs()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = True
+    params[1].value = parameters['logfile']
+    params[2].value = parameters['input_dirs']
+    tool.execute(params, [])
+
+
+def refresh_map_service(parameters):
+    print "************"
+    tool = lno_geonis_wf.RefreshMapService()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = True
+    params[1].value = parameters['logfile']
+    if parameters['site'] != '*' and parameters['id'] != 'all':
+        tool.calledFromScript = parameters['site']
+    #tool.sendReport = True
+    tool.execute(params, [])
+
+
+def main(argv):
+    parameters = {
+        'verbose': True,
+        'logfile': "C:\\TEMP\\geonis_wf.log",
+        'testing_workflow': True,
+        'cleanup': True,
+        'package_directory': "C:\\TEMP\\pasta_pkg_test",
+        'valid_pkg_test': "C:\\TEMP\\valid_pkg_test",
+    }
+
+    # Parse command line parameters and add them to our dict
+    parameters = parse_parameters(argv, parameters)
 
     # Refresh map service only
-    if rfm_only_arg:
+    if parameters['rfm_only_arg']:
         print "Refreshing map services only"
-        RMS = lno_geonis_wf.RefreshMapService()
-        RMS._isRunningAsTool = False
-        paramsRMS = RMS.getParameterInfo()
-        paramsRMS[0].value = True
-        paramsRMS[1].value = logfile
-        if site_code != '*' and data_id != 'all':
-            RMS.calledFromScript = site_code
-        #RMS.sendReport = True
-        RMS.execute(paramsRMS, [])
+        refresh_map_service(parameters)
         sys.exit("Refreshed map services, exiting.")
 
-    # Setup
-    run_setup = 'Y' if run_setup_arg else raw_input("Run Setup? [Y/n] ")
+    # Run the setup tool (if requested)
+    run_setup = 'Y' if parameters['run_setup_arg'] else raw_input("Run Setup? [Y/n] ")
     if run_setup.lower() != 'n':
-        print "************"
-        tool = lno_geonis_wf.Setup()
-        tool._isRunningAsTool = False
-        tool.setScopeIdManually = True
-        tool.scope = site_code
-        tool.id = data_id
-        params = tool.getParameterInfo()
-        params[0].value = verbose
-        params[1].value = logfile
-        params[2].value = testing_workflow
-        params[3].value = staging_server
-        params[4].value = [[tool.scope, tool.id]]  # this doesn't work; set value manually instead
-        params[5].value = cleanup
-        tool.execute(params, [])
-        print "Setup complete."
-        if rso_arg:
+        setup(parameters)
+        if parameters['rso_arg']:
             sys.exit()
 
-    run_model = 'Y' if run_model_arg else raw_input("Run model? [Y/n] ")
+    # Run the model (if requested)
+    run_model = 'Y' if parameters['run_model_arg'] else raw_input("Run model? [Y/n] ")
     if run_model.lower() != 'n':
-
-        # QueryPasta
-        print "************"
-        tool = lno_geonis_wf.QueryPasta()
-        tool._isRunningAsTool = False
-        params = tool.getParameterInfo()
-        params[0].value = verbose
-        params[1].value = logfile
-        params[2].value = Directory_of_Packages
-        tool.execute(params, [])
-
-        # UnpackPackages
-        print "************"
-        tool = lno_geonis_wf.UnpackPackages()
-        tool._isRunningAsTool = False
-        params = tool.getParameterInfo()
-        params[0].value = verbose
-        params[1].value = logfile
-        params[2].value = Directory_of_Packages
-        params[3].value = valid_pkg_test
-        tool.execute(params, [])
-
-        # CheckSpatialData
-        print "************"
-        pkg_subdirs = os.listdir(valid_pkg_test)
-        if len(pkg_subdirs) > 1:
-            input_dirs = [valid_pkg_test + os.sep + d for d in os.listdir(valid_pkg_test)[1:]]
-        else:
-            input_dirs = [valid_pkg_test + os.sep + d for d in os.listdir(valid_pkg_test)]
-        tool = lno_geonis_wf.CheckSpatialData()
-        tool._isRunningAsTool = False
-        params = tool.getParameterInfo()
-        params[0].value = verbose
-        params[1].value = logfile
-        params[2].value = input_dirs
-        tool.execute(params, [])
-
-        # LoadVectorTypes
-        print "************"
-        tool = lno_geonis_wf.LoadVectorTypes()
-        tool._isRunningAsTool = False
-        params = tool.getParameterInfo()
-        params[0].value = True
-        params[1].value = logfile
-        params[2].value = input_dirs
-        tool.execute(params, [])
-
-        # LoadRasterTypes
-        print "************"
-        tool = lno_geonis_wf.LoadRasterTypes()
-        tool._isRunningAsTool = False
-        params = tool.getParameterInfo()
-        params[0].value = True
-        params[1].value = logfile
-        params[2].value = input_dirs
-        tool.execute(params, [])
-
-        # UpdateMXDs
-        print "************"
-        tool = lno_geonis_wf.UpdateMXDs()
-        tool._isRunningAsTool = False
-        params = tool.getParameterInfo()
-        params[0].value = True
-        params[1].value = logfile
-        params[2].value = input_dirs
-        tool.execute(params, [])
-
-        # RefreshMapService
-        print "************"
-        RMS = lno_geonis_wf.RefreshMapService()
-        RMS._isRunningAsTool = False
-        paramsRMS = RMS.getParameterInfo()
-        paramsRMS[0].value = True
-        paramsRMS[1].value = logfile
-        if site_code != '*' and data_id != 'all':
-            RMS.calledFromScript = site_code
-        #RMS.sendReport = True
-        RMS.execute(paramsRMS, [])
-
+        unpack_packages(parameters)
+        parameters = check_spatial_data(parameters)
+        load_vector_types(parameters)
+        load_raster_types(parameters)
+        update_mxds(parameters)
+        refresh_map_service(parameters)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
