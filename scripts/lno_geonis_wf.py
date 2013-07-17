@@ -352,10 +352,10 @@ class Setup(ArcpyTool):
         limitsParam = self.getParamAsText(parameters,4)
         if limitsParam and limitsParam != '' and limitsParam != '#':
             valsArr = []
-# Insert scope and ID values manually for testing
+            # Insert scope and ID values manually for testing
             if hasattr(self, 'setScopeIdManually') and self.setScopeIdManually:
-                
-                # "all" or "*" command-line argument means to find all 
+
+                # "all" or "*" command-line argument means to find all
                 # packages on pasta or pasta-s server
                 # (limit to all packages beginning with "knb-lter-")
                 if self.scope == 'all' or self.scope == '*':
@@ -364,10 +364,10 @@ class Setup(ArcpyTool):
                     ).read().split('\n') if s.startswith('knb-lter-')]
                 else:
                     scopeList = [self.scope]
-                
+
                 # Get ids for every site
                 for s in scopeList:
-                
+
                     # "all" or "*" command-line argument means find all entities within
                     # selected packages
                     if self.id == 'all' or self.id == '*':
@@ -376,7 +376,7 @@ class Setup(ArcpyTool):
                         ).read().split('\n')
                         for id in idList:
                             valsArr.append({'inc': 'knb-lter-' + s + '.' + id})
-                    
+
                     # A hyphen in the id argument indicates a range of values
                     elif '-' in self.id:
                         idList = urllib2.urlopen(
@@ -386,7 +386,7 @@ class Setup(ArcpyTool):
                         for j in xrange(idRange[0], idRange[1]+1):
                             if str(j) in idList:
                                 valsArr.append({'inc': 'knb-lter-' + s + '.' + str(j)})
-                            
+
                     # Otherwise, only look up a single id
                     else:
                         valsArr.append({'inc': 'knb-lter-' + s + '.' + str(self.id)})
@@ -2024,7 +2024,6 @@ class RefreshMapService(ArcpyTool):
                 #bypass for testing, ignore contact
                 sendEmail(group, composeMessage(pkgid))
 
-
     def execute(self, parameters, messages):
         super(RefreshMapService, self).execute(parameters, messages)
         mapServInfoString = getConfigValue("mapservinfo")
@@ -2036,22 +2035,24 @@ class RefreshMapService(ArcpyTool):
         mapServInfo = {'service_name':mapServInfoItems[0], 'service_folder':mapServInfoItems[1], 'tags':mapServInfoItems[2], 'summary':mapServInfoItems[3]}
         self.serverInfo = copy.copy(mapServInfo)
         try:
-            
+
             # If execute has been called programatically, then only
             # refresh the specified services
-            if hasattr(self, 'calledFromScript'):
-                mxds = [self.calledFromScript + '.mxd']
-                
-            # Otherwise, get list of map services where entity record 
+            #if hasattr(self, 'calledFromScript'):
+            #    mxds = [self.calledFromScript + '.mxd']
+
+            # Otherwise, get list of map services where entity record
             # exists, is OK, has mxd, but not in geonis_layer
-            else:
-                stmt = "SELECT * FROM vw_stalemapservices;"
-                with cursorContext(self.logger) as cur:
-                    cur.execute(stmt)
-                    rows = cur.fetchall()
-                    mxds = [cols[0] for cols in rows]
-                del rows
-                            
+            #else:
+            stmt = "SELECT * FROM vw_stalemapservices;"
+            with cursorContext(self.logger) as cur:
+                cur.execute(stmt)
+                rows = cur.fetchall()
+                mxds = [cols[0] for cols in rows]
+            if hasattr(self, 'calledFromScript'):
+                mxds.extend([s + '.mxd' for s in self.calledFromScript])
+            del rows
+
             if not mxds:
                 self.logger.logMessage(INFO, "No new vector data added to any maps.")
                 #return
@@ -2067,7 +2068,6 @@ class RefreshMapService(ArcpyTool):
                 self.sendEmailReport()
         except Exception as err:
             self.logger.logMessage(ERROR, err.message)
-
 
 
 ## *****************************************************************************

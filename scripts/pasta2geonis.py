@@ -6,21 +6,23 @@ Testing script for pasta2geonis that runs outside of ArcCatalog.
 """
 import os
 import sys
-import getopt
+from getopt import getopt, GetoptError
+from urllib2 import urlopen
 import lno_geonis_wf
-import pdb
+from geonis_postgresql import getConfigValue
+# Is RFM picking up specified service, or not b/c in vw_stalemapservices?
 
 
 def parse_parameters(argv, parameters):
     usage = "Usage: pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
     argv = [j for j in argv if not j.endswith('.py') and not j.endswith('.pyc')]
     try:
-        opts, args = getopt.getopt(
+        opts, args = getopt(
             argv,
             'hp:s:i:SMRO',
             ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only']
         )
-    except getopt.GetoptError:
+    except GetoptError:
         print usage
         sys.exit(2)
     optlist = [j[0] for j in opts]
@@ -63,6 +65,25 @@ def parse_parameters(argv, parameters):
             print usage
             sys.exit(2)
     return parameters
+
+
+def refresh_map_service(parameters):
+    print "************"
+    tool = lno_geonis_wf.RefreshMapService()
+    tool._isRunningAsTool = False
+    params = tool.getParameterInfo()
+    params[0].value = True
+    params[1].value = parameters['logfile']
+    if parameters['site'] not in ('*', 'all'):
+        tool.calledFromScript = [parameters['site']]
+    elif parameters['site'] in ('*', 'all'):
+        tool.calledFromScript = [
+            s.split('-')[-1] for s in urlopen(
+                getConfigValue('pastaurl') + '/package/eml'
+            ).read().split('\n') if s.startswith('knb-lter-')
+        ]
+    #tool.sendReport = True
+    tool.execute(params, [])
 
 
 def setup(parameters):
@@ -153,19 +174,6 @@ def update_mxds(parameters):
     params[0].value = True
     params[1].value = parameters['logfile']
     params[2].value = parameters['input_dirs']
-    tool.execute(params, [])
-
-
-def refresh_map_service(parameters):
-    print "************"
-    tool = lno_geonis_wf.RefreshMapService()
-    tool._isRunningAsTool = False
-    params = tool.getParameterInfo()
-    params[0].value = True
-    params[1].value = parameters['logfile']
-    if parameters['site'] != '*' and parameters['id'] != 'all':
-        tool.calledFromScript = parameters['site']
-    #tool.sendReport = True
     tool.execute(params, [])
 
 
