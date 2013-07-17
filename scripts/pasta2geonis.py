@@ -29,6 +29,7 @@ except getopt.GetoptError:
     print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
     sys.exit(2)
 
+print opts
 if '-p' not in opts or '-s' not in opts or '-i' not in opts:
     print ("Error: you must specify a pasta server name, "
            "site code (or * for all), and ID (or * for all).")
