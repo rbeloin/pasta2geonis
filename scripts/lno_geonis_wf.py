@@ -1659,6 +1659,7 @@ class UpdateMXDs(ArcpyTool):
             if rows:
                 store, status = rows[0]
             else:
+                pdb.set_trace()
                 raise Exception("Record not in entity table")
         # TODO: this is not robust, can pick up status from tool that skips it
         #if "complete" not in status:
