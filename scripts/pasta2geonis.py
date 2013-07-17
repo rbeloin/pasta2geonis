@@ -19,6 +19,7 @@ cleanup = True
 Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
 valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
 
+usage = "Usage: pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
 argv = [j for j in sys.argv[1:] if not j.endswith('.py') and not j.endswith('.pyc')]
 
 try:
@@ -28,14 +29,14 @@ try:
         ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only']
     )
 except getopt.GetoptError:
-    print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
+    print usage
     sys.exit(2)
 
 optlist = [j[0] for j in opts]
 if '-p' not in optlist or '-s' not in optlist or '-i' not in optlist:
     print ("Error: you must specify a pasta server name, "
            "site code (or * for all), and ID (or * for all).")
-    print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
+    print usage
     sys.exit(2)
 
 run_setup_arg, run_model_arg, rfm_only_arg, rso_arg = False, False, False, False
@@ -50,7 +51,7 @@ for opt, arg in opts:
             staging_server = True
         else:
             print "Error: pasta server", arg, "not recognized."
-            print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
+            print usage
             sys.exit(2)
     elif opt == '-s':
         site_code = arg
@@ -66,7 +67,7 @@ for opt, arg in opts:
         rso_arg = True
     else:
         print "Error: command line parameter", opt, "not recognized."
-        print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
+        print usage
         sys.exit(2)
 
 # Refresh map service only
