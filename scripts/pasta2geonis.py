@@ -4,11 +4,9 @@ Testing script for pasta2geonis that runs outside of ArcCatalog.
 
 (c) Jack Peterson (jack@tinybike.net), 6/29/2013
 """
-import os, sys
-import arcpy
-from arcpy import Parameter
+import os
+import sys
 import lno_geonis_wf
-from geonis_pyconfig import envSettingsPath, scratchWS
 import pdb
 from pprint import pprint
 
@@ -21,6 +19,8 @@ staging_server = True if len(sys.argv) > 1 and sys.argv[1] == 'pasta-s' else Fal
 cleanup = True
 Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
 valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
+
+pprint(sys.argv)
 
 # Refresh map service only
 if len(sys.argv) > 4 and sys.argv[4] == 'refresh-map-service':
@@ -52,7 +52,7 @@ if run_setup.lower() != 'n':
     params[1].value = logfile
     params[2].value = testing_workflow
     params[3].value = staging_server
-    params[4].value = [[tool.scope, tool.id]] # this doesn't work; set value manually instead
+    params[4].value = [[tool.scope, tool.id]]  # this doesn't work; set value manually instead
     params[5].value = cleanup
     tool.execute(params, [])
     print "Setup complete."
@@ -128,7 +128,7 @@ if run_model.lower() != 'n':
     params[1].value = logfile
     params[2].value = input_dirs
     tool.execute(params, [])
-    
+
     # RefreshMapService
     print "************"
     RMS = lno_geonis_wf.RefreshMapService()
