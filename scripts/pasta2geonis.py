@@ -22,8 +22,8 @@ valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
 try:
     opts, args = getopt.getopt(
         sys.argv[1:],
-        'hp:s:i:SMR',
-        ['run-setup', 'run-model', 'refresh-map-service']
+        'hp:s:i:SMRO',
+        ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only']
     )
 except getopt.GetoptError:
     print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
@@ -35,7 +35,7 @@ if '-p' not in opts or '-s' not in opts or '-i' not in opts:
     print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
     sys.exit(2)
 
-run_setup_arg, run_model_arg, rfm_only_arg = False, False, False
+run_setup_arg, run_model_arg, rfm_only_arg, rso_arg = False, False, False, False
 for opt, arg in opts:
     if opt == '-h':
         print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
@@ -52,6 +52,8 @@ for opt, arg in opts:
         run_model_arg = True
     elif opt in ('-R', '--refresh-map-service'):
         rfm_only_arg = True
+    elif opt in ('-O', '--run-setup-only'):
+        rso_arg = True
     else:
         print "Error: command line parameter", opt, "not recognized."
         print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
@@ -65,8 +67,8 @@ if rfm_only_arg:
     paramsRMS = RMS.getParameterInfo()
     paramsRMS[0].value = True
     paramsRMS[1].value = logfile
-    if len(sys.argv) > 2 and sys.argv[2] != '*' and sys.argv[2] != 'all':
-        RMS.calledFromScript = sys.argv[2]
+    if site_code != '*' and data_id != 'all':
+        RMS.calledFromScript = site_code
     #RMS.sendReport = True
     RMS.execute(paramsRMS, [])
     sys.exit("Refreshed map services, exiting.")
@@ -78,8 +80,8 @@ if run_setup.lower() != 'n':
     tool = lno_geonis_wf.Setup()
     tool._isRunningAsTool = False
     tool.setScopeIdManually = True
-    tool.scope = sys.argv[2]
-    tool.id = sys.argv[3]
+    tool.scope = site_code
+    tool.id = data_id
     params = tool.getParameterInfo()
     params[0].value = verbose
     params[1].value = logfile
@@ -89,7 +91,7 @@ if run_setup.lower() != 'n':
     params[5].value = cleanup
     tool.execute(params, [])
     print "Setup complete."
-    if len(sys.argv) > 4 and sys.argv[4] == 'run-setup-only':
+    if rso_arg:
         sys.exit()
 
 run_model = 'Y' if run_model_arg else raw_input("Run model? [Y/n] ")
@@ -168,7 +170,7 @@ if run_model.lower() != 'n':
     paramsRMS = RMS.getParameterInfo()
     paramsRMS[0].value = True
     paramsRMS[1].value = logfile
-    if len(sys.argv) > 2 and sys.argv[2] != '*' and sys.argv[2] != 'all':
-        RMS.calledFromScript = sys.argv[2]
+    if site_code != '*' and data_id != 'all':
+        RMS.calledFromScript = site_code
     #RMS.sendReport = True
     RMS.execute(paramsRMS, [])
