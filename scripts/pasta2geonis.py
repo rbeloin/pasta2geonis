@@ -11,9 +11,6 @@ import lno_geonis_wf
 
 
 def main(argv):
-
-    # Command line parameters: staging server, scope, id, setup, model
-    # e.g. python pasta2geonis.py pasta knz 230 run-setup run-model
     verbose = True
     logfile = "C:\\TEMP\\geonis_wf.log"
     testing_workflow = True
