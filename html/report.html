@@ -43,15 +43,6 @@ function createLinks(errReport) {
 function parseReport(rawReport) {
     splitPipe = rawReport.split('|');
     report = "<ul><li>" + splitPipe[0];
-    /*var validEnding = report.charAt(report.length-1) !== '.' && 
-        report.charAt(report.length-1) !== '!' && 
-        report.charAt(report.length-1) !== '?';
-    if (validEnding) {
-        while (report.charAt(report.length-1) == ' ') {
-            report = report.slice(0, -1);
-        }
-        report += '.';
-    }*/
     report += "</li>";
     return {
         'report': report.replace(/\n/g, '<br />'),
@@ -258,12 +249,6 @@ if (pid != "") {
                 serverInfo.baseURL + "'>" + serverInfo.server + 
                 " server</a> on " + biography['downloaded'].split(' ')[0] + " at " + 
                 biography['downloaded'].split(' ')[1].split('.')[0] + " MDT.</em>";
-            /*document.getElementById('workflow-info').innerHTML = "<hr />\
-                <em>Package " + packageLink + " was downloaded from the " + serverInfo.server + 
-                " server (<a href='https://" + serverInfo.baseURL + "'>" + serverInfo.baseURL + 
-                "</a>) on " + biography['downloaded'].split(' ')[0] + " at " + 
-                biography['downloaded'].split(' ')[1].split('.')[0] + " MDT.</em>";*/
-
         }
     }
     document.getElementById("report").innerHTML = "<p style='text-align: center;'>Data set not found.</p>"
