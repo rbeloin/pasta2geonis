@@ -8,6 +8,7 @@ import os
 import sys
 import getopt
 import lno_geonis_wf
+import pdb
 
 
 def parse_parameters(argv, parameters):
@@ -61,6 +62,7 @@ def parse_parameters(argv, parameters):
             print "Error: command line parameter", opt, "not recognized."
             print usage
             sys.exit(2)
+        pdb.set_trace()
         return parameters
 
 
