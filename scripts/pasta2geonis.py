@@ -6,9 +6,8 @@ Testing script for pasta2geonis that runs outside of ArcCatalog.
 """
 import os
 import sys
+import getopt
 import lno_geonis_wf
-import pdb
-from pprint import pprint
 
 # Command line parameters: staging server, scope, id, setup, model
 # e.g. python pasta2geonis.py pasta knz 230 run-setup run-model
@@ -20,12 +19,47 @@ cleanup = True
 Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
 valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
 
-pprint(sys.argv)
+try:
+    opts, args = getopt.getopt(
+        sys.argv[1:],
+        'hp:s:i:SMR',
+        ['run-setup', 'run-model', 'refresh-map-service']
+    )
+except getopt.GetoptError:
+    print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
+    sys.exit(2)
+
+if '-p' not in opts or '-s' not in opts or '-i' not in opts:
+    print ("Error: you must specify a pasta server name, "
+           "site code (or * for all), and ID (or * for all).")
+    print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
+    sys.exit(2)
+
+run_setup_arg, run_model_arg, rfm_only_arg = False, False, False
+for opt, arg in opts:
+    if opt == '-h':
+        print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
+        sys.exit()
+    elif opt == '-p':
+        pasta_server = arg
+    elif opt == '-s':
+        site_code = arg
+    elif opt == '-i':
+        data_id = arg
+    elif opt in ('-S', '--run-setup'):
+        run_setup_arg = True
+    elif opt in ('-M', '--run-model'):
+        run_model_arg = True
+    elif opt in ('-R', '--refresh-map-service'):
+        rfm_only_arg = True
+    else:
+        print "Error: command line parameter", opt, "not recognized."
+        print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
+        sys.exit(2)
 
 # Refresh map service only
-if len(sys.argv) > 4 and sys.argv[4] == 'refresh-map-service':
-    # RefreshMapService
-    print "************"
+if rfm_only_arg:
+    print "Refreshing map services only"
     RMS = lno_geonis_wf.RefreshMapService()
     RMS._isRunningAsTool = False
     paramsRMS = RMS.getParameterInfo()
@@ -38,8 +72,7 @@ if len(sys.argv) > 4 and sys.argv[4] == 'refresh-map-service':
     sys.exit("Refreshed map services, exiting.")
 
 # Setup
-run_setup = 'Y' if len(sys.argv) > 4 and sys.argv[4].startswith('run-setup') \
-    else raw_input("Run Setup? [Y/n] ")
+run_setup = 'Y' if run_setup_arg else raw_input("Run Setup? [Y/n] ")
 if run_setup.lower() != 'n':
     print "************"
     tool = lno_geonis_wf.Setup()
@@ -59,8 +92,7 @@ if run_setup.lower() != 'n':
     if len(sys.argv) > 4 and sys.argv[4] == 'run-setup-only':
         sys.exit()
 
-run_model = 'Y' if len(sys.argv) > 5 and sys.argv[5] == 'run-model' \
-    else raw_input("Run model? [Y/n] ")
+run_model = 'Y' if run_model_arg else raw_input("Run model? [Y/n] ")
 if run_model.lower() != 'n':
 
     # QueryPasta
