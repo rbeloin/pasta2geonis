@@ -101,7 +101,6 @@ class Setup(ArcpyTool):
             parameters[2].clearMessage()
             parameters[5].clearMessage()
 
-    #@errHandledWorkflowTask(taskName="Setup clean")
     def cleanUp(self, pkgArray):
         for p in pkgArray:
             self.logger.logMessage(DEBUG, p.values()[0])
@@ -112,17 +111,17 @@ class Setup(ArcpyTool):
         deleteFromGeonisLayer = "DELETE FROM geonis_layer WHERE packageid = %s"
         selectFromEntity = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
         deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
-   
+
         sitesAlreadyChecked = []
         with cursorContext(self.logger) as cur:
             for pkgset in pkgArray:
                 if not pkgset['inc']:
                     continue
-                pkg = pkgset['inc']               
-                
+                pkg = pkgset['inc']
+
                 site = pkg.split('-')[2].split('.')[0]
-                siteWF = site + getConfigValue('datasetscopesuffix')               
-                
+                siteWF = site + getConfigValue('datasetscopesuffix')
+
                 # Handle wildcard, e.g. knb-lter-knz.*
                 # Remove *, append %, then select ... where packageid like ...,
                 # 'knb-lter-knz.100%' or 'knb-lter-knz.%'
@@ -132,25 +131,25 @@ class Setup(ArcpyTool):
                     srch = pkg + '%'
                 cur.execute(selectFromPackage, (srch, ))
                 allPackages = [row[0] for row in cur.fetchall()]
-                             
+
                 for package in allPackages:
                     if site not in sitesAlreadyChecked:
                         sitesAlreadyChecked.append(site)
-                        
+
                         # Verify that the map service exists
                         self.logger.logMessage(INFO, "Checking for " + site + " map service")
                         mapServInfoString = getConfigValue('mapservinfo')
                         mapServInfoItems = mapServInfoString.split(';')
                         if len(mapServInfoItems) != 4:
                             self.logger.logMessage(
-                                WARN, 
+                                WARN,
                                 "Wrong number of items in map serv info: %s" % mapServInfoString
                             )
                             # maybe we have the name and folder
                             mapServInfoItems = [
-                                mapServInfoItems[0], 
-                                mapServInfoItems[1], 
-                                '', 
+                                mapServInfoItems[0],
+                                mapServInfoItems[1],
+                                '',
                                 '',
                             ]
                         mapServInfo = {
@@ -166,7 +165,7 @@ class Setup(ArcpyTool):
                         tries = 0
                         layerQueryURI = getConfigValue("layerqueryuri")
                         layersUrl = layerQueryURI % (
-                            self.serverInfo["service_folder"], 
+                            self.serverInfo["service_folder"],
                             self.serverInfo["service_name"]
                         )
                         layerInfoJson = urllib2.urlopen(layersUrl)
@@ -183,23 +182,26 @@ class Setup(ArcpyTool):
                             available = "error" not in layerInfo
                         if not available:
                             self.logger.logMessage(
-                                WARN, 
+                                WARN,
                                 "Could not connect to %s" % (layersUrl, )
                             )
-                        
+
                         # Stop map service
                         else:
                             pathToServiceDoc = getConfigValue("pathtomapdoc") + os.sep + "servicedefs"
                             self.logger.logMessage(
-                                INFO, 
+                                INFO,
                                 "Found map services %s" % pathToServiceDoc
                             )
                             with open(arcgiscred) as f:
                                 cred = eval(f.readline())
                             token = getToken(cred['username'], cred['password'])
                             if token:
-                                serviceStopURL = "/arcgis/admin/services/%s/%s.MapServer/stop" % (self.serverInfo["service_folder"],self.serverInfo["service_name"])
-                                self.logger.logMessage(DEBUG,"stopping %s" % (serviceStopURL,))
+                                serviceStopURL = "/arcgis/admin/services/%s/%s.MapServer/stop" % (
+                                    self.serverInfo["service_folder"],
+                                    self.serverInfo["service_name"]
+                                )
+                                self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
                                 # This request only needs the token and the response formatting parameter
                                 params = urllib.urlencode({'token': token, 'f': 'json'})
                                 headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
@@ -212,7 +214,7 @@ class Setup(ArcpyTool):
                                 httpConn.close()
                             else:
                                 self.logger.logMessage(WARN, "Error while attempting to get admin token.")
-                    
+
                         # If this package exists in the map, (1) delete any layers already in the
                         # geonis_layer table from both the map and geonis_layer, and (2) clear
                         # any feature selections (map services will not publish with selected features)
@@ -221,7 +223,7 @@ class Setup(ArcpyTool):
                             mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
 
                             mxd = arcpy.mapping.MapDocument(mxdfile)
-                            
+
                             # First, clear selections
                             df = arcpy.mapping.ListDataFrames(mxd)[0]
                             for lyr in arcpy.mapping.ListLayers(mxd):
@@ -235,9 +237,9 @@ class Setup(ArcpyTool):
                             layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
                             mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
                             mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                            
+
                             cur.execute(selectFromGeonisLayer, (package, ))
-                            
+
                             if cur.rowcount:
                                 dbMapLayerList = [row[0] for row in cur.fetchall()]
 
@@ -247,21 +249,21 @@ class Setup(ArcpyTool):
                                         self.logger.logMessage(INFO, "Removing layer: " + layer)
                                         layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
                                         arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-                                        
+
                                 mxd.save()
 
                                 # Set layerid to -1 in geonis_layer to force mxd to appear in
                                 # view vw_stalemapservices
                                 cur.execute(
-                                    "UPDATE geonis_layer SET layerid = %s WHERE scope = %s", 
+                                    "UPDATE geonis_layer SET layerid = %s WHERE scope = %s",
                                     ('-1', site)
                                 )
-                                
+
                             del layersFrame, mxd
-                        
+
                     # Delete from geonis_layer table
                     cur.execute(deleteFromGeonisLayer, (package, ))
-                    
+
                     # Check entity table for package
                     cur.execute(selectFromEntity, (package, ))
                     layersInEntity = None
@@ -270,19 +272,19 @@ class Setup(ArcpyTool):
                         layersInEntity = [row[0] for row in result if row[0] is not None]
                         layersInEntity.extend([row[1] for row in result if row[1] is not None])
                         cur.execute(deleteFromEntity, (package, ))
-                        
+
                     # Drop tables from geodb
                     geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
                     if arcpy.Exists(geodbTable):
                         arcpy.Delete_management(geodbTable)
                         self.logger.logMessage(
-                            INFO, 
+                            INFO,
                             "Dropped " + geodbTable + " from geodatabase"
                         )
-                    
+
                     # Delete rows from the package table
                     cur.execute(deleteFromPackage, (package, ))
-                    
+
                     # Delete folders in the raster data folder
                     rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
                     if os.path.isdir(rasterFolder):
@@ -293,28 +295,28 @@ class Setup(ArcpyTool):
                                     if f.startswith(layer):
                                         rmtree(rasterFolder + os.sep + f)
                                         self.logger.logMessage(
-                                            INFO, 
+                                            INFO,
                                             "Removed %s" % rasterFolder + os.sep + f
                                         )
-                    
+
                     # Delete entries from raster mosaic datasets
                     mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWF
                     if arcpy.Exists(mosaicDataset) and layersInEntity is not None:
                         for layer in layersInEntity:
                             try:
                                 arcpy.RemoveRastersFromMosaicDataset_management(
-                                    mosaicDataset, 
+                                    mosaicDataset,
                                     "Name='%s'" % layer
                                 )
                                 self.logger.logMessage(
-                                    INFO, 
+                                    INFO,
                                     "Removed %s from raster mosaic %s" % (layer, mosaicDataset)
                                 )
                             except ExecuteError:
                                 pass
-                    
+
         # Now that we're done making changes, refresh the map services
-        #if available:
+        # if available:
         RMS = RefreshMapService()
         RMS._isRunningAsTool = False
         paramsRMS = RMS.getParameterInfo()
@@ -332,7 +334,7 @@ class Setup(ArcpyTool):
         testingMode = parameters[2].value
         staging = parameters[3].value
         # "$user" is required to be first schema to satisfy esri tools
-        if testingMode == True:
+        if testingMode is True:
             stmt1 = 'alter role geonis in database geonis set search_path = "$user",workflow_d,workflow,sde,public;'
             if staging:
                 stmt3 = "update workflow_d.wfconfig set strvalue = 'https://pasta-s.lternet.edu' where name = 'pastaurl';"
