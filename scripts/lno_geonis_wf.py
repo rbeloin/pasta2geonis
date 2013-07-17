@@ -101,7 +101,7 @@ class Setup(ArcpyTool):
             parameters[2].clearMessage()
             parameters[5].clearMessage()
 
-    @errHandledWorkflowTask(taskName="Setup clean")
+    #@errHandledWorkflowTask(taskName="Setup clean")
     def cleanUp(self, pkgArray):
         for p in pkgArray:
             self.logger.logMessage(DEBUG, p.values()[0])
