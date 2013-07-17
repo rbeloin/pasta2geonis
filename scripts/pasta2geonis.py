@@ -14,7 +14,7 @@ import lno_geonis_wf
 verbose = True
 logfile = "C:\\TEMP\\geonis_wf.log"
 testing_workflow = True
-staging_server = True if len(sys.argv) > 1 and sys.argv[1] == 'pasta-s' else False
+staging_server = True
 cleanup = True
 Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
 valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
@@ -41,7 +41,14 @@ for opt, arg in opts:
         print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
         sys.exit()
     elif opt == '-p':
-        pasta_server = arg
+        if arg.lower() == 'pasta':
+            staging_server = False
+        elif arg.lower() == 'pasta-s':
+            staging_server = True
+        else:
+            print "Error: pasta server", arg, "not recognized."
+            print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
+            sys.exit(2)
     elif opt == '-s':
         site_code = arg
     elif opt == '-i':
