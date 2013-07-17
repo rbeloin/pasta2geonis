@@ -1727,9 +1727,10 @@ class UpdateMXDs(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self):
-        noErrorsFound = "no errors found"
+        noErrorsFound = "No errors found."
         with cursorContext(self.logger) as cur:
             # May have to remove joins if tables get very large...
+            '''
             selectReports = (
                 "SELECT ep.*, g.title, g.sourceloc FROM ( "
                     "SELECT "
@@ -1745,6 +1746,17 @@ class UpdateMXDs(ArcpyTool):
                     "geonis_layer AS g "
                     "ON ep.id = g.id "
                 "ORDER BY ep.packageid"
+            )
+            '''
+            selectReports = (
+                "SELECT "
+                    "p.packageid, p.report, e.report, e.id, p.scope, p.identifier, p.revision, e.entityname, "
+                    "e.layername, p.downloaded, e.israster, e.isvector, e.mxd, e.status "
+                    "FROM package AS p "
+                "FULL JOIN "
+                    "entity AS e "
+                    "ON p.packageid = e.packageid "
+                "ORDER BY p.packageid"
             )
             cur.execute(selectReports)
             if cur.rowcount:
