@@ -1,4 +1,5 @@
 function getPID() {
+    var i, item;
     var searchStr = window.location.search;
     if (searchStr.length > 1) {
         searchStr = searchStr.substring(1);
@@ -7,8 +8,8 @@ function getPID() {
        return "";
     }
     searchItems = searchStr.split('&');
-    for(var i = 0; i < searchItems.length; i++) {
-        var item = searchItems[i].split('=');
+    for(i = 0; i < searchItems.length; i++) {
+        item = searchItems[i].split('=');
         if (item[0] == "packageid") {
             return item[1];
         }
@@ -17,8 +18,9 @@ function getPID() {
 }
 
 function createLinks(errReport) {
+    var regex;
     if (typeof errReport !== 'undefined') {
-        var regex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+        regex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
         return errReport.replace(regex, "<a href='$1'>$1</a>");
     }
     else {
@@ -32,7 +34,7 @@ function createLinks(errReport) {
  * error report | JSON string containing various package + entity information
  */
 function parseReport(rawReport) {
-    splitPipe = rawReport.split('|');
+    var splitPipe = rawReport.split('|');
     report = "<ul><li>" + splitPipe[0];
     report += "</li>";
     return {
@@ -46,17 +48,15 @@ function parseReport(rawReport) {
  * active error report if found.
  */
 function checkTables(biography, report) {
-    report = (biography['entityname'] === null) ? 
+    return (biography['entityname'] === null) ?
         checkPackage(biography, report) : checkEntity(biography, report);
-    return report;
 }
 
 /**
  * Check for report entries in the entity table, and append them to its error report.
  */
 function checkPackage(biography, report) {
-    report = "<span class='entity-name'>Package report</span>" + report;
-    return report;
+    return "<span class='entity-name'>Package report</span>" + report;
 }
 
 /**
@@ -80,11 +80,11 @@ function checkEntity(biography, report) {
  * (pasta-s.lternet.edu) or live (pasta.lternet.edu) server.
  */
 function generateBanner(biography) {
+    var serverInfo;
     if (biography['scope'] !== 'undefined') {
         document.getElementById("pid").innerHTML = biography['scope'].toUpperCase() +
             " " + biography['identifier'] + ", revision " + biography['revision'];
     }
-    var serverInfo;
     if (biography['pasta'].indexOf('pasta-s') !== -1) {
         serverInfo = {
             'server': 'staging',
@@ -104,11 +104,12 @@ function generateBanner(biography) {
  * Appends HTML to a div.
  */
 function insertReport(report, reportDiv, isFirstReport) {
+    var nextReport;
     if (isFirstReport) {
         document.getElementById(reportDiv).innerHTML = report;
     }
     else {
-        var nextReport = document.createElement('div');
+        nextReport = document.createElement('div');
         nextReport.innerHTML = report;
         while (nextReport.firstChild) {
             document.getElementById(reportDiv).appendChild(nextReport.firstChild);
@@ -130,9 +131,10 @@ Array.prototype.getUnique = function () {
 
 Array.prototype.sortNumeric = function () {
     var tempArr = [], n;
-    for (var i in this) {
+    var i, j;
+    for (i in this) {
         tempArr[i] = this[i].toString().match(/([^0-9]+)|([0-9]+)/g);
-        for (var j in tempArr[i]) {
+        for (j in tempArr[i]) {
             if (!isNaN(n = parseInt(tempArr[i][j]))){
                 tempArr[i][j] = n;
             }
@@ -149,7 +151,7 @@ Array.prototype.sortNumeric = function () {
         }
         return 0;
     });
-    for (var i in tempArr) {
+    for (i in tempArr) {
         this[i] = tempArr[i].join('');
     }
     return this;
