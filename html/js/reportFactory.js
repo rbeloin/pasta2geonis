@@ -1,10 +1,11 @@
+var reportUrl, requestObj, siteCode, otherReportUrl, otherRequestObj;
 var pid = getPID();
 if (pid !== "") {
     document.getElementById("pid").innerHTML = pid;
-    var reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+    reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
         "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
         "%27&returnGeometry=true&outFields=report&f=pjson";
-    var requestObj = new XMLHttpRequest();
+    requestObj = new XMLHttpRequest();
     requestObj.onreadystatechange = function() {
         var i, responseJson, response, replaceBanner, serverInfo, report, biography, packageLink;
         if (requestObj.readyState == 4 && (requestObj.status == 200 || requestObj.status == 304)) {
@@ -49,11 +50,11 @@ if (pid !== "") {
     requestObj.send();
 
     // Other data sets from the same site
-    var siteCode = pid.split('.')[0];
-    var otherReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+    siteCode = pid.split('.')[0];
+    otherReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
         "Search/MapServer/2/query?where=packageid+like+%27" + siteCode +
         "%%27&returnGeometry=true&f=pjson";
-    var otherRequestObj = new XMLHttpRequest();
+    otherRequestObj = new XMLHttpRequest();
     otherRequestObj.onreadystatechange = function() {
         var i, responseJson, response, sitePackageArray, sitePackages;
         if (otherRequestObj.readyState == 4 && (otherRequestObj.status == 200 || otherRequestObj.status == 304)) {
