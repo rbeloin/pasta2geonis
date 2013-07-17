@@ -1400,6 +1400,7 @@ class LoadVectorTypes(ArcpyTool):
                 status = "Load with metadata complete"
             except Exception as err:
                 status = "Failed after %s with %s" % (status, err.message)
+                pdb.set_trace()
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
                 if emldata and pkgId and entityName:
                     contact = emldata["contact"]
@@ -1659,7 +1660,6 @@ class UpdateMXDs(ArcpyTool):
             if rows:
                 store, status = rows[0]
             else:
-                pdb.set_trace()
                 raise Exception("Record not in entity table")
         # TODO: this is not robust, can pick up status from tool that skips it
         #if "complete" not in status:
