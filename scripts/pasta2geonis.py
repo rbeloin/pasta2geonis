@@ -23,6 +23,7 @@ def parse_parameters(argv, parameters):
     except getopt.GetoptError:
         print usage
         sys.exit(2)
+    pdb.set_trace()
     optlist = [j[0] for j in opts]
     if '-s' not in optlist or '-i' not in optlist:
         print "Error: you must specify a site code (or * for all) and ID (or * for all)."
@@ -31,8 +32,8 @@ def parse_parameters(argv, parameters):
     if '-p' not in optlist:
         print "Warning: no pasta server specified, defaulting to pasta-s.lternet.edu"
         parameters['staging_server'] = True
-    for j in ('run_setup_arg', 'run_model_arg', 'rfm_only_arg', 'rso_arg'):
-        parameters[j] = False
+    for key in ('run_setup_arg', 'run_model_arg', 'rfm_only_arg', 'rso_arg'):
+        parameters[key] = False
     for opt, arg in opts:
         if opt == '-h':
             print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
@@ -62,7 +63,6 @@ def parse_parameters(argv, parameters):
             print "Error: command line parameter", opt, "not recognized."
             print usage
             sys.exit(2)
-        pdb.set_trace()
         return parameters
 
 
