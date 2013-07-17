@@ -14,7 +14,6 @@ import lno_geonis_wf
 verbose = True
 logfile = "C:\\TEMP\\geonis_wf.log"
 testing_workflow = True
-staging_server = True
 cleanup = True
 Directory_of_Packages = "C:\\TEMP\\pasta_pkg_test"
 valid_pkg_test = "C:\\TEMP\\valid_pkg_test"
@@ -33,11 +32,13 @@ except getopt.GetoptError:
     sys.exit(2)
 
 optlist = [j[0] for j in opts]
-if '-p' not in optlist or '-s' not in optlist or '-i' not in optlist:
-    print ("Error: you must specify a pasta server name, "
-           "site code (or * for all), and ID (or * for all).")
+if '-s' not in optlist or '-i' not in optlist:
+    print "Error: you must specify a site code (or * for all) and ID (or * for all)."
     print usage
     sys.exit(2)
+if '-p' not in optlist:
+    print "Warning: no pasta server specified, defaulting to pasta-s.lternet.edu"
+    staging_server = True
 
 run_setup_arg, run_model_arg, rfm_only_arg, rso_arg = False, False, False, False
 for opt, arg in opts:
