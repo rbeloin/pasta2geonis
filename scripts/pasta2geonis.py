@@ -23,7 +23,6 @@ def parse_parameters(argv, parameters):
     except getopt.GetoptError:
         print usage
         sys.exit(2)
-    pdb.set_trace()
     optlist = [j[0] for j in opts]
     if '-s' not in optlist or '-i' not in optlist:
         print "Error: you must specify a site code (or * for all) and ID (or * for all)."
