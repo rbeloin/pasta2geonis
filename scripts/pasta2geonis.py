@@ -46,9 +46,9 @@ def parse_parameters(argv, parameters):
                 print usage
                 sys.exit(2)
         elif opt == '-s':
-            parameters['site_code'] = arg
+            parameters['site'] = arg
         elif opt == '-i':
-            parameters['data_id'] = arg
+            parameters['id'] = arg
         elif opt in ('-S', '--run-setup'):
             parameters['run_setup_arg'] = True
         elif opt in ('-M', '--run-model'):
