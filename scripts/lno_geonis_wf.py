@@ -101,7 +101,6 @@ class Setup(ArcpyTool):
             parameters[2].clearMessage()
             parameters[5].clearMessage()
 
-    #@errHandledWorkflowTask(taskName="Setup clean")
     def cleanUp(self, pkgArray):
         for p in pkgArray:
             self.logger.logMessage(DEBUG, p.values()[0])
@@ -112,17 +111,17 @@ class Setup(ArcpyTool):
         deleteFromGeonisLayer = "DELETE FROM geonis_layer WHERE packageid = %s"
         selectFromEntity = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
         deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
-   
+
         sitesAlreadyChecked = []
         with cursorContext(self.logger) as cur:
             for pkgset in pkgArray:
                 if not pkgset['inc']:
                     continue
-                pkg = pkgset['inc']               
-                
+                pkg = pkgset['inc']
+
                 site = pkg.split('-')[2].split('.')[0]
-                siteWF = site + getConfigValue('datasetscopesuffix')               
-                
+                siteWF = site + getConfigValue('datasetscopesuffix')
+
                 # Handle wildcard, e.g. knb-lter-knz.*
                 # Remove *, append %, then select ... where packageid like ...,
                 # 'knb-lter-knz.100%' or 'knb-lter-knz.%'
@@ -132,25 +131,25 @@ class Setup(ArcpyTool):
                     srch = pkg + '%'
                 cur.execute(selectFromPackage, (srch, ))
                 allPackages = [row[0] for row in cur.fetchall()]
-                             
+
                 for package in allPackages:
                     if site not in sitesAlreadyChecked:
                         sitesAlreadyChecked.append(site)
-                        
+
                         # Verify that the map service exists
                         self.logger.logMessage(INFO, "Checking for " + site + " map service")
                         mapServInfoString = getConfigValue('mapservinfo')
                         mapServInfoItems = mapServInfoString.split(';')
                         if len(mapServInfoItems) != 4:
                             self.logger.logMessage(
-                                WARN, 
+                                WARN,
                                 "Wrong number of items in map serv info: %s" % mapServInfoString
                             )
                             # maybe we have the name and folder
                             mapServInfoItems = [
-                                mapServInfoItems[0], 
-                                mapServInfoItems[1], 
-                                '', 
+                                mapServInfoItems[0],
+                                mapServInfoItems[1],
+                                '',
                                 '',
                             ]
                         mapServInfo = {
@@ -166,7 +165,7 @@ class Setup(ArcpyTool):
                         tries = 0
                         layerQueryURI = getConfigValue("layerqueryuri")
                         layersUrl = layerQueryURI % (
-                            self.serverInfo["service_folder"], 
+                            self.serverInfo["service_folder"],
                             self.serverInfo["service_name"]
                         )
                         layerInfoJson = urllib2.urlopen(layersUrl)
@@ -183,23 +182,26 @@ class Setup(ArcpyTool):
                             available = "error" not in layerInfo
                         if not available:
                             self.logger.logMessage(
-                                WARN, 
+                                WARN,
                                 "Could not connect to %s" % (layersUrl, )
                             )
-                        
+
                         # Stop map service
                         else:
                             pathToServiceDoc = getConfigValue("pathtomapdoc") + os.sep + "servicedefs"
                             self.logger.logMessage(
-                                INFO, 
+                                INFO,
                                 "Found map services %s" % pathToServiceDoc
                             )
                             with open(arcgiscred) as f:
                                 cred = eval(f.readline())
                             token = getToken(cred['username'], cred['password'])
                             if token:
-                                serviceStopURL = "/arcgis/admin/services/%s/%s.MapServer/stop" % (self.serverInfo["service_folder"],self.serverInfo["service_name"])
-                                self.logger.logMessage(DEBUG,"stopping %s" % (serviceStopURL,))
+                                serviceStopURL = "/arcgis/admin/services/%s/%s.MapServer/stop" % (
+                                    self.serverInfo["service_folder"],
+                                    self.serverInfo["service_name"]
+                                )
+                                self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
                                 # This request only needs the token and the response formatting parameter
                                 params = urllib.urlencode({'token': token, 'f': 'json'})
                                 headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
@@ -212,32 +214,59 @@ class Setup(ArcpyTool):
                                 httpConn.close()
                             else:
                                 self.logger.logMessage(WARN, "Error while attempting to get admin token.")
-                    
+
                         # If this package exists in the map, (1) delete any layers already in the
                         # geonis_layer table from both the map and geonis_layer, and (2) clear
                         # any feature selections (map services will not publish with selected features)
                         if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
                             self.logger.logMessage(INFO, "Found " + site + ".mxd")
                             mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
-
                             mxd = arcpy.mapping.MapDocument(mxdfile)
-                            
+
                             # First, clear selections
+                            self.logger.logMessage(INFO, "Clearing selections from " + site + ".mxd")
                             df = arcpy.mapping.ListDataFrames(mxd)[0]
                             for lyr in arcpy.mapping.ListLayers(mxd):
-                                self.logger.logMessage(INFO, "Clear selection: " + lyr.name)
+                                #self.logger.logMessage(INFO, "Clear selection: " + lyr.name)
                                 arcpy.SelectLayerByAttribute_management(lyr, 'CLEAR_SELECTION')
                             for aTable in arcpy.mapping.ListTableViews(mxd):
-                                self.logger.logMessage(INFO, "Clear selection: " + aTable.name)
+                                #self.logger.logMessage(INFO, "Clear selection: " + aTable.name)
                                 arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
+
+                            if self.flush:
+                                self.logger.logMessage(WARN, "Flushing data for " + site)
+                                
+                                # First clear the map
+                                self.logger.logMessage(INFO, "Clearing layers from map")
+                                layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                                mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                                mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                                for layer in mapLayerList:
+                                    self.logger.logMessage(INFO, "Removing layer: " + layer)
+                                    layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                                    arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                                mxd.save()
+                                del layersFrame, mxd
+
+                                # Drop all matching rows from the workflow tables
+                                self.logger.logMessage(INFO, "Clearing database tables")
+                                cur.execute("DELETE FROM geonis_layer WHERE packageid LIKE %s", (srch, ))
+                                self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from geonis_layer")
+                                cur.execute("DELETE FROM entity WHERE packageid LIKE %s", (srch, ))
+                                self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from entity")
+                                cur.execute("DELETE FROM package WHERE packageid LIKE %s", (srch, ))
+                                self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from package")
+
+                                self.flush = True
+                                return
 
                             # Now clear layers
                             layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
                             mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
                             mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                            
+
                             cur.execute(selectFromGeonisLayer, (package, ))
-                            
+
                             if cur.rowcount:
                                 dbMapLayerList = [row[0] for row in cur.fetchall()]
 
@@ -247,21 +276,21 @@ class Setup(ArcpyTool):
                                         self.logger.logMessage(INFO, "Removing layer: " + layer)
                                         layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
                                         arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-                                        
+
                                 mxd.save()
 
                                 # Set layerid to -1 in geonis_layer to force mxd to appear in
                                 # view vw_stalemapservices
                                 cur.execute(
-                                    "UPDATE geonis_layer SET layerid = %s WHERE scope = %s", 
+                                    "UPDATE geonis_layer SET layerid = %s WHERE scope = %s",
                                     ('-1', site)
                                 )
-                                
+
                             del layersFrame, mxd
-                        
+
                     # Delete from geonis_layer table
                     cur.execute(deleteFromGeonisLayer, (package, ))
-                    
+
                     # Check entity table for package
                     cur.execute(selectFromEntity, (package, ))
                     layersInEntity = None
@@ -270,19 +299,19 @@ class Setup(ArcpyTool):
                         layersInEntity = [row[0] for row in result if row[0] is not None]
                         layersInEntity.extend([row[1] for row in result if row[1] is not None])
                         cur.execute(deleteFromEntity, (package, ))
-                        
+
                     # Drop tables from geodb
                     geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
                     if arcpy.Exists(geodbTable):
                         arcpy.Delete_management(geodbTable)
                         self.logger.logMessage(
-                            INFO, 
+                            INFO,
                             "Dropped " + geodbTable + " from geodatabase"
                         )
-                    
+
                     # Delete rows from the package table
                     cur.execute(deleteFromPackage, (package, ))
-                    
+
                     # Delete folders in the raster data folder
                     rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
                     if os.path.isdir(rasterFolder):
@@ -293,34 +322,33 @@ class Setup(ArcpyTool):
                                     if f.startswith(layer):
                                         rmtree(rasterFolder + os.sep + f)
                                         self.logger.logMessage(
-                                            INFO, 
+                                            INFO,
                                             "Removed %s" % rasterFolder + os.sep + f
                                         )
-                    
+
                     # Delete entries from raster mosaic datasets
                     mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWF
                     if arcpy.Exists(mosaicDataset) and layersInEntity is not None:
                         for layer in layersInEntity:
                             try:
                                 arcpy.RemoveRastersFromMosaicDataset_management(
-                                    mosaicDataset, 
+                                    mosaicDataset,
                                     "Name='%s'" % layer
                                 )
                                 self.logger.logMessage(
-                                    INFO, 
+                                    INFO,
                                     "Removed %s from raster mosaic %s" % (layer, mosaicDataset)
                                 )
                             except ExecuteError:
                                 pass
-                    
+
         # Now that we're done making changes, refresh the map services
-        #if available:
+        # if available:
         RMS = RefreshMapService()
         RMS._isRunningAsTool = False
         paramsRMS = RMS.getParameterInfo()
         paramsRMS[0].value = True
         paramsRMS[1].value = self.logfile
-        #    RMS.calledFromScript = site
         RMS.execute(paramsRMS, [])
         del RMS
 
@@ -332,7 +360,7 @@ class Setup(ArcpyTool):
         testingMode = parameters[2].value
         staging = parameters[3].value
         # "$user" is required to be first schema to satisfy esri tools
-        if testingMode == True:
+        if testingMode is True:
             stmt1 = 'alter role geonis in database geonis set search_path = "$user",workflow_d,workflow,sde,public;'
             if staging:
                 stmt3 = "update workflow_d.wfconfig set strvalue = 'https://pasta-s.lternet.edu' where name = 'pastaurl';"
@@ -350,10 +378,10 @@ class Setup(ArcpyTool):
         limitsParam = self.getParamAsText(parameters,4)
         if limitsParam and limitsParam != '' and limitsParam != '#':
             valsArr = []
-# Insert scope and ID values manually for testing
+            # Insert scope and ID values manually for testing
             if hasattr(self, 'setScopeIdManually') and self.setScopeIdManually:
-                
-                # "all" or "*" command-line argument means to find all 
+
+                # "all" or "*" command-line argument means to find all
                 # packages on pasta or pasta-s server
                 # (limit to all packages beginning with "knb-lter-")
                 if self.scope == 'all' or self.scope == '*':
@@ -362,10 +390,10 @@ class Setup(ArcpyTool):
                     ).read().split('\n') if s.startswith('knb-lter-')]
                 else:
                     scopeList = [self.scope]
-                
+
                 # Get ids for every site
                 for s in scopeList:
-                
+
                     # "all" or "*" command-line argument means find all entities within
                     # selected packages
                     if self.id == 'all' or self.id == '*':
@@ -374,7 +402,7 @@ class Setup(ArcpyTool):
                         ).read().split('\n')
                         for id in idList:
                             valsArr.append({'inc': 'knb-lter-' + s + '.' + id})
-                    
+
                     # A hyphen in the id argument indicates a range of values
                     elif '-' in self.id:
                         idList = urllib2.urlopen(
@@ -384,7 +412,7 @@ class Setup(ArcpyTool):
                         for j in xrange(idRange[0], idRange[1]+1):
                             if str(j) in idList:
                                 valsArr.append({'inc': 'knb-lter-' + s + '.' + str(j)})
-                            
+
                     # Otherwise, only look up a single id
                     else:
                         valsArr.append({'inc': 'knb-lter-' + s + '.' + str(self.id)})
@@ -404,7 +432,7 @@ class Setup(ArcpyTool):
                         rng = ids.split('-')
                         low = int(rng[0].strip())
                         hi = int(rng[1].strip()) + 1
-                        for i in range(low,hi):
+                        for i in range(low, hi):
                             idlist.append(str(i))
                     elif '#' in ids or ids == '':
                         idlist.append('*')
@@ -412,8 +440,8 @@ class Setup(ArcpyTool):
                         if ids.isdigit():
                             idlist.append(ids)
                     for idn in idlist:
-                        valsArr.append({'inc':'%s.%s' % (scope,idn)})
-                    
+                        valsArr.append({'inc': '%s.%s' % (scope, idn)})
+
             valsTuple = tuple(valsArr)
             with cursorContext() as cur:
                 stmt3 = "insert into limit_identifier values(%(inc)s);"
@@ -1340,7 +1368,6 @@ class LoadVectorTypes(ArcpyTool):
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (scope_data, pkid, entityName))
 
-
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
         for dir in self.inputDirs:
@@ -1368,12 +1395,12 @@ class LoadVectorTypes(ArcpyTool):
                     # loadShapefile() fails as a workaround...
                     try:
                         loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName, datafilePath)
-                    except Exception as err: 
+                    except Exception as err:
                         if err[0].find('ERROR 999999') != -1:
                             loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName + '_d', datafilePath)
                             self.logger.logMessage(
-                                WARN, 
-                                "Added extra _d suffix in geodatabase due to " \
+                                WARN,
+                                "Added extra _d suffix in geodatabase due to "
                                 + fullObjectName + " returning an error."
                             )
 
@@ -1402,7 +1429,7 @@ class LoadVectorTypes(ArcpyTool):
                 if emldata and pkgId and entityName:
                     contact = emldata["contact"]
                     with cursorContext(self.logger) as cur:
-                        cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, contact, err.message ))
+                        cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, contact, err.message))
             finally:
                 #write status msg to db table
                 if pkgId and entityName:
@@ -1411,6 +1438,7 @@ class LoadVectorTypes(ArcpyTool):
                         cur.execute(stmt, (status[:499], pkgId, entityName))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
+
 
 ## *****************************************************************************
 class LoadRasterTypes(ArcpyTool):
@@ -1915,7 +1943,7 @@ class RefreshMapService(ArcpyTool):
         sdFile = pathToServiceDoc + os.sep + self.serverInfo['service_name'] + ".sd"
         if os.path.exists(sdFile):
             os.remove(sdFile)
-        
+
         # Check for ERROR 001272: Analyzer errors were encountered (codes = 3, 3, 3, ...),
         # which in ArcCatalog is reported as "the base table definition string is invalid"
         # May be caused when map layers do not correspond to db entries.
@@ -1929,7 +1957,7 @@ class RefreshMapService(ArcpyTool):
                 # Only drop layers listed in entity table so we don't remove the base layer
                 with cursorContext(self.logger) as cur:
                     cur.execute(
-                        "SELECT layername FROM entity WHERE packageid LIKE %s", 
+                        "SELECT layername FROM entity WHERE packageid LIKE %s",
                         ('%' + mxdname.split('.')[0] + '%', )
                     )
                     entityLayerList = [row[0] for row in cur.fetchall() if row[0] is not None]
@@ -1948,10 +1976,29 @@ class RefreshMapService(ArcpyTool):
                 mxd.save()
                 del layersFrame
 
+                # Now clear the layers out of the entity and geonis_layer tables so they match
+                with cursorContext(self.logger) as cur:
+                    cur.execute(
+                        "DELETE FROM geonis_layer WHERE packageid LIKE %s",
+                        ('%' + mxdname.split('.')[0] + '%', )
+                    )
+                    self.logger.logMessage(
+                        INFO,
+                        str(cur.rowcount) + " rows deleted from geonis_layer"
+                    )
+                    cur.execute(
+                        "DELETE FROM entity WHERE packageid LIKE %s",
+                        ('%' + mxdname.split('.')[0] + '%', )
+                    )
+                    self.logger.logMessage(
+                        INFO,
+                        str(cur.rowcount) + " rows deleted from entity"
+                    )
+
             # Try to stage the service again
-            arcpy.StageService_server(sdDraft)                
-        
-        # by default, writes SD file to same loc as draft, then DELETES DRAFT        
+            arcpy.StageService_server(sdDraft)
+
+        # by default, writes SD file to same loc as draft, then DELETES DRAFT
         if os.path.exists(sdFile):
             arcpy.UploadServiceDefinition_server(in_sd_file = sdFile, in_server = pubConnection, in_startupType = 'STARTED')
         else:
@@ -2022,7 +2069,6 @@ class RefreshMapService(ArcpyTool):
                 #bypass for testing, ignore contact
                 sendEmail(group, composeMessage(pkgid))
 
-
     def execute(self, parameters, messages):
         super(RefreshMapService, self).execute(parameters, messages)
         mapServInfoString = getConfigValue("mapservinfo")
@@ -2034,22 +2080,24 @@ class RefreshMapService(ArcpyTool):
         mapServInfo = {'service_name':mapServInfoItems[0], 'service_folder':mapServInfoItems[1], 'tags':mapServInfoItems[2], 'summary':mapServInfoItems[3]}
         self.serverInfo = copy.copy(mapServInfo)
         try:
-            
+
             # If execute has been called programatically, then only
             # refresh the specified services
-            if hasattr(self, 'calledFromScript'):
-                mxds = [self.calledFromScript + '.mxd']
-                
-            # Otherwise, get list of map services where entity record 
+            #if hasattr(self, 'calledFromScript'):
+            #    mxds = [self.calledFromScript + '.mxd']
+
+            # Otherwise, get list of map services where entity record
             # exists, is OK, has mxd, but not in geonis_layer
-            else:
-                stmt = "SELECT * FROM vw_stalemapservices;"
-                with cursorContext(self.logger) as cur:
-                    cur.execute(stmt)
-                    rows = cur.fetchall()
-                    mxds = [cols[0] for cols in rows]
-                del rows
-                            
+            #else:
+            stmt = "SELECT * FROM vw_stalemapservices;"
+            with cursorContext(self.logger) as cur:
+                cur.execute(stmt)
+                rows = cur.fetchall()
+                mxds = [cols[0] for cols in rows]
+            if hasattr(self, 'calledFromScript'):
+                mxds.extend([s + '.mxd' for s in self.calledFromScript])
+            del rows
+
             if not mxds:
                 self.logger.logMessage(INFO, "No new vector data added to any maps.")
                 #return
@@ -2065,7 +2113,6 @@ class RefreshMapService(ArcpyTool):
                 self.sendEmailReport()
         except Exception as err:
             self.logger.logMessage(ERROR, err.message)
-
 
 
 ## *****************************************************************************
