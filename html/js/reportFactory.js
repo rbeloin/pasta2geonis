@@ -2,6 +2,7 @@ var reportUrl, requestObj, siteCode, otherReportUrl, otherRequestObj;
 var pid = getPID();
 if (pid !== "") {
     document.getElementById("pid").innerHTML = pid;
+    // There are multiple entities w/ the same packageid!!
     reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
         "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
         "%27&returnGeometry=true&outFields=report&f=pjson";

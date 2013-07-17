@@ -68,7 +68,7 @@ function checkEntity(biography, report) {
         "<a href='" + biography['service'].split('/').slice(0, -1).join('/') + "'>" +
             biography['entityname'] + " is available as a map service.</a>";
     var spatialType = (biography['israster'] === 't') ? "raster" : "vector";
-    report = "<span class='entity-name'>" + biography['entityname'] + "</span>" +
+    report = "<span class='entity-name'>" + biography['entityname'] + "</span> " +
         "(" + spatialType + ")" + report +
         "<li>" + mapService + "</li>";
     return report;
