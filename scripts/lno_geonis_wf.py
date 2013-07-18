@@ -322,7 +322,6 @@ class Setup(ArcpyTool):
         paramsRMS = RMS.getParameterInfo()
         paramsRMS[0].value = True
         paramsRMS[1].value = self.logfile
-        #    RMS.calledFromScript = site
         RMS.execute(paramsRMS, [])
         del RMS
 
@@ -1342,7 +1341,6 @@ class LoadVectorTypes(ArcpyTool):
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (scope_data, pkid, entityName))
 
-
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
         for dir in self.inputDirs:
@@ -1356,6 +1354,7 @@ class LoadVectorTypes(ArcpyTool):
                 entityName = emldata["entityName"]
                 objectName = emldata["objectName"]
                 siteId, n, m = siteFromId(pkgId)
+                pdb.set_trace()
                 #TODO: must add site and optionally '_d' to feature class name. Must be unique in geonis db
                 fullObjectName = objectName + '_' + siteId
                 if getConfigValue("schema").endswith("_d"):
@@ -1370,12 +1369,12 @@ class LoadVectorTypes(ArcpyTool):
                     # loadShapefile() fails as a workaround...
                     try:
                         loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName, datafilePath)
-                    except Exception as err: 
+                    except Exception as err:
                         if err[0].find('ERROR 999999') != -1:
                             loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName + '_d', datafilePath)
                             self.logger.logMessage(
-                                WARN, 
-                                "Added extra _d suffix in geodatabase due to " \
+                                WARN,
+                                "Added extra _d suffix in geodatabase due to "
                                 + fullObjectName + " returning an error."
                             )
 
@@ -1400,12 +1399,11 @@ class LoadVectorTypes(ArcpyTool):
                 status = "Load with metadata complete"
             except Exception as err:
                 status = "Failed after %s with %s" % (status, err.message)
-                pdb.set_trace()
                 self.logger.logMessage(WARN, "Exception loading %s. %s\n" % (datafilePath, err.message))
                 if emldata and pkgId and entityName:
                     contact = emldata["contact"]
                     with cursorContext(self.logger) as cur:
-                        cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, contact, err.message ))
+                        cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, contact, err.message))
             finally:
                 #write status msg to db table
                 if pkgId and entityName:
@@ -1414,6 +1412,7 @@ class LoadVectorTypes(ArcpyTool):
                         cur.execute(stmt, (status[:499], pkgId, entityName))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
+
 
 ## *****************************************************************************
 class LoadRasterTypes(ArcpyTool):
