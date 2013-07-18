@@ -26,6 +26,9 @@ def parse_parameters(argv, parameters):
         print usage
         sys.exit(2)
     optlist = [j[0] for j in opts]
+    if '-p' not in optlist:
+        print "Warning: no pasta server specified, defaulting to pasta-s.lternet.edu"
+        parameters['staging_server'] = True
     for opt, arg in opts:
         if opt == '-h':
             print usage
@@ -39,9 +42,6 @@ def parse_parameters(argv, parameters):
         print "Error: you must specify a site code (or * for all) and ID (or * for all)."
         print usage
         sys.exit(2)
-    if '-p' not in optlist:
-        print "Warning: no pasta server specified, defaulting to pasta-s.lternet.edu"
-        parameters['staging_server'] = True
     for key in ('run_setup_arg', 'run_model_arg', 'rfm_only_arg', 'rso_arg', 'flush'):
         parameters[key] = False
     for opt, arg in opts:
