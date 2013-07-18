@@ -68,10 +68,6 @@ def parse_parameters(argv, parameters):
             parameters['rfm_only_arg'] = True
         elif opt in ('-O', '--run-setup-only'):
             parameters['rso_arg'] = True
-        else:
-            print "Error: command line parameter", opt, "not recognized."
-            print usage
-            sys.exit(2)
     return parameters
 
 
