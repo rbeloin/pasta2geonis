@@ -1842,33 +1842,14 @@ class UpdateMXDs(ArcpyTool):
     def modifyErrorReport(self):
         noErrorsFound = "No errors found."
         with cursorContext(self.logger) as cur:
-            # May have to remove joins if tables get very large...
-            '''
             selectReports = (
-                "SELECT ep.*, g.title, g.sourceloc FROM ( "
-                    "SELECT "
-                        "p.packageid, p.report, e.report, e.id, p.scope, p.identifier, p.revision, e.entityname, "
-                        "e.layername, p.downloaded, e.israster, e.isvector, e.mxd, e.status "
-                        "FROM package AS p "
-                    "FULL JOIN "
-                        "entity AS e "
-                        "ON p.packageid = e.packageid "
-                    #"WHERE e.report IS NOT NULL OR p.report IS NOT NULL "
-                ") AS ep "
-                "LEFT OUTER JOIN "
-                    "geonis_layer AS g "
-                    "ON ep.id = g.id "
-                "ORDER BY ep.packageid"
-            )
-            '''
-            selectReports = (
-                "SELECT "
-                    "p.packageid, p.report, e.report, e.id, p.scope, p.identifier, p.revision, e.entityname, "
-                    "e.layername, p.downloaded, e.israster, e.isvector, e.mxd, e.status "
-                    "FROM package AS p "
+                "SELECT p.packageid, p.report, e.report, e.id, p.scope, "
+                "p.identifier, p.revision, e.entityname, e.layername, "
+                "p.downloaded, e.israster, e.isvector, e.mxd, e.status "
+                "FROM package AS p "
                 "FULL JOIN "
-                    "entity AS e "
-                    "ON p.packageid = e.packageid "
+                "entity AS e "
+                "ON p.packageid = e.packageid "
                 "ORDER BY p.packageid"
             )
             cur.execute(selectReports)
@@ -1876,6 +1857,8 @@ class UpdateMXDs(ArcpyTool):
                 results = cur.fetchall()
                 cols = [col.name for col in cur.description]
                 for row in results:
+                    # Make sure entity reports are not getting combined!
+                    pdb.set_trace()
                     biography = {
                         'pasta': getConfigValue('pastaurl'),
                         'workflow': getConfigValue('datasetscopesuffix'),
@@ -1893,13 +1876,13 @@ class UpdateMXDs(ArcpyTool):
                     # Update the entity and package tables
                     report = row[2] if row[2] is not None else noErrorsFound
                     cur.execute(
-                        "UPDATE entity SET report = %s WHERE id = %s", 
+                        "UPDATE entity SET report = %s WHERE id = %s",
                         (report + " | " + json.dumps(biography), row[3])
                     )
 
                     report = row[1] if row[1] is not None else noErrorsFound
                     cur.execute(
-                        "UPDATE package SET report = %s WHERE packageid = %s", 
+                        "UPDATE package SET report = %s WHERE packageid = %s",
                         (report + " | " + json.dumps(biography), row[0])
                     )
 

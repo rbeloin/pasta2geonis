@@ -8,7 +8,7 @@ $(document).ready(function () {
             "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
             "%27&returnGeometry=true&outFields=report&f=pjson";
         requestObj = new XMLHttpRequest();
-        requestObj.onreadystatechange = function() {
+        requestObj.onreadystatechange = function () {
             var i, responseJson, response, replaceBanner, serverInfo, report, biography, packageLink;
             if (requestObj.readyState == 4 && (requestObj.status == 200 || requestObj.status == 304)) {
                 responseJson = requestObj.responseText;
@@ -57,7 +57,7 @@ $(document).ready(function () {
             "Search/MapServer/2/query?where=packageid+like+%27" + siteCode +
             "%%27&returnGeometry=true&f=pjson";
         otherRequestObj = new XMLHttpRequest();
-        otherRequestObj.onreadystatechange = function() {
+        otherRequestObj.onreadystatechange = function () {
             var i, responseJson, response, sitePackageArray, sitePackages;
             if (otherRequestObj.readyState == 4 && (otherRequestObj.status == 200 || otherRequestObj.status == 304)) {
                 responseJson = otherRequestObj.responseText;
