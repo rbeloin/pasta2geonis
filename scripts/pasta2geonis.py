@@ -30,7 +30,6 @@ def parse_parameters(argv, parameters):
         print "Warning: no pasta server specified, defaulting to pasta-s.lternet.edu"
         parameters['staging_server'] = True
     else:
-        pdb.set_trace()
         for opt, arg in opts:
             if opt == '-p':
                 if arg.lower() == 'pasta':
