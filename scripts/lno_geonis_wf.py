@@ -138,18 +138,6 @@ class Setup(ArcpyTool):
                         self.logger.logMessage(INFO, "Skipping layer " + layer)
                 mxd.save()
                 del layersFrame
-                '''
-                self.logger.logMessage(INFO, "Clearing layers from map")
-                layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
-                mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
-                mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                for layer in mapLayerList:
-                    self.logger.logMessage(INFO, "Removing layer: " + layer)
-                    layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
-                    arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-                mxd.save()
-                del layersFrame, mxd
-                '''
 
             # Drop all matching rows from the workflow tables
             self.logger.logMessage(INFO, "Clearing database tables")
@@ -1397,7 +1385,6 @@ class LoadVectorTypes(ArcpyTool):
                 out_name=name
             )
         return geodatabase + os.sep + scope + os.sep + name
-
 
     @errHandledWorkflowTask(taskName="Load KML")
     def loadKml(self, scope, name, path):
