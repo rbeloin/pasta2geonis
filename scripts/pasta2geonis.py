@@ -219,6 +219,7 @@ def main(argv):
     # Run the model (if requested)
     run_model = 'Y' if parameters['run_model_arg'] else raw_input("Run model? [Y/n] ")
     if run_model.lower() != 'n':
+        query_pasta(parameters)
         unpack_packages(parameters)
         parameters = check_spatial_data(parameters)
         load_vector_types(parameters)
