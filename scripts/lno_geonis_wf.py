@@ -147,7 +147,7 @@ class Setup(ArcpyTool):
                         # Only drop layers listed in entity table so we don't remove the base layer
                         cur.execute(
                             "SELECT layername FROM entity WHERE packageid LIKE %s",
-                            ('%' + mxdname.split('.')[0] + '%', )
+                            (srch, )
                         )
                         entityLayerList = [row[0] for row in cur.fetchall() if row[0] is not None]
 
