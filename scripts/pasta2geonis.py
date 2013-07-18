@@ -32,6 +32,7 @@ def parse_parameters(argv, parameters):
             sys.exit()
         if opt in ('-f', '--flush'):
             parameters['flush'] = arg
+            parameters['site'] = arg
             return parameters
     if '-s' not in optlist or '-i' not in optlist:
         print "Error: you must specify a site code (or * for all) and ID (or * for all)."
