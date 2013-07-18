@@ -19,8 +19,8 @@ def parse_parameters(argv, parameters):
     try:
         opts, args = getopt(
             argv,
-            'hp:s:i:SMRO',
-            ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only']
+            'hp:s:i:SMROf:',
+            ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only', 'flush']
         )
     except GetoptError:
         print usage
@@ -33,12 +33,15 @@ def parse_parameters(argv, parameters):
     if '-p' not in optlist:
         print "Warning: no pasta server specified, defaulting to pasta-s.lternet.edu"
         parameters['staging_server'] = True
-    for key in ('run_setup_arg', 'run_model_arg', 'rfm_only_arg', 'rso_arg'):
+    for key in ('run_setup_arg', 'run_model_arg', 'rfm_only_arg', 'rso_arg', 'flush'):
         parameters[key] = False
     for opt, arg in opts:
         if opt == '-h':
             print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
             sys.exit()
+        elif opt in ('-f', '--flush'):
+            parameters['flush'] = arg
+            break
         elif opt == '-p':
             if arg.lower() == 'pasta':
                 parameters['staging_server'] = False
@@ -93,6 +96,7 @@ def setup(parameters):
     tool.setScopeIdManually = True
     tool.scope = parameters['site']
     tool.id = parameters['id']
+    tool.flush = parameters['flush']
     params = tool.getParameterInfo()
     params[0].value = parameters['verbose']
     params[1].value = parameters['logfile']
@@ -101,6 +105,8 @@ def setup(parameters):
     params[4].value = None
     params[5].value = parameters['cleanup']
     tool.execute(params, [])
+    if tool.flush is True:
+        sys.exit("Flush complete.")
     print "Setup complete."
 
 
@@ -189,6 +195,12 @@ def main(argv):
 
     # Parse command line parameters and add them to our dict
     parameters = parse_parameters(argv, parameters)
+
+    # Are we doing a flush?
+    if parameters['flush']:
+        print "Flushing data for", parameters['flush']
+        setup(parameters)
+        sys.exit('Flush complete.')
 
     # Refresh map service only
     if parameters['rfm_only_arg']:

@@ -221,17 +221,44 @@ class Setup(ArcpyTool):
                         if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
                             self.logger.logMessage(INFO, "Found " + site + ".mxd")
                             mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
-
                             mxd = arcpy.mapping.MapDocument(mxdfile)
 
                             # First, clear selections
+                            self.logger.logMessage(INFO, "Clearing selections from " + site + ".mxd")
                             df = arcpy.mapping.ListDataFrames(mxd)[0]
                             for lyr in arcpy.mapping.ListLayers(mxd):
-                                self.logger.logMessage(INFO, "Clear selection: " + lyr.name)
+                                #self.logger.logMessage(INFO, "Clear selection: " + lyr.name)
                                 arcpy.SelectLayerByAttribute_management(lyr, 'CLEAR_SELECTION')
                             for aTable in arcpy.mapping.ListTableViews(mxd):
-                                self.logger.logMessage(INFO, "Clear selection: " + aTable.name)
+                                #self.logger.logMessage(INFO, "Clear selection: " + aTable.name)
                                 arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
+
+                            if self.flush:
+                                self.logger.logMessage(WARN, "Flushing data for " + site)
+                                
+                                # First clear the map
+                                self.logger.logMessage(INFO, "Clearing layers from map")
+                                layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                                mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                                mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                                for layer in mapLayerList:
+                                    self.logger.logMessage(INFO, "Removing layer: " + layer)
+                                    layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                                    arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                                mxd.save()
+                                del layersFrame, mxd
+
+                                # Drop all matching rows from the workflow tables
+                                self.logger.logMessage(INFO, "Clearing database tables")
+                                cur.execute("DELETE FROM geonis_layer WHERE packageid LIKE %s", (srch, ))
+                                self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from geonis_layer")
+                                cur.execute("DELETE FROM entity WHERE packageid LIKE %s", (srch, ))
+                                self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from entity")
+                                cur.execute("DELETE FROM package WHERE packageid LIKE %s", (srch, ))
+                                self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from package")
+
+                                self.flush = True
+                                return
 
                             # Now clear layers
                             layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
@@ -405,7 +432,7 @@ class Setup(ArcpyTool):
                         rng = ids.split('-')
                         low = int(rng[0].strip())
                         hi = int(rng[1].strip()) + 1
-                        for i in range(low,hi):
+                        for i in range(low, hi):
                             idlist.append(str(i))
                     elif '#' in ids or ids == '':
                         idlist.append('*')
@@ -413,8 +440,8 @@ class Setup(ArcpyTool):
                         if ids.isdigit():
                             idlist.append(ids)
                     for idn in idlist:
-                        valsArr.append({'inc':'%s.%s' % (scope,idn)})
-                    
+                        valsArr.append({'inc': '%s.%s' % (scope, idn)})
+
             valsTuple = tuple(valsArr)
             with cursorContext() as cur:
                 stmt3 = "insert into limit_identifier values(%(inc)s);"
@@ -1916,7 +1943,7 @@ class RefreshMapService(ArcpyTool):
         sdFile = pathToServiceDoc + os.sep + self.serverInfo['service_name'] + ".sd"
         if os.path.exists(sdFile):
             os.remove(sdFile)
-        
+
         # Check for ERROR 001272: Analyzer errors were encountered (codes = 3, 3, 3, ...),
         # which in ArcCatalog is reported as "the base table definition string is invalid"
         # May be caused when map layers do not correspond to db entries.
@@ -1930,7 +1957,7 @@ class RefreshMapService(ArcpyTool):
                 # Only drop layers listed in entity table so we don't remove the base layer
                 with cursorContext(self.logger) as cur:
                     cur.execute(
-                        "SELECT layername FROM entity WHERE packageid LIKE %s", 
+                        "SELECT layername FROM entity WHERE packageid LIKE %s",
                         ('%' + mxdname.split('.')[0] + '%', )
                     )
                     entityLayerList = [row[0] for row in cur.fetchall() if row[0] is not None]
@@ -1949,10 +1976,29 @@ class RefreshMapService(ArcpyTool):
                 mxd.save()
                 del layersFrame
 
+                # Now clear the layers out of the entity and geonis_layer tables so they match
+                with cursorContext(self.logger) as cur:
+                    cur.execute(
+                        "DELETE FROM geonis_layer WHERE packageid LIKE %s",
+                        ('%' + mxdname.split('.')[0] + '%', )
+                    )
+                    self.logger.logMessage(
+                        INFO,
+                        str(cur.rowcount) + " rows deleted from geonis_layer"
+                    )
+                    cur.execute(
+                        "DELETE FROM entity WHERE packageid LIKE %s",
+                        ('%' + mxdname.split('.')[0] + '%', )
+                    )
+                    self.logger.logMessage(
+                        INFO,
+                        str(cur.rowcount) + " rows deleted from entity"
+                    )
+
             # Try to stage the service again
-            arcpy.StageService_server(sdDraft)                
-        
-        # by default, writes SD file to same loc as draft, then DELETES DRAFT        
+            arcpy.StageService_server(sdDraft)
+
+        # by default, writes SD file to same loc as draft, then DELETES DRAFT
         if os.path.exists(sdFile):
             arcpy.UploadServiceDefinition_server(in_sd_file = sdFile, in_server = pubConnection, in_startupType = 'STARTED')
         else:
