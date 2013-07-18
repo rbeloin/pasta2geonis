@@ -63,14 +63,21 @@ function checkPackage(biography, report) {
  * Check for report entries in the entity table, and append them to its error report.
  */
 function checkEntity(biography, report) {
-    var mapService = (biography['mxd'] === null) ?
+    var imageService, mapService, spatialType;
+    mapService = (biography['mxd'] === null) ?
         biography['entityname'] + " is not available as a map service due to errors." :
         "<a href='" + biography['service'].split('/').slice(0, -1).join('/') + "'>" +
             biography['entityname'] + " is available as a map service.</a>";
-    var spatialType = (biography['israster'] === 't') ? "raster" : "vector";
+    spatialType = (biography['israster']) ? "raster" : "vector";
     report = "<span class='entity-name'>" + biography['entityname'] + "</span> " +
-        "(" + spatialType + ")" + report +
-        "<li>" + mapService + "</li>";
+        "(" + spatialType + ")" + report;
+    if (spatialType === 'vector') {
+        report += "<li>" + mapService + "</li>";
+    }
+    else {
+        imageService = "<a href='#'>A link to the image service will go here.</a>";
+        report += "<li>" + imageService + "</li>";
+    }
     return report;
 }
 
