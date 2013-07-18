@@ -166,6 +166,7 @@ class Setup(ArcpyTool):
                             WARN,
                             "Could not get exclusive schema lock on " + getConfigValue('geodatabase') + ", geodatabase table " + siteWF + " has not been cleared."
                         )
+                    raise(Exception)
 
             # Delete folders in the raster data folder
             rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
