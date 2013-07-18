@@ -104,6 +104,7 @@ class Setup(ArcpyTool):
     def flushData(self):
         with cursorContext(self.logger) as cur:
             site = self.scope
+            srch = '%' + site + '%'
             self.logger.logMessage(WARN, "Flushing data for " + site)
 
             # Clear the map
