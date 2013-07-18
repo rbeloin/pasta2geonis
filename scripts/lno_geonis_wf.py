@@ -101,8 +101,9 @@ class Setup(ArcpyTool):
             parameters[2].clearMessage()
             parameters[5].clearMessage()
 
-    def flushData(self):  
+    def flushData(self):
         with cursorContext(self.logger) as cur:
+            site = self.scope
             self.logger.logMessage(WARN, "Flushing data for " + site)
 
             # Clear the map
@@ -412,6 +413,7 @@ class Setup(ArcpyTool):
 
         if self.flush:
             self.flushData()
+            return
 
         limitsParam = self.getParamAsText(parameters,4)
         if limitsParam and limitsParam != '' and limitsParam != '#':
