@@ -1346,12 +1346,27 @@ class LoadVectorTypes(ArcpyTool):
         self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
         #if no dataset, make one
         if not arcpy.Exists(os.path.join(geodatabase,scope)):
-            arcpy.CreateFeatureDataset_management(out_dataset_path = geodatabase,
-                                                out_name = scope,
-                                                spatial_reference = self.spatialRef)
-        arcpy.FeatureClassToFeatureClass_conversion(in_features = path,
-                                    out_path = os.path.join(geodatabase,scope),
-                                    out_name = name)
+            arcpy.CreateFeatureDataset_management(out_dataset_path=geodatabase,
+                                                out_name=scope,
+                                                spatial_reference=self.spatialRef)
+        try:
+            arcpy.FeatureClassToFeatureClass_conversion(
+                in_features=path,
+                out_path=os.path.join(geodatabase, scope),
+                out_name=name
+            )
+        except Exception as err:
+            # Looking for ERROR 000361: The name starts with an invalid character
+            # This is usually because the shapefile starts with a number,
+            # so workaround by prefixing 's' to the shapefile name
+            if err[0].find('ERROR 000361') != -1:
+                self.logger.logMessage(WARN, "Encountered ERROR 000361, attempting workaround")
+                name = 's' + name
+            arcpy.FeatureClassToFeatureClass_conversion(
+                in_features=path,
+                out_path=os.path.join(geodatabase, scope),
+                out_name=name
+            )
         return geodatabase + os.sep + scope + os.sep + name
 
 
