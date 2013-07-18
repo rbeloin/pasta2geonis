@@ -160,6 +160,34 @@ class Setup(ArcpyTool):
             cur.execute("DELETE FROM package WHERE packageid LIKE %s", (srch, ))
             self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from package")
 
+            # Drop tables from geodb
+            siteWF = site + getConfigValue('datasetscopesuffix')
+            geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
+            if arcpy.Exists(geodbTable):
+                arcpy.Delete_management(geodbTable)
+                self.logger.logMessage(
+                    INFO,
+                    "Dropped " + geodbTable + " from geodatabase"
+                )
+
+            # Delete folders in the raster data folder
+            rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
+            if os.path.isdir(rasterFolder):
+                rasterSubfolders = os.listdir(rasterFolder)
+                if rasterSubfolders is not None:
+                    for f in rasterSubfolders:
+                        rmtree(rasterFolder + os.sep + f)
+                        self.logger.logMessage(
+                            INFO,
+                            "Removed %s" % rasterFolder + os.sep + f
+                        )
+
+            # Delete the raster mosaic
+            mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWF
+            if arcpy.Exists(mosaicDataset):
+                self.logger.logMessage(INFO, "Deleting raster mosaic " + mosaicDataset)
+                arcpy.DeleteMosaicDataset_management(mosaicDataset)
+
             self.flush = True
             return
 
