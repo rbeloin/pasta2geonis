@@ -10,7 +10,7 @@ from getopt import getopt, GetoptError
 from urllib2 import urlopen
 import lno_geonis_wf
 from geonis_postgresql import getConfigValue
-# Is RFM picking up specified service, or not b/c in vw_stalemapservices?
+import pdb
 
 
 def parse_parameters(argv, parameters):
@@ -27,6 +27,7 @@ def parse_parameters(argv, parameters):
         sys.exit(2)
     optlist = [j[0] for j in opts]
     for opt, arg in opts:
+        pdb.set_trace()
         if opt == '-h':
             print usage
             sys.exit()
