@@ -215,6 +215,7 @@ class Setup(ArcpyTool):
                             else:
                                 self.logger.logMessage(WARN, "Error while attempting to get admin token.")
 
+                        pdb.set_trace()
                         if self.flush:
                             self.logger.logMessage(WARN, "Flushing data for " + site)
 
