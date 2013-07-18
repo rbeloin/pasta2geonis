@@ -27,7 +27,6 @@ def parse_parameters(argv, parameters):
         sys.exit(2)
     optlist = [j[0] for j in opts]
     for opt, arg in opts:
-        pdb.set_trace()
         if opt == '-h':
             print usage
             sys.exit()
