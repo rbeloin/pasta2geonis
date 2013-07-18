@@ -107,6 +107,26 @@ class Setup(ArcpyTool):
             srch = '%' + site + '%'
             self.logger.logMessage(WARN, "Flushing data for " + site)
 
+            # Drop tables from geodb
+            siteWF = site + getConfigValue('datasetscopesuffix')
+            geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
+            if arcpy.Exists(geodbTable):
+                try:
+                    arcpy.Delete_management(geodbTable)
+                    self.logger.logMessage(
+                        INFO,
+                        "Dropped " + geodbTable + " from geodatabase"
+                    )
+                except Exception as err:
+                    # Looking for: ERROR 000464: Cannot get exclusive schema lock.
+                    # Workaround (?): Stop all services that are listed in the geodb
+                    if err[0].find('ERROR 000464') != -1:
+                        self.logger.logMessage(
+                            WARN,
+                            "Could not get exclusive schema lock on " + getConfigValue('geodatabase') + ", geodatabase table " + siteWF + " has not been cleared."
+                        )
+                    raise(Exception)
+
             # Clear the map
             if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
                 mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
@@ -147,26 +167,6 @@ class Setup(ArcpyTool):
             self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from entity")
             cur.execute("DELETE FROM package WHERE packageid LIKE %s", (srch, ))
             self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from package")
-
-            # Drop tables from geodb
-            siteWF = site + getConfigValue('datasetscopesuffix')
-            geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
-            if arcpy.Exists(geodbTable):
-                try:
-                    arcpy.Delete_management(geodbTable)
-                    self.logger.logMessage(
-                        INFO,
-                        "Dropped " + geodbTable + " from geodatabase"
-                    )
-                except Exception as err:
-                    # Looking for: ERROR 000464: Cannot get exclusive schema lock.
-                    # Workaround (?): Stop all services that are listed in the geodb
-                    if err[0].find('ERROR 000464') != -1:
-                        self.logger.logMessage(
-                            WARN,
-                            "Could not get exclusive schema lock on " + getConfigValue('geodatabase') + ", geodatabase table " + siteWF + " has not been cleared."
-                        )
-                    raise(Exception)
 
             # Delete folders in the raster data folder
             rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
