@@ -133,6 +133,66 @@ class Setup(ArcpyTool):
                 allPackages = [row[0] for row in cur.fetchall()]
 
                 for package in allPackages:
+                    pdb.set_trace()
+                    if self.flush:
+                        self.logger.logMessage(WARN, "Flushing data for " + site)
+
+                        # Clear the map
+                        if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
+                            mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
+                            mxd = arcpy.mapping.MapDocument(mxdfile)
+                            self.logger.logMessage(INFO, "Clearing selections from " + site + ".mxd")
+                            df = arcpy.mapping.ListDataFrames(mxd)[0]
+                            for lyr in arcpy.mapping.ListLayers(mxd):
+                                arcpy.SelectLayerByAttribute_management(lyr, 'CLEAR_SELECTION')
+                            for aTable in arcpy.mapping.ListTableViews(mxd):
+                                arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
+
+                            # Only drop layers listed in entity table so we don't remove the base layer
+                            cur.execute(
+                                "SELECT layername FROM entity WHERE packageid LIKE %s",
+                                ('%' + mxdname.split('.')[0] + '%', )
+                            )
+                            entityLayerList = [row[0] for row in cur.fetchall() if row[0] is not None]
+
+                            # First drop all layers from the MXD file and save it
+                            layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                            mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                            mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                            for layer in mapLayerList:
+                                if layer in entityLayerList:
+                                    self.logger.logMessage(INFO, "Removing layer " + layer)
+                                    layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                                    arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                                else:
+                                    self.logger.logMessage(INFO, "Skipping layer " + layer)
+                            mxd.save()
+                            del layersFrame
+                            '''
+                            self.logger.logMessage(INFO, "Clearing layers from map")
+                            layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                            mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                            mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                            for layer in mapLayerList:
+                                self.logger.logMessage(INFO, "Removing layer: " + layer)
+                                layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                                arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                            mxd.save()
+                            del layersFrame, mxd
+                            '''
+
+                        # Drop all matching rows from the workflow tables
+                        self.logger.logMessage(INFO, "Clearing database tables")
+                        cur.execute("DELETE FROM geonis_layer WHERE packageid LIKE %s", (srch, ))
+                        self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from geonis_layer")
+                        cur.execute("DELETE FROM entity WHERE packageid LIKE %s", (srch, ))
+                        self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from entity")
+                        cur.execute("DELETE FROM package WHERE packageid LIKE %s", (srch, ))
+                        self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from package")
+
+                        self.flush = True
+                        return
+
                     if site not in sitesAlreadyChecked:
                         sitesAlreadyChecked.append(site)
 
@@ -214,67 +274,6 @@ class Setup(ArcpyTool):
                                 httpConn.close()
                             else:
                                 self.logger.logMessage(WARN, "Error while attempting to get admin token.")
-
-                        pdb.set_trace()
-                        if self.flush:
-                            self.logger.logMessage(WARN, "Flushing data for " + site)
-
-                            # Clear the map
-                            if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
-                                mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
-                                mxd = arcpy.mapping.MapDocument(mxdfile)
-                                self.logger.logMessage(INFO, "Clearing selections from " + site + ".mxd")
-                                df = arcpy.mapping.ListDataFrames(mxd)[0]
-                                for lyr in arcpy.mapping.ListLayers(mxd):
-                                    arcpy.SelectLayerByAttribute_management(lyr, 'CLEAR_SELECTION')
-                                for aTable in arcpy.mapping.ListTableViews(mxd):
-                                    arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
-
-                                # Only drop layers listed in entity table so we don't remove the base layer
-                                cur.execute(
-                                    "SELECT layername FROM entity WHERE packageid LIKE %s",
-                                    ('%' + mxdname.split('.')[0] + '%', )
-                                )
-                                entityLayerList = [row[0] for row in cur.fetchall() if row[0] is not None]
-
-                                # First drop all layers from the MXD file and save it
-                                layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
-                                mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
-                                mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                                for layer in mapLayerList:
-                                    if layer in entityLayerList:
-                                        self.logger.logMessage(INFO, "Removing layer " + layer)
-                                        layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
-                                        arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-                                    else:
-                                        self.logger.logMessage(INFO, "Skipping layer " + layer)
-                                mxd.save()
-                                del layersFrame
-                                '''
-                                self.logger.logMessage(INFO, "Clearing layers from map")
-                                layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
-                                mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
-                                mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                                for layer in mapLayerList:
-                                    self.logger.logMessage(INFO, "Removing layer: " + layer)
-                                    layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
-                                    arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-                                mxd.save()
-                                del layersFrame, mxd
-                                '''
-
-                            # Drop all matching rows from the workflow tables
-                            self.logger.logMessage(INFO, "Clearing database tables")
-                            cur.execute("DELETE FROM geonis_layer WHERE packageid LIKE %s", (srch, ))
-                            self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from geonis_layer")
-                            cur.execute("DELETE FROM entity WHERE packageid LIKE %s", (srch, ))
-                            self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from entity")
-                            cur.execute("DELETE FROM package WHERE packageid LIKE %s", (srch, ))
-                            self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from package")
-
-                            self.flush = True
-                            return
-
 
                         # If this package exists in the map, (1) delete any layers already in the
                         # geonis_layer table from both the map and geonis_layer, and (2) clear
