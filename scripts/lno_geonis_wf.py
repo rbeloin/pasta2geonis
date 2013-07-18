@@ -176,6 +176,17 @@ class Setup(ArcpyTool):
                 self.logger.logMessage(INFO, "Deleting raster mosaic " + mosaicDataset)
                 arcpy.DeleteMosaicDataset_management(mosaicDataset)
 
+            # Clear out temp files & folders
+            tempXML = getConfigValue("pathtodownloadedpkgs")
+            tempDir = getConfigValue("pathtoprocesspkgs")
+            for f in os.listdir(tempXML):
+                if f.endswith(".xml"):
+                    os.remove(tempXML + os.sep + f)
+                    self.logger.logMessage(INFO, "Removed " + tempXML + os.sep + f)
+            for folder in os.listdir(tempDir):
+                rmtree(tempDir + os.sep + folder)
+                self.logger.logMessage(INFO, "Removed " + tempDir + os.sep + folder)
+
             self.flush = True
             return
 
