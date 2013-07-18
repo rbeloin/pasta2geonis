@@ -160,6 +160,7 @@ class Setup(ArcpyTool):
                     )
                 except Exception as err:
                     # Looking for: ERROR 000464: Cannot get exclusive schema lock.
+                    # Workaround (?): Stop all services that are listed in the geodb
                     if err[0].find('ERROR 000464') != -1:
                         self.logger.logMessage(
                             WARN,
@@ -210,6 +211,10 @@ class Setup(ArcpyTool):
         deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
 
         sitesAlreadyChecked = []
+        allMapServices = [j.split('_')[0] for j in os.listdir(getConfigValue('pathtomapdoc') + os.sep + 'servicedefs') if j.endswith('.sd')]
+        #with cursorContext(self.logger) as cur:
+        #    sdeMaps
+
         with cursorContext(self.logger) as cur:
             for pkgset in pkgArray:
                 if not pkgset['inc']:
@@ -1874,7 +1879,7 @@ class UpdateMXDs(ArcpyTool):
                 cols = [col.name for col in cur.description]
                 for row in results:
                     # Make sure entity reports are not getting combined!
-                    pdb.set_trace()
+                    #pdb.set_trace()
                     biography = {
                         'pasta': getConfigValue('pastaurl'),
                         'workflow': getConfigValue('datasetscopesuffix'),
