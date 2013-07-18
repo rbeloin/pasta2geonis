@@ -152,11 +152,19 @@ class Setup(ArcpyTool):
             siteWF = site + getConfigValue('datasetscopesuffix')
             geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
             if arcpy.Exists(geodbTable):
-                arcpy.Delete_management(geodbTable)
-                self.logger.logMessage(
-                    INFO,
-                    "Dropped " + geodbTable + " from geodatabase"
-                )
+                try:
+                    arcpy.Delete_management(geodbTable)
+                    self.logger.logMessage(
+                        INFO,
+                        "Dropped " + geodbTable + " from geodatabase"
+                    )
+                except Exception as err:
+                    # Looking for: ERROR 000464: Cannot get exclusive schema lock.
+                    if err[0].find('ERROR 000464') != -1:
+                        self.logger.logMessage(
+                            WARN,
+                            "Could not get exclusive schema lock on " + getConfigValue('geodatabase') + ", geodatabase table " + siteWF + " has not been cleared."
+                        )
 
             # Delete folders in the raster data folder
             rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
@@ -366,11 +374,19 @@ class Setup(ArcpyTool):
                     # Drop tables from geodb
                     geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
                     if arcpy.Exists(geodbTable):
-                        arcpy.Delete_management(geodbTable)
-                        self.logger.logMessage(
-                            INFO,
-                            "Dropped " + geodbTable + " from geodatabase"
-                        )
+                        try:
+                            arcpy.Delete_management(geodbTable)
+                            self.logger.logMessage(
+                                INFO,
+                                "Dropped " + geodbTable + " from geodatabase"
+                            )
+                        except Exception as err:
+                            # Looking for: ERROR 000464: Cannot get exclusive schema lock.
+                            if err[0].find('ERROR 000464') != -1:
+                                self.logger.logMessage(
+                                    WARN,
+                                    "Could not get exclusive schema lock on " + getConfigValue('geodatabase') + ", geodatabase table " + siteWF + " has not been cleared."
+                                )
 
                     # Delete rows from the package table
                     cur.execute(deleteFromPackage, (package, ))
