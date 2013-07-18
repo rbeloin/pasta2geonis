@@ -66,10 +66,11 @@ if (pid !== "") {
                 sitePackageArray.push(response.features[i].attributes.packageid);
             }
             sitePackageArray = sitePackageArray.getUnique().sortNumeric();
+            packagePlural = (sitePackageArray.length === 1) ? " package" : " packages";
             document.getElementById('site-report-title').innerHTML = "<p>" +
                 "<span class='entity-name'>" +
                 siteCode.split('-').slice(-1)[0].toUpperCase() +
-                " (" + sitePackageArray.length + " packages)" +
+                " (" + sitePackageArray.length + packagePlural + ")" +
                 "</span></p>";
             sitePackages = '';
             for (i = 0; i < sitePackageArray.length; i++) {
