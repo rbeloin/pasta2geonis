@@ -29,6 +29,17 @@ def parse_parameters(argv, parameters):
     if '-p' not in optlist:
         print "Warning: no pasta server specified, defaulting to pasta-s.lternet.edu"
         parameters['staging_server'] = True
+    else:
+        for opt, arg in opts:
+            if opt == '-p':
+                if arg.lower() == 'pasta':
+                    parameters['staging_server'] = False
+                elif arg.lower() == 'pasta-s':
+                    parameters['staging_server'] = True
+                else:
+                    print "Error: pasta server", arg, "not recognized."
+                    print usage
+                    sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
             print usage
@@ -45,16 +56,7 @@ def parse_parameters(argv, parameters):
     for key in ('run_setup_arg', 'run_model_arg', 'rfm_only_arg', 'rso_arg', 'flush'):
         parameters[key] = False
     for opt, arg in opts:
-        if opt == '-p':
-            if arg.lower() == 'pasta':
-                parameters['staging_server'] = False
-            elif arg.lower() == 'pasta-s':
-                parameters['staging_server'] = True
-            else:
-                print "Error: pasta server", arg, "not recognized."
-                print usage
-                sys.exit(2)
-        elif opt == '-s':
+        if opt == '-s':
             parameters['site'] = arg
         elif opt == '-i':
             parameters['id'] = arg
