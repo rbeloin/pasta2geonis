@@ -465,7 +465,7 @@ class Setup(ArcpyTool):
             if stmt3 is not None:
                 cur.execute(stmt3)
 
-        if self.flush:
+        if hasattr(self, 'flush') and self.flush:
             self.flushData()
             return
 
