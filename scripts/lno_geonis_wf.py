@@ -678,6 +678,7 @@ class QueryPasta(ArcpyTool):
 		entities containing spatial information into the package table.
         """
         super(QueryPasta, self).execute(parameters, messages)
+        self.logger.logMessage(INFO, "Querying server " + getConfigValue('pastaurl'))
         
         # Clear out temp files & folders
         tempXML = getConfigValue("pathtodownloadedpkgs")
@@ -693,6 +694,7 @@ class QueryPasta(ArcpyTool):
         packageDir = self.getParamAsText(parameters,2)
         if packageDir is None or packageDir == '' or packageDir == '#':
             packageDir = getConfigValue("pathtodownloadedpkgs")
+
         #check db for limits to scopes/identifiers
         with cursorContext(self.logger) as cur:
             stmt1 = "delete from errornotify;"

@@ -34,8 +34,10 @@ def parse_parameters(argv, parameters):
             if opt == '-p':
                 if arg.lower() == 'pasta':
                     parameters['staging_server'] = False
+                    print "Fetching from live server (pasta.lternet.edu)"
                 elif arg.lower() == 'pasta-s':
                     parameters['staging_server'] = True
+                    print "Fetching from staging server (pasta-s.lternet.edu)"
                 else:
                     print "Error: pasta server", arg, "not recognized."
                     print usage
