@@ -26,6 +26,13 @@ def parse_parameters(argv, parameters):
         print usage
         sys.exit(2)
     optlist = [j[0] for j in opts]
+    for opt, arg in opts:
+        if opt == '-h':
+            print usage
+            sys.exit()
+        if opt in ('-f', '--flush'):
+            parameters['flush'] = arg
+            return parameters
     if '-s' not in optlist or '-i' not in optlist:
         print "Error: you must specify a site code (or * for all) and ID (or * for all)."
         print usage
@@ -36,13 +43,7 @@ def parse_parameters(argv, parameters):
     for key in ('run_setup_arg', 'run_model_arg', 'rfm_only_arg', 'rso_arg', 'flush'):
         parameters[key] = False
     for opt, arg in opts:
-        if opt == '-h':
-            print "pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
-            sys.exit()
-        elif opt in ('-f', '--flush'):
-            parameters['flush'] = arg
-            break
-        elif opt == '-p':
+        if opt == '-p':
             if arg.lower() == 'pasta':
                 parameters['staging_server'] = False
             elif arg.lower() == 'pasta-s':
