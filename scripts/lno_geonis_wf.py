@@ -211,6 +211,9 @@ class Setup(ArcpyTool):
         deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
 
         sitesAlreadyChecked = []
+        # Stop all map services listed in SDE and ALSO stop Search??
+        # image service ok
+        # Is this caused by services that tried to start but had errors? (no)
         allMapServices = [j.split('_')[0] for j in os.listdir(getConfigValue('pathtomapdoc') + os.sep + 'servicedefs') if j.endswith('.sd')]
         #with cursorContext(self.logger) as cur:
         #    sdeMaps
@@ -392,6 +395,7 @@ class Setup(ArcpyTool):
                                     WARN,
                                     "Could not get exclusive schema lock on " + getConfigValue('geodatabase') + ", geodatabase table " + siteWF + " has not been cleared."
                                 )
+                            raise(Exception)
 
                     # Delete rows from the package table
                     cur.execute(deleteFromPackage, (package, ))
