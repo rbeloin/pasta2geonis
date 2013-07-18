@@ -1371,7 +1371,7 @@ class LoadVectorTypes(ArcpyTool):
     def loadShapefile(self, scope, name, path):
         """call feature class to feature class to copy shapefile to geodatabase"""
         geodatabase = getConfigValue("geodatabase")
-        self.logger.logMessage(INFO,"Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
+        self.logger.logMessage(INFO, "Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
         #if no dataset, make one
         if not arcpy.Exists(os.path.join(geodatabase,scope)):
             arcpy.CreateFeatureDataset_management(out_dataset_path=geodatabase,
@@ -1390,6 +1390,7 @@ class LoadVectorTypes(ArcpyTool):
             if err[0].find('ERROR 000361') != -1:
                 self.logger.logMessage(WARN, "Encountered ERROR 000361, attempting workaround")
                 name = 's' + name
+            self.logger.logMessage(INFO, "Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
             arcpy.FeatureClassToFeatureClass_conversion(
                 in_features=path,
                 out_path=os.path.join(geodatabase, scope),
