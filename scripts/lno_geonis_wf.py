@@ -1354,7 +1354,6 @@ class LoadVectorTypes(ArcpyTool):
                 entityName = emldata["entityName"]
                 objectName = emldata["objectName"]
                 siteId, n, m = siteFromId(pkgId)
-                pdb.set_trace()
                 #TODO: must add site and optionally '_d' to feature class name. Must be unique in geonis db
                 fullObjectName = objectName + '_' + siteId
                 if getConfigValue("schema").endswith("_d"):
