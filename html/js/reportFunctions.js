@@ -17,6 +17,7 @@ function getPID() {
     return "";
 }
 
+// Attempts to create links in a block of text which may or may not contain links...
 function createLinks(errReport) {
     var regex;
     if (typeof errReport !== 'undefined') {
@@ -110,8 +111,24 @@ function generateBanner(biography) {
 }
 
 /**
- * Appends HTML to a div.
+ * Adds a sentence at the bottom of the page w/ server + download info
+ * e.g., Package knb-lter-and.5030.1 was downloaded from the live server
+ * on 2013-07-18 at 18:04:59 MDT.  (With download link.)
  */
+function appendServerInfo(serverInfo, biography) {
+    packageLink = "<a href='https://" + serverInfo['baseURL'] + "/package/eml/" +
+        biography['packageid'].split('.')[0] + "/" + biography['identifier'] +
+        "/" + biography['revision'] + "'>" + biography['packageid'] + "</a>";
+    $('#workflow-info').html(
+        "<hr />" +
+        "<em>Package " + packageLink + " was downloaded from the <a href='https://" +
+        serverInfo.baseURL + "'>" + serverInfo.server +
+        " server</a> on " + biography['downloaded'].split(' ')[0] + " at " +
+        biography['downloaded'].split(' ')[1].split('.')[0] + " MDT.</em>"
+    );
+}
+
+// Creates initial HTML or appends HTML to a div, as appropriate...
 function insertReport(report, reportDiv, isFirstReport) {
     var nextReport;
     if (isFirstReport) {

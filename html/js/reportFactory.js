@@ -33,16 +33,7 @@ $(document).ready(function () {
             }
 
             // Append server information and download link to the bottom of the report
-            packageLink = "<a href='https://" + serverInfo['baseURL'] + "/package/eml/" +
-                biography['packageid'].split('.')[0] + "/" + biography['identifier'] +
-                "/" + biography['revision'] + "'>" + biography['packageid'] + "</a>";
-            $('#workflow-info').html(
-                "<hr />" +
-                "<em>Package " + packageLink + " was downloaded from the <a href='https://" +
-                serverInfo.baseURL + "'>" + serverInfo.server +
-                " server</a> on " + biography['downloaded'].split(' ')[0] + " at " +
-                biography['downloaded'].split(' ')[1].split('.')[0] + " MDT.</em>"
-            );
+            appendServerInfo(serverInfo, biography);
         });
         $('#report').html("<p style='text-align: center;'>Data set not found.</p>");
 
