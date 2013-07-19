@@ -23,11 +23,11 @@
 
 
 	<xsl:call-template name="escape-single-quotes">
-		<xsl:with-param name="text" select="/" />
+		<xsl:with-param name="text" select="." />
 	</xsl:call-template>
 	
 	<xsl:call-template name="escape-double-quotes">
-		<xsl:with-param name="text" select="/" />
+		<xsl:with-param name="text" select="." />
 	</xsl:call-template>
 
 	
