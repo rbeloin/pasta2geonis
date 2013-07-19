@@ -268,6 +268,7 @@ def createDictFromEmlSubset(workDir):
     pathToStylesheets = getConfigValue("pathtostylesheets")
     stylesheet = pathToStylesheets + os.sep + "emlSubsetToDataFields.xsl"
     inputXML = workDir + os.sep + "emlSubset.xml"
+    pdb.set_trace()
     outputXMLtree = runTransformation(xslPath=stylesheet, inputXMLPath=inputXML)
     obj = eval(str(outputXMLtree))
     return obj
@@ -275,7 +276,6 @@ def createDictFromEmlSubset(workDir):
 
 def runTransformation(xslPath=None, inputXMLPath=None):
     """ XSLT using lxml on the given parameters. Returns ElementTree instance. Traps lxml exceptions and throws Exception """
-    pdb.set_trace()
     if os.path.isfile(xslPath) and os.path.isfile(inputXMLPath):
         try:
             transformer = etree.XSLT(etree.parse(xslPath))
