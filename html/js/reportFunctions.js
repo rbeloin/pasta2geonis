@@ -89,8 +89,10 @@ function checkEntity(biography, report) {
 function generateBanner(biography) {
     var serverInfo;
     if (biography['scope'] !== 'undefined') {
-        document.getElementById("pid").innerHTML = biography['scope'].toUpperCase() +
-            " " + biography['identifier'] + ", revision " + biography['revision'];
+        $('#pid').html(
+            biography['scope'].toUpperCase() + " " + biography['identifier'] +
+            ", revision " + biography['revision']
+        );
     }
     if (biography['pasta'].indexOf('pasta-s') !== -1) {
         serverInfo = {
@@ -113,7 +115,7 @@ function generateBanner(biography) {
 function insertReport(report, reportDiv, isFirstReport) {
     var nextReport;
     if (isFirstReport) {
-        document.getElementById(reportDiv).innerHTML = report;
+        $('#' + reportDiv).html(report);
     }
     else {
         nextReport = document.createElement('div');
