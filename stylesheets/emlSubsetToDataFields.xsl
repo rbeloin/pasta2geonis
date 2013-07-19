@@ -41,7 +41,7 @@
 	    </xsl:copy>
 	</xsl:template>
 
-	<xsl:template match="statement1/text()" name="replace">
+	<xsl:template match="text()" name="replace">
 		<xsl:param name="pText" select="."/>
 		<xsl:param name="pPat" select="$pPattern"/>
 		<xsl:param name="pRep" select="$pReplacement"/>
