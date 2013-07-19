@@ -102,6 +102,12 @@ class Setup(ArcpyTool):
             parameters[5].clearMessage()
 
     def flushData(self):
+
+        #import subprocess
+        # Kill all ArcSDE connections
+        #subprocess.call('sdemon -o kill -t all -u sde -N', shell=True)
+        arcpy.DisconnectUser("Database Connections/admin@geonisOnMaps3.sde", "ALL")
+
         with cursorContext(self.logger) as cur:
             site = self.scope
             srch = '%' + site + '%'
