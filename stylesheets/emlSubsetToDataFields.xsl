@@ -15,8 +15,11 @@
 			</xsl:otherwise>
 		</xsl:choose>
 	</xsl:template>
-
 	
+	<xsl:call-template name="translateDoubleQuotes">
+		<xsl:value-of select="."/>
+	</xsl:call-template>
+
 	<xsl:template match="/"><xsl:apply-templates select="node()"/></xsl:template>
 	<!-- bracket the dictionary items -->
 	<xsl:template match="emlSubset">{<xsl:apply-templates select="node()"/>}</xsl:template>

@@ -266,7 +266,7 @@ def createSuppXML(workDir):
 def createDictFromEmlSubset(workDir):
     """ Run XSL transformation on emlSubset.xml with emlSubsetToSupp.xsl to generate emlSupp.xml """
     pathToStylesheets = getConfigValue("pathtostylesheets")
-    stylesheet = pathToStylesheets + os.sep + "emlSubsetToDataFields.xsl"
+    stylesheet = pathToStylesheets + os.sep + "emlSunbsetToDataFields.xsl"
     inputXML = workDir + os.sep + "emlSubset.xml"
     pdb.set_trace()
     outputXMLtree = runTransformation(xslPath=stylesheet, inputXMLPath=inputXML)
