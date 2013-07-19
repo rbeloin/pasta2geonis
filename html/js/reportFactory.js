@@ -1,5 +1,5 @@
 $(document).ready(function () {
-    var reportUrl, requestObj, siteCode, otherReportUrl, otherRequestObj;
+    var reportUrl, siteReportUrl, siteCode;
     var pid = getPID();
     if (pid !== "") {
         $('#pid').html(pid);
@@ -39,10 +39,10 @@ $(document).ready(function () {
 
         // Other data sets from the same site
         siteCode = pid.split('.')[0];
-        otherReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+        siteReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
             "Search/MapServer/2/query?where=packageid+like+%27" + siteCode +
             "%%27&returnGeometry=true&f=pjson&callback=?";
-        $.getJSON(otherReportUrl, function (response) {
+        $.getJSON(siteReportUrl, function (response) {
             var i, sitePackages;
             var sitePackageArray = [];
             for (i = 0; i < response.features.length; i++) {
