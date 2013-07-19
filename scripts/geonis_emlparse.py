@@ -273,8 +273,7 @@ def createDictFromEmlSubset(workDir):
     return obj
 
 
-
-def runTransformation(xslPath = None, inputXMLPath = None):
+def runTransformation(xslPath=None, inputXMLPath=None):
     """ XSLT using lxml on the given parameters. Returns ElementTree instance. Traps lxml exceptions and throws Exception """
     pdb.set_trace()
     if os.path.isfile(xslPath) and os.path.isfile(inputXMLPath):
@@ -286,7 +285,7 @@ def runTransformation(xslPath = None, inputXMLPath = None):
             msg = syntaxErr.message
             raise Exception("Syntax/parse error transforming %s with %s. %s" % (inputXMLPath, xslPath, msg))
         except etree.XSLTerror as transformErr:
-            msg = transformer.message
+            msg = transformErr.message
             raise Exception("XSLT error transforming %s with %s. %s" % (inputXMLPath, xslPath, msg))
         finally:
             del transformer
@@ -294,12 +293,12 @@ def runTransformation(xslPath = None, inputXMLPath = None):
         raise Exception("%s or %s not found." % (xslPath, inputXMLPath))
 
 
-def stringToValidName(inStr, spacesToUnderscore = False, max = 31):
+def stringToValidName(inStr, spacesToUnderscore=False, max=31):
     """Return alphanumeric + underscore chars up to max. 31 is max field name length. """
     if spacesToUnderscore:
-        return ''.join(re.findall('\w+',inStr.replace(' ','_')))[:max]
+        return ''.join(re.findall('\w+', inStr.replace(' ', '_')))[:max]
     else:
-        return ''.join(re.findall('\w+',inStr))[:max]
+        return ''.join(re.findall('\w+', inStr))[:max]
 
 
 ##def createInsertObj(emldata):
