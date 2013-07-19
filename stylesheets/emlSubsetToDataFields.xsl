@@ -2,6 +2,34 @@
 <!-- Converts nodes from EMLSubset file into python object -->
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="http://www.w3.org/2001/XMLSchema" >
 	<xsl:output method="text"/>
+
+	<!-- Escape single quotes -->
+	<xsl:template name="escape-single-quotes">
+		<xsl:param name="text" />
+		
+		<xsl:variable name="apos">'</xsl:variable>
+		<xsl:variable name="bapos">\'</xsl:variable>		
+		<xsl:value-of select="str:replace($text, $apos, $bapos)" />
+	</xsl:template>
+	
+	<!-- Escape double quotes -->
+	<xsl:template name="escape-double-quotes">
+		<xsl:param name="text" />
+		
+		<xsl:variable name="apos">"</xsl:variable>
+		<xsl:variable name="bapos">\"</xsl:variable>		
+		<xsl:value-of select="str:replace($text, $apos, $bapos)" />
+	</xsl:template>	
+
+
+	<xsl:call-template name="escape-single-quotes">
+		<xsl:with-param name="text" select="/" />
+	</xsl:call-template>
+	
+	<xsl:call-template name="escape-double-quotes">
+		<xsl:with-param name="text" select="/" />
+	</xsl:call-template>
+
 	
 	<xsl:template match="/"><xsl:apply-templates select="node()"/></xsl:template>
 	<!-- bracket the dictionary items -->
@@ -28,24 +56,6 @@
 	
 	<!-- layer name  -->
 	<xsl:template match="workingData/item[@name='layerName']/text()">"layer":"<xsl:value-of select = "normalize-space(.)" />",</xsl:template>
-
-	<!-- Escape single quotes -->
-	<xsl:template name="escape-single-quotes">
-		<xsl:param name="text" />
-		
-		<xsl:variable name="apos">'</xsl:variable>
-		<xsl:variable name="bapos">\'</xsl:variable>		
-		<xsl:value-of select="str:replace($text, $apos, $bapos)" />
-	</xsl:template>
-	
-	<!-- Escape double quotes -->
-	<xsl:template name="escape-double-quotes">
-		<xsl:param name="text" />
-		
-		<xsl:variable name="apos">"</xsl:variable>
-		<xsl:variable name="bapos">\"</xsl:variable>		
-		<xsl:value-of select="str:replace($text, $apos, $bapos)" />
-	</xsl:template>	
 
 
 	<!-- suppress default behavior to copy text -->
