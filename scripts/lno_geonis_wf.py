@@ -1878,10 +1878,10 @@ class UpdateMXDs(ArcpyTool):
                 "p.identifier, p.revision, e.entityname, e.layername, "
                 "p.downloaded, e.israster, e.isvector, e.mxd, e.status "
                 "FROM package AS p "
-                "WHERE p.spatialcount > 0 "
                 "FULL JOIN "
                 "entity AS e "
                 "ON p.packageid = e.packageid "
+                "WHERE p.spatialcount > 0 "
                 "ORDER BY p.packageid"
             )
             cur.execute(selectReports)
