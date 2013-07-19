@@ -116,7 +116,7 @@ function generateBanner(biography) {
  * on 2013-07-18 at 18:04:59 MDT.  (With download link.)
  */
 function appendServerInfo(serverInfo, biography) {
-    packageLink = "<a href='https://" + serverInfo['baseURL'] + "/package/eml/" +
+    var packageLink = "<a href='https://" + serverInfo['baseURL'] + "/package/eml/" +
         biography['packageid'].split('.')[0] + "/" + biography['identifier'] +
         "/" + biography['revision'] + "'>" + biography['packageid'] + "</a>";
     $('#workflow-info').html(

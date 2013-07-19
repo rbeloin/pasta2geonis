@@ -3,12 +3,13 @@ $(document).ready(function () {
     var pid = getPID();
     if (pid !== "") {
         $('#pid').html(pid);
+
         // There are multiple entities w/ the same packageid...
         reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
             "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
             "%27&returnGeometry=true&outFields=report&f=pjson&callback=?";
         $.getJSON(reportUrl, function (response) {
-            var i, replaceBanner, serverInfo, report, biography, packageLink;
+            var i, replaceBanner, serverInfo, parsed;
 
             // The error report is pipe-delimited from other useful info stored in
             // the report field, in stringified-JSON format
@@ -16,24 +17,22 @@ $(document).ready(function () {
             for (i = 0; i < response.features.length; i++) {
 
                 // First parse the raw report
-                parsedReport = parseReport(response.features[i].attributes.report);
-                report = parsedReport.report;
-                biography = parsedReport.biography;
-                report = checkTables(biography, report);
+                parsed = parseReport(response.features[i].attributes.report);
+                parsed.report = checkTables(parsed.biography, parsed.report);
 
                 // Generate a banner with the site name, id, and revision, if we haven't
                 // done so already
                 if (!replaceBanner) {
-                    serverInfo = generateBanner(biography);
+                    serverInfo = generateBanner(parsed.biography);
                     replaceBanner = true;
                 }
 
                 // Insert the reports into the report div
-                insertReport('<p>' + report + '</p>', 'report', i === 0);
+                insertReport('<p>' + parsed.report + '</p>', 'report', i === 0);
             }
 
             // Append server information and download link to the bottom of the report
-            appendServerInfo(serverInfo, biography);
+            appendServerInfo(serverInfo, parsed.biography);
         });
         $('#report').html("<p style='text-align: center;'>Data set not found.</p>");
 
