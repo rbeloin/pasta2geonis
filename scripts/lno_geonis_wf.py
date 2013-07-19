@@ -1838,7 +1838,6 @@ class UpdateMXDs(ArcpyTool):
     @errHandledWorkflowTask(taskName="Insert into layer table")
     def makeLayerRec(self, workDir, pkgId, name):
         """Insert record into workflow.geonis_layer for this entity  """
-        pdb.set_trace()
         insstmt = "INSERT INTO geonis_layer \
          (id, packageid, scope, entityname, entitydescription, title, abstract, purpose, keywords, sourceloc, layername, arcloc, layerid) VALUES \
          (%(id)s, %(pid)s, %(site)s, %(name)s, %(desc)s, %(title)s, %(abstract)s, %(purpose)s, %(keywords)s, %(source)s, %(layer)s, %(arcloc)s, %(layerid)s);"
