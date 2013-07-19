@@ -106,8 +106,7 @@ class Setup(ArcpyTool):
         #import subprocess
         # Kill all ArcSDE connections
         #subprocess.call('sdemon -o kill -t all -u sde -N', shell=True)
-        arcpy.DisconnectUser("Database Connections/sde@geonisOnMaps3.sde", "ALL")
-
+        #arcpy.DisconnectUser("Database Connections/sde@geonisOnMaps3.sde", "ALL")
         with cursorContext(self.logger) as cur:
             site = self.scope
             srch = '%' + site + '%'
