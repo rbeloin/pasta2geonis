@@ -29,6 +29,41 @@
 	<!-- layer name  -->
 	<xsl:template match="workingData/item[@name='layerName']/text()">"layer":"<xsl:value-of select = "normalize-space(.)" />",</xsl:template>
 
+	<!-- escape double quotes -->
+	<xsl:strip-space elements="*"/>
+
+	<xsl:param name="pPattern">"</xsl:param>
+	<xsl:param name="pReplacement">\"</xsl:param>
+
+	<xsl:template match="node()|@*">
+	    <xsl:copy>
+		    <xsl:apply-templates select="node()|@*"/>
+	    </xsl:copy>
+	</xsl:template>
+
+	<xsl:template match="statement1/text()" name="replace">
+		<xsl:param name="pText" select="."/>
+		<xsl:param name="pPat" select="$pPattern"/>
+		<xsl:param name="pRep" select="$pReplacement"/>
+
+		 <xsl:choose>
+	  <xsl:when test="not(contains($pText, $pPat))">
+	   <xsl:copy-of select="$pText"/>
+	  </xsl:when>
+	  <xsl:otherwise>
+	   <xsl:copy-of select="substring-before($pText, $pPat)"/>
+	   <xsl:copy-of select="$pRep"/>
+	   <xsl:call-template name="replace">
+	    <xsl:with-param name="pText" select=
+	         "substring-after($pText, $pPat)"/>
+	    <xsl:with-param name="pPat" select="$pPat"/>
+	    <xsl:with-param name="pRep" select="$pRep"/>
+	   </xsl:call-template>
+	  </xsl:otherwise>
+	 </xsl:choose>
+	 </xsl:template>
+
+
 	<!-- suppress default behavior to copy text -->
 	<xsl:template match="text()" />
 </xsl:stylesheet>

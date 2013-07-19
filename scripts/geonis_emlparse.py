@@ -251,8 +251,6 @@ def createEmlSubsetWithNode(originalDir, newDirectory = None, whichSpatialNode =
             logger.logMessage(WARN, "In %s: %d spatial nodes were left, expecting 1" % (originalDir, len(spTypeHit)))
 
 
-
-
 def createSuppXML(workDir):
     """ Run XSL transformation on emlSubset.xml with emlSubsetToSupp.xsl to generate emlSupp.xml """
     pathToStylesheets = getConfigValue("pathtostylesheets")
@@ -271,7 +269,7 @@ def createDictFromEmlSubset(workDir):
     pathToStylesheets = getConfigValue("pathtostylesheets")
     stylesheet = pathToStylesheets + os.sep + "emlSubsetToDataFields.xsl"
     inputXML = workDir + os.sep + "emlSubset.xml"
-    outputXMLtree = runTransformation(xslPath = stylesheet, inputXMLPath = inputXML)
+    outputXMLtree = runTransformation(xslPath=stylesheet, inputXMLPath=inputXML)
     obj = eval(str(outputXMLtree))
     return obj
 
