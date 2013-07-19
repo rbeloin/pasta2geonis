@@ -16,10 +16,6 @@
 		</xsl:choose>
 	</xsl:template>
 	
-	<xsl:call-template name="translateDoubleQuotes">
-		<xsl:value-of select="."/>
-	</xsl:call-template>
-
 	<xsl:template match="/"><xsl:apply-templates select="node()"/></xsl:template>
 	<!-- bracket the dictionary items -->
 	<xsl:template match="emlSubset">{<xsl:apply-templates select="node()"/>}</xsl:template>
@@ -28,7 +24,7 @@
 	<xsl:template match="title">"title":"<xsl:copy-of select="normalize-space(descendant::text())" />",</xsl:template>
 
 	<!-- abstract (text only, skip <para> <literalLayout> ) -->
-	<xsl:template match="abstract">"abstract":"<xsl:for-each select="descendant::text()[string-length(normalize-space(.)) > 0]"><xsl:value-of select="normalize-space(.)" /></xsl:for-each>",</xsl:template>
+	<xsl:template match="abstract">"abstract":"<xsl:call-template name="translateDoubleQuotes"><xsl:for-each select="descendant::text()[string-length(normalize-space(.)) > 0]"><xsl:value-of select="normalize-space(.)" /></xsl:for-each></xsl:call-template>",</xsl:template>
 
 	<!-- purpose  -->
 	<xsl:template match="purpose">"purpose":"<xsl:for-each select="descendant::text()[string-length(normalize-space(.)) > 0]"><xsl:value-of select="normalize-space(.)" /></xsl:for-each>",</xsl:template>
