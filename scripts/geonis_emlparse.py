@@ -277,6 +277,7 @@ def createDictFromEmlSubset(workDir):
 def runTransformation(xslPath=None, inputXMLPath=None):
     """ XSLT using lxml on the given parameters. Returns ElementTree instance. Traps lxml exceptions and throws Exception """
     if os.path.isfile(xslPath) and os.path.isfile(inputXMLPath):
+        transformer = None
         try:
             transformer = etree.XSLT(etree.parse(xslPath))
             emltree = etree.parse(inputXMLPath)
