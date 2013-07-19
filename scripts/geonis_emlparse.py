@@ -268,7 +268,6 @@ def createDictFromEmlSubset(workDir):
     pathToStylesheets = getConfigValue("pathtostylesheets")
     stylesheet = pathToStylesheets + os.sep + "emlSubsetToDataFields.xsl"
     inputXML = workDir + os.sep + "emlSubset.xml"
-    pdb.set_trace()
     outputXMLtree = runTransformation(xslPath=stylesheet, inputXMLPath=inputXML)
     obj = eval(str(outputXMLtree))
     return obj
