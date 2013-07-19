@@ -265,7 +265,6 @@ def createSuppXML(workDir):
 
 def createDictFromEmlSubset(workDir):
     """ Run XSL transformation on emlSubset.xml with emlSubsetToSupp.xsl to generate emlSupp.xml """
-    pdb.set_trace()
     pathToStylesheets = getConfigValue("pathtostylesheets")
     stylesheet = pathToStylesheets + os.sep + "emlSubsetToDataFields.xsl"
     inputXML = workDir + os.sep + "emlSubset.xml"
@@ -277,6 +276,7 @@ def createDictFromEmlSubset(workDir):
 
 def runTransformation(xslPath = None, inputXMLPath = None):
     """ XSLT using lxml on the given parameters. Returns ElementTree instance. Traps lxml exceptions and throws Exception """
+    pdb.set_trace()
     if os.path.isfile(xslPath) and os.path.isfile(inputXMLPath):
         try:
             transformer = etree.XSLT(etree.parse(xslPath))
