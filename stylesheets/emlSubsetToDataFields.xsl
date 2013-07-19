@@ -24,7 +24,7 @@
 	<xsl:template match="title">"title":"<xsl:copy-of select="normalize-space(descendant::text())" />",</xsl:template>
 
 	<!-- abstract (text only, skip <para> <literalLayout> ) -->
-	<xsl:template match="abstract">"abstract":"<xsl:for-each select="descendant::text()[string-length(normalize-space(.)) > 0]"><xsl:call-template name="translateDoubleQuotes" /><xsl:value-of select="normalize-space(.)" /></xsl:for-each>",</xsl:template>
+	<xsl:template match="abstract">"abstract":"<xsl:for-each select="descendant::text()[string-length(normalize-space(.)) > 0]"><xsl:call-template name="translateDoubleQuotes"><xsl:with-param name="string"><xsl:value-of select="normalize-space(.)" /></xsl:with-param></xsl:call-template></xsl:for-each>",</xsl:template>
 
 	<!-- purpose  -->
 	<xsl:template match="purpose">"purpose":"<xsl:for-each select="descendant::text()[string-length(normalize-space(.)) > 0]"><xsl:value-of select="normalize-space(.)" /></xsl:for-each>",</xsl:template>
