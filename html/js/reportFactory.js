@@ -28,6 +28,7 @@ $(document).ready(function () {
                 }
 
                 // Insert the reports into the report div
+                parsed.report = parsed.reportType + '<br />' + parsed.report;
                 insertReport('<p>' + parsed.report + '</p>', 'report', i === 0);
             }
 
