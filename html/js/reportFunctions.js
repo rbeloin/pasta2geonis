@@ -32,7 +32,8 @@ function createLinks(errReport) {
 /**
  * Parse the raw error report which we fetched from the database using the
  * Search service, which has the following pipe-delimited structure:
- * error report | JSON string containing various package + entity information
+ * error report | package-report or entity-report | ...
+ *    ...JSON string containing various package + entity information
  */
 function parseReport(rawReport) {
     var splitPipe = rawReport.split('|');
@@ -40,7 +41,8 @@ function parseReport(rawReport) {
     report += "</li>";
     return {
         'report': report.replace(/\n/g, '<br />'),
-        'biography': JSON.parse(splitPipe[1])
+        'reportType': splitPipe[1],
+        'biography': JSON.parse(splitPipe[2])
     };
 }
 

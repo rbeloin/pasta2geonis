@@ -1872,25 +1872,56 @@ class UpdateMXDs(ArcpyTool):
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self):
         noErrorsFound = "No errors found."
+
+        # First modify the package table reports
         with cursorContext(self.logger) as cur:
             selectReports = (
-                "SELECT p.packageid, p.report, e.report, e.id, p.scope, "
-                "p.identifier, p.revision, e.entityname, e.layername, "
-                "p.downloaded, e.israster, e.isvector, e.mxd, e.status "
-                "FROM package AS p "
-                "FULL JOIN "
-                "entity AS e "
-                "ON p.packageid = e.packageid "
-                "WHERE p.spatialcount > 0 "
-                "ORDER BY p.packageid"
+                "SELECT packageid, report, scope, identifier, revision, "
+                "downloaded FROM package WHERE spatialcount > 0 "
+                "ORDER BY packageid"
             )
             cur.execute(selectReports)
             if cur.rowcount:
                 results = cur.fetchall()
                 cols = [col.name for col in cur.description]
                 for row in results:
-                    # Make sure entity reports are not getting combined!
-                    #pdb.set_trace()
+                    biography = {
+                        'pasta': getConfigValue('pastaurl'),
+                        'workflow': getConfigValue('datasetscopesuffix'),
+                        'service': getConfigValue('layerqueryuri') % (
+                            getConfigValue('mapservinfo').split(';')[1],
+                            row[2] + getConfigValue('mapservsuffix'),
+                        ),
+                    }
+                    for idx, d in enumerate(cols):
+                        if d == 'downloaded':
+                            biography[d] = str(row[idx])
+                        elif d != 'report':
+                            biography[d] = row[idx]
+                    report = row[1] if row[1] is not None else noErrorsFound
+                    cur.execute(
+                        "UPDATE package SET report = %s WHERE packageid = %s",
+                        (report + " | package-report | " + json.dumps(biography), row[0])
+                    )
+
+        # Now do the entity table reports
+        with cursorContext(self.logger) as cur:
+            selectReports = (
+                "SELECT p.packageid, p.report, e.report, e.id, p.scope, "
+                "p.identifier, p.revision, e.entityname, e.layername, "
+                "p.downloaded, e.israster, e.isvector, e.mxd, e.status "
+                "FROM package AS p "
+                "RIGHT OUTER JOIN "
+                "entity AS e "
+                "ON p.packageid = e.packageid "
+                "WHERE p.spatialcount > 0 "
+                "ORDER BY e.id"
+            )
+            cur.execute(selectReports)
+            if cur.rowcount:
+                results = cur.fetchall()
+                cols = [col.name for col in cur.description]
+                for row in results:
                     biography = {
                         'pasta': getConfigValue('pastaurl'),
                         'workflow': getConfigValue('datasetscopesuffix'),
@@ -1902,20 +1933,12 @@ class UpdateMXDs(ArcpyTool):
                     for idx, d in enumerate(cols):
                         if d == 'downloaded':
                             biography[d] = str(row[idx])
-                        elif d != 'report' and d != 'id':
+                        elif d != 'report':
                             biography[d] = row[idx]
-
-                    # Update the entity and package tables
                     report = row[2] if row[2] is not None else noErrorsFound
                     cur.execute(
                         "UPDATE entity SET report = %s WHERE id = %s",
-                        (report + " | " + json.dumps(biography), row[3])
-                    )
-
-                    report = row[1] if row[1] is not None else noErrorsFound
-                    cur.execute(
-                        "UPDATE package SET report = %s WHERE packageid = %s",
-                        (report + " | " + json.dumps(biography), row[0])
+                        (report + " | entity-report | " + json.dumps(biography), row[3])
                     )
 
 
