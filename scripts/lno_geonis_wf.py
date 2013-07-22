@@ -1381,7 +1381,7 @@ class CheckSpatialData(ArcpyTool):
                                 cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, emldata["contact"], formattedReport))
                                 #stmt2 = "UPDATE entity set report = %s WHERE packageid = %s and entityname = %s;"
                                 #cur.execute(stmt2, (formattedReport, pkgId, entityName))
-                            del reportText
+                            reportText = []
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
             arcpy.SetParameterAsText(4, str(formattedReport))
         except AssertionError:
