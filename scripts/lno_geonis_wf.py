@@ -1331,12 +1331,12 @@ class CheckSpatialData(ArcpyTool):
                     if spatialType == GeoNISDataType.SPATIALVECTOR:
                         emldata["type"] = "vector"
                     status = "File type assigned"
-                    
+
                     # If this is a vector data set, get list of mismatches in attribute names
                     if emldata['spatialType'] == 'spatialVector':
-                        mismatchedAtts = self.attributeNames(dataDir,emldata["datafilePath"])
+                        mismatchedAtts = self.attributeNames(dataDir, emldata["datafilePath"])
                         if mismatchedAtts != []:
-                            reportText.append({"Fields mismatch":str(mismatchedAtts)})
+                            reportText.append({"Fields mismatch": str(mismatchedAtts)})
                             status = "Found mismatch in attribute names"
                         else:
                             status = "Matched all attribute names"
@@ -1346,8 +1346,8 @@ class CheckSpatialData(ArcpyTool):
                 except Exception as err:
                     status = "Failed after %s with %s" % (status, err.message)
                     self.logger.logMessage(WARN, err.message)
-                    reportText.append({"Status":"Failed"})
-                    reportText.append({"Error message":err.message})
+                    reportText.append({"Status": "Failed"})
+                    reportText.append({"Error message": err.message})
                 else:
                     status = "Passed checks"
                     #empty reportText => no issues
@@ -1365,11 +1365,11 @@ class CheckSpatialData(ArcpyTool):
                     if formattedReport != '':
                         if pkgId and entityName:
                             with cursorContext(self.logger) as cur:
-                                cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, emldata["contact"], formattedReport ))
+                                cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, emldata["contact"], formattedReport))
                                 #stmt2 = "UPDATE entity set report = %s WHERE packageid = %s and entityname = %s;"
                                 #cur.execute(stmt2, (formattedReport, pkgId, entityName))
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
-            arcpy.SetParameterAsText(4,str(formattedReport))
+            arcpy.SetParameterAsText(4, str(formattedReport))
         except AssertionError:
             self.logger.logMessage(CRITICAL, "expected parameter not found")
             sys.exit(1)
