@@ -18,7 +18,7 @@ $(document).ready(function () {
 
                 // First parse the raw report
                 parsed = parseReport(response.features[i].attributes.report);
-                parsed.report = checkTables(parsed.biography, parsed.report);
+                parsed.report = checkTables(parsed.biography, parsed.report, parsed.reportType);
 
                 // Generate a banner with the site name, id, and revision, if we haven't
                 // done so already
@@ -28,7 +28,7 @@ $(document).ready(function () {
                 }
 
                 // Insert the reports into the report div
-                parsed.report = parsed.reportType + '<br />' + parsed.report;
+                parsed.report = '<em>' + parsed.reportType + '</em><br />' + parsed.report;
                 insertReport('<p>' + parsed.report + '</p>', 'report', i === 0);
             }
 

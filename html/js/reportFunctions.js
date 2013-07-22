@@ -37,12 +37,12 @@ function createLinks(errReport) {
  */
 function parseReport(rawReport) {
     var splitPipe = rawReport.split('|');
-    report = "<ul><li>" + splitPipe[0];
+    report = "<ul><li>" + splitPipe[0].trim();
     report += "</li>";
     return {
         'report': report.replace(/\n/g, '<br />'),
-        'reportType': splitPipe[1],
-        'biography': JSON.parse(splitPipe[2])
+        'reportType': splitPipe[1].trim(),
+        'biography': JSON.parse(splitPipe[2].trim())
     };
 }
 
@@ -50,8 +50,8 @@ function parseReport(rawReport) {
  * Check the package and entity tables for error reports, and append them to the
  * active error report if found.
  */
-function checkTables(biography, report) {
-    return (biography['entityname'] === null) ?
+function checkTables(biography, report, reportType) {
+    return (reportType === 'package-report') ?
         checkPackage(biography, report) : checkEntity(biography, report);
 }
 

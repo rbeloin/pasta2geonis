@@ -1360,6 +1360,7 @@ class CheckSpatialData(ArcpyTool):
                         with cursorContext(self.logger) as cur:
                             cur.execute(stmt, (status[:499], pkgId, entityName))
                     writeWorkingDataToXML(dataDir, emldata, self.logger)
+                    pdb.set_trace()
                     formattedReport = self.getReport(pkgId, reportText)
                     if formattedReport != '':
                         if pkgId and entityName:
@@ -1940,7 +1941,6 @@ class UpdateMXDs(ArcpyTool):
                         "UPDATE entity SET report = %s WHERE id = %s",
                         (report + " | entity-report | " + json.dumps(biography), row[3])
                     )
-
 
     def execute(self, parameters, messages):
         super(UpdateMXDs, self).execute(parameters, messages)
