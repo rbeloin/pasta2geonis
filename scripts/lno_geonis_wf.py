@@ -1374,7 +1374,6 @@ class CheckSpatialData(ArcpyTool):
                         with cursorContext(self.logger) as cur:
                             cur.execute(stmt, (status[:499], pkgId, entityName))
                     writeWorkingDataToXML(dataDir, emldata, self.logger)
-                    pdb.set_trace()
                     formattedReport = self.getReport(pkgId, reportText)
                     if formattedReport != '':
                         if pkgId and entityName:
@@ -1382,6 +1381,7 @@ class CheckSpatialData(ArcpyTool):
                                 cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, emldata["contact"], formattedReport))
                                 #stmt2 = "UPDATE entity set report = %s WHERE packageid = %s and entityname = %s;"
                                 #cur.execute(stmt2, (formattedReport, pkgId, entityName))
+                            del reportText
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
             arcpy.SetParameterAsText(4, str(formattedReport))
         except AssertionError:
