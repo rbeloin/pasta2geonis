@@ -130,14 +130,18 @@ h1 {
     line-height: 22pt;
     color: #fff;
 }
+#pid {
+    border-bottom: 1px solid #ccc;
+    background-color: #086A87;
+}
 .banner {
-	clear: both;
+	clear: right;
     float: right;
 	width: 82%;
 	font-size: 14px;
 	color: #000;
 	margin-top: 10px;
-	padding-top: 12px;
+	/*padding-top: 12px;*/
 	padding-bottom: 16px;
 	border: 1px solid #ccc;
 	margin-bottom: 10px;
@@ -145,17 +149,19 @@ h1 {
 }
 .banner h2 {
 	text-align: center;
-	color: #000;
+	color: #fff;
 	margin: 0 0 5px 0;
     padding: 8px 0;
 	font-size: 22px;
+    font-weight: bold;
 }
 .banner h3 {
 	text-align: center;
-	color: #000;
+	color: #fff;
 	margin: 0 0 5px 0;
-    padding-bottom: 8px;
+    padding-top: 3px;
 	font-size: 18px;
+    font-weight: bold;
 }
 .banner p {
 	margin-left: 25px;
@@ -302,6 +308,65 @@ hr {
 }
 #footer a {
 	color: #0B2161;
+}
+
+#linkbar {
+    margin-top: 10px;
+    text-align: center;
+    /*border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;*/
+    display: none;
+}
+#linkbar li {
+    display: inline;
+    list-style-type: none;
+    margin: 0;
+    padding-left: 30px;
+    padding-right: 30px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+#linkbar li:hover {
+    background-color: #CEECF5;
+}
+#linkbar a:hover {
+    text-decoration: none;
+}
+#map-service {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+#image-service {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+#map-service a, #image-service a {
+    font-size: 115%;
+}
+#vector-report-header {
+    display: none;
+    background-color: #086A87;
+    text-align: center;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+#raster-report-header {
+    display: none;
+    background-color: #086A87;
+    text-align: center;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+#raster-banner, #vector-banner {
+    display: none;
+}
+#package-report {
+    margin-top: 10px;
+    font-size: 107%;
+}
+#package-report ul li {
+    margin-left: 25px;
+    margin-right: 25px;   
 }
 
 /* push */

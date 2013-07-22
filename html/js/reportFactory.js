@@ -9,16 +9,20 @@ $(document).ready(function () {
             "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
             "%27&returnGeometry=true&outFields=report&f=pjson&callback=?";
         $.getJSON(reportUrl, function (response) {
-            var i, replaceBanner, serverInfo, parsed;
+            var i, replaceBanner, serverInfo, parsed, counter, services, reports;
 
             // The error report is pipe-delimited from other useful info stored in
             // the report field, in stringified-JSON format
             replaceBanner = false;
+            counter = {'package': 0, 'vector': 0, 'raster': 0};
+            services = {'image': false, 'map': false};
+            reports = {'package': '', 'vector': '', 'raster': ''};
             for (i = 0; i < response.features.length; i++) {
 
                 // First parse the raw report
                 parsed = parseReport(response.features[i].attributes.report);
-                parsed.report = checkTables(parsed.biography, parsed.report, parsed.reportType);
+                formatted = checkTables(parsed.biography, parsed.report, parsed.reportType);
+                counter[formatted.subject]++;
 
                 // Generate a banner with the site name, id, and revision, if we haven't
                 // done so already
@@ -27,15 +31,58 @@ $(document).ready(function () {
                     replaceBanner = true;
                 }
 
+                if (formatted.service !== null) {
+                    if (!services.image && formatted.subject === 'raster') {
+                        services.image = formatted.service;
+                    }
+                    else if (!services.map && formatted.subject === 'vector') {
+                        services.map = formatted.service;
+                    }
+                }
+
                 // Insert the reports into the report div
-                parsed.report = '<em>' + parsed.reportType + '</em><br />' + parsed.report;
-                insertReport('<p>' + parsed.report + '</p>', 'report', i === 0);
+                //insertReport('<p>' + formatted.report + '</p>', 'report', i === 0);
+                reports[formatted.subject] += '<p>' + formatted.report + '</p>';
             }
+
+            if (counter.package) {
+                $('#linkbar').show();
+                if (reports.package === "<p><span class='entity-name'></span><ul><li>No errors found.</li></p>") {
+                    $('#package-report').html('');
+                }
+                else {
+                    $('#package-report').html(reports.package);
+                }
+            }
+            if (counter.vector) {
+                $('#vector-banner').show();
+                $('#vector-report-header').html(
+                    '<h3>' + counter.vector + ' vector ' + pluralize('dataset', counter.vector) + '</h3>'
+                ).show();
+                $('#vector-report').html(reports.vector);
+            }
+            if (counter.raster) {
+                $('#raster-banner').show();
+                $('#raster-report-header').html(
+                    '<h3>' + counter.raster + ' raster ' + pluralize('dataset', counter.raster) + '</h3>'
+                ).show();
+                $('#raster-report').html(reports.raster);
+            }
+
+            // Map and image server info
+            $('#map-service').html(
+                "<a href='" + services.map.split('/').slice(0, -1).join('/') + "'>" +
+                "Map service</a>"
+            );
+            $('#image-service').html(
+                "<a href='http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
+                pid.split('.')[0].split('-')[2] + "_mosaic/ImageServer'>Image service</a>"
+            );
 
             // Append server information and download link to the bottom of the report
             appendServerInfo(serverInfo, parsed.biography);
         });
-        $('#report').html("<p style='text-align: center;'>Data set not found.</p>");
+        $('#package-report').html("<p style='text-align: center; padding-top: 20px;'>Data set not found.</p>");
 
         // Other data sets from the same site
         siteCode = pid.split('.')[0];

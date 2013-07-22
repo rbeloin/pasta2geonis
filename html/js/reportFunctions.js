@@ -51,36 +51,47 @@ function parseReport(rawReport) {
  * active error report if found.
  */
 function checkTables(biography, report, reportType) {
-    return (reportType === 'package-report') ?
-        checkPackage(biography, report) : checkEntity(biography, report);
+    var formatted, isPackage, spatialType, service;
+    isPackage = (reportType === 'package-report');
+    if (isPackage) {
+        formatted = {
+            'report': checkPackage(biography, report),
+            'subject': 'package',
+            'service': null
+        };
+    }
+    else {
+        if (biography.israster) {
+            spatialType = 'raster';
+            service = biography.service;  // Not yet implemented!
+        }
+        else {
+            spatialType = 'vector';
+            service = biography.service;
+        }
+        formatted = {
+            'report': checkEntity(biography, report, spatialType),
+            'subject': spatialType,
+            'service': biography.service
+        };
+    }
+    return formatted;
 }
 
 /**
  * Check for report entries in the entity table, and append them to its error report.
  */
 function checkPackage(biography, report) {
-    return "<span class='entity-name'>Package report</span>" + report;
+    return "<span class='entity-name'></span>" + report;
 }
 
 /**
  * Check for report entries in the entity table, and append them to its error report.
  */
-function checkEntity(biography, report) {
-    var imageService, mapService, spatialType;
-    mapService = (biography['mxd'] === null) ?
-        biography['entityname'] + " is not available as a map service due to errors." :
-        "<a href='" + biography['service'].split('/').slice(0, -1).join('/') + "'>" +
-            biography['entityname'] + " is available as a map service.</a>";
-    spatialType = (biography['israster']) ? "raster" : "vector";
-    report = "<span class='entity-name'>" + biography['entityname'] + "</span> " +
-        "(" + spatialType + ")" + report;
-    if (spatialType === 'vector') {
-        report += "<li>" + mapService + "</li>";
-    }
-    else {
-        imageService = "<a href='#'>A link to the image service will go here.</a>";
-        report += "<li>" + imageService + "</li>";
-    }
+function checkEntity(biography, report, spatialType) {
+    entityname = (biography['entityname'] === 'None') ?
+        'Untitled ' + spatialType + ' data set' : biography['entityname'];
+    report = "<span class='entity-name'>" + entityname + "</span> " + report;
     return report;
 }
 
@@ -122,11 +133,10 @@ function appendServerInfo(serverInfo, biography) {
         biography['packageid'].split('.')[0] + "/" + biography['identifier'] +
         "/" + biography['revision'] + "'>" + biography['packageid'] + "</a>";
     $('#workflow-info').html(
-        "<hr />" +
-        "<em>Package " + packageLink + " was downloaded from the <a href='https://" +
+        "Package " + packageLink + " was downloaded from the <a href='https://" +
         serverInfo.baseURL + "'>" + serverInfo.server +
         " server</a> on " + biography['downloaded'].split(' ')[0] + " at " +
-        biography['downloaded'].split(' ')[1].split('.')[0] + " MDT.</em>"
+        biography['downloaded'].split(' ')[1].split('.')[0] + " MDT."
     );
 }
 
@@ -185,3 +195,7 @@ Array.prototype.sortNumeric = function () {
     return this;
 };
 
+function pluralize(str, count) {
+    plural = str + 's';
+    return (count == 1 ? str : plural);
+}
