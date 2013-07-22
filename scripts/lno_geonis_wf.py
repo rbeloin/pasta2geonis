@@ -1272,12 +1272,12 @@ class CheckSpatialData(ArcpyTool):
     def execute(self, parameters, messages):
         super(CheckSpatialData, self).execute(parameters, messages)
         try:
-            assert self.inputDirs != None
-            assert self.outputDirs != None
+            assert self.inputDirs is not None
+            assert self.outputDirs is not None
             reportText = []
             formattedReport = ''
             for dataDir in self.inputDirs:
-                self.logger.logMessage(INFO, "***working in: " + dataDir + "***")
+                self.logger.logMessage(INFO, "Working in: " + dataDir)
                 try:
                     status = "Entering data checks."
                     emldata = readWorkingData(dataDir, self.logger)
@@ -1354,6 +1354,20 @@ class CheckSpatialData(ArcpyTool):
                     #reportText.append({"Status":"OK"})
                     self.outputDirs.append(dataDir)
                 finally:
+
+                    # First, create the packageid + entityname row in the entity table, if
+                    # it doesn't already exist
+                    with cursorContext(self.logger) as cur:
+                        cur.execute(
+                            "SELECT packageid FROM entity WHERE packageid = %s AND entityname = %s",
+                            (pkgId, entityName)
+                        )
+                        if not cur.rowcount:
+                            cur.execute(
+                                "INSERT INTO entity (packageid, entityname) VALUES (%s, %s)",
+                                (pkgId, entityName)
+                            )
+
                     #write status msg to workflow.entity. Need both packagid and entityname to be unique
                     if pkgId and entityName:
                         stmt = "UPDATE entity set status = %s WHERE packageid = %s and entityname = %s;"
