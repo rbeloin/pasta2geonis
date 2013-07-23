@@ -942,6 +942,8 @@ class UnpackPackages(ArcpyTool):
                 nestedZip = False
                 for name in sdata.namelist():
 
+                    pdb.set_trace()
+
                     filename = os.path.basename(name)
 
                     # skip directories
