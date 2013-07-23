@@ -21,7 +21,7 @@
 	<xsl:template match="emlSubset">{<xsl:apply-templates select="node()"/>}</xsl:template>
 
 	<!-- title -->
-	<xsl:template match="title">"title":"<xsl:copy-of select="normalize-space(descendant::text())" />",</xsl:template>
+	<xsl:template match="title">"title":"<xsl:call-template name="translateDoubleQuotes"><xsl:with-param name="string"><xsl:copy-of select="normalize-space(descendant::text())" /></xsl:with-param></xsl:call-template>",</xsl:template>
 
 	<!-- abstract (text only, skip <para> <literalLayout> ) -->
 	<xsl:template match="abstract">"abstract":"<xsl:for-each select="descendant::text()[string-length(normalize-space(.)) > 0]"><xsl:call-template name="translateDoubleQuotes"><xsl:with-param name="string"><xsl:value-of select="normalize-space(.)" /></xsl:with-param></xsl:call-template></xsl:for-each>",</xsl:template>
