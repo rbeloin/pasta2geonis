@@ -941,6 +941,17 @@ class UnpackPackages(ArcpyTool):
                 # Check for nested zip files/folders
                 nestedZip = False
                 for name in sdata.namelist():
+
+                    filename = os.path.basename(member)
+
+                    # skip directories
+                    if filename:
+                        # copy file (taken from zipfile's extract)
+                        source = zip_file.open(member)
+                        target = file(os.path.join(my_dir, filename), "wb")
+                        with source, target:
+                            shutil.copyfileobj(source, target)
+                            
                     if re.search(r'\.zip$', name) is not None:
                         nestedZip = True
                         sdataread = StringIO(sdata.read(name))
@@ -951,20 +962,7 @@ class UnpackPackages(ArcpyTool):
                                 self.logger.logMessage(WARN, "%s did not pass zip test." % (sdatafile,))
                                 raise Exception("Zip test fail.")
                     else:
-                        #sdata.extract(name, workDir)
-                        with ZipFile(sdata) as zip_file:
-                            for member in zip_file.namelist():
-                                filename = os.path.basename(member)
-
-                                # skip directories
-                                if not filename:
-                                    continue
-
-                                # copy file (taken from zipfile's extract)
-                                source = zip_file.open(member)
-                                target = file(os.path.join(my_dir, filename), "wb")
-                                with source, target:
-                                    shutil.copyfileobj(source, target)
+                        sdata.extract(name, workDir)
 
         else:
             self.logger.logMessage(WARN, "URL for data source missing.")
