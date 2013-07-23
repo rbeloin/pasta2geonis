@@ -23,6 +23,8 @@ def parse_parameters(argv, parameters):
             ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only', 'flush=']
         )
     except GetoptError:
+        from pprint import pprint
+        pprint(opts)
         print usage
         sys.exit(2)
     optlist = [j[0] for j in opts]
