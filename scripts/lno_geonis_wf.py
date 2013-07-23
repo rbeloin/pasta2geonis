@@ -34,6 +34,7 @@ from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorki
 from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
 import pdb
 import platform
+import zipfile
 from pprint import pprint
 
 ## *****************************************************************************
@@ -909,7 +910,7 @@ class UnpackPackages(ArcpyTool):
                 if resource and resource.getcode() == 200:
                     with open(sdatafile,'wb') as dest:
                         copyfileobj(resource, dest)
-                    
+
                     # Check file size
                     dataLength = os.stat(sdatafile).st_size
                     if contentLength is not None and contentLength != dataLength:
@@ -923,9 +924,9 @@ class UnpackPackages(ArcpyTool):
                         magicNum = dest.read(4)
                         if magicNum != '\x50\x4b\x03\x04':
                             self.logger.logMessage(WARN, "Zipfile magic number mismatch: " + repr(magicNum))
-                    
+
                 else:
-                    raise Exception("Request to %s failed." % (uri,) )
+                    raise Exception("Request to %s failed." % (uri,))
             except Exception as e:
                 raise Exception("Error attempting to download data.\n" + e.message)
             finally:
@@ -935,21 +936,35 @@ class UnpackPackages(ArcpyTool):
                 raise Exception("spatial data file %s missing after download" % (sdatafile,))
 
             with ZipFile(sdatafile, 'r') as sdata:
-                
-                # Check for nested zip files
+
+                # Check for nested zip files/folders
                 nestedZip = False
                 for name in sdata.namelist():
-                    if re.search(r'\.zip$', name) != None:
+                    if re.search(r'\.zip$', name) is not None:
                         nestedZip = True
                         sdataread = StringIO(sdata.read(name))
                         with ZipFile(sdataread) as sdataInner:
                             if sdataInner.testzip() is None:
                                 sdataInner.extractall(workDir)
                             else:
-                                self.logger.logMessage(WARN,"%s did not pass zip test." % (sdatafile,))
-                                raise Exception("Zip test fail.")                    
+                                self.logger.logMessage(WARN, "%s did not pass zip test." % (sdatafile,))
+                                raise Exception("Zip test fail.")
                     else:
-                        sdata.extract(name, workDir)
+                        #sdata.extract(name, workDir)
+                        with ZipFile(sdata) as zip_file:
+                            for member in zip_file.namelist():
+                                filename = os.path.basename(member)
+
+                                # skip directories
+                                if not filename:
+                                    continue
+
+                                # copy file (taken from zipfile's extract)
+                                source = zip_file.open(member)
+                                target = file(os.path.join(my_dir, filename), "wb")
+                                with source, target:
+                                    shutil.copyfileobj(source, target)
+
         else:
             self.logger.logMessage(WARN, "URL for data source missing.")
             raise Exception("No URL for data in %s" % (workDir,))
