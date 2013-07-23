@@ -35,6 +35,7 @@ from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
 import pdb
 import platform
 import zipfile
+import shutil
 from pprint import pprint
 
 ## *****************************************************************************
