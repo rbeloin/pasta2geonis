@@ -942,14 +942,12 @@ class UnpackPackages(ArcpyTool):
                 nestedZip = False
                 for name in sdata.namelist():
 
-                    pdb.set_trace()
-
                     filename = os.path.basename(name)
 
                     # skip directories
                     if filename:
                         # copy file (taken from zipfile's extract)
-                        source = zip_file.open(name)
+                        source = sdata.open(name)
                         target = file(os.path.join(workDir, filename), "wb")
                         with source, target:
                             shutil.copyfileobj(source, target)
