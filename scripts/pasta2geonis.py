@@ -24,7 +24,7 @@ def parse_parameters(argv, parameters):
         )
     except GetoptError:
         from pprint import pprint
-        pprint(opts)
+        pprint(argv)
         print usage
         sys.exit(2)
     optlist = [j[0] for j in opts]
