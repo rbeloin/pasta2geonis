@@ -942,16 +942,16 @@ class UnpackPackages(ArcpyTool):
                 nestedZip = False
                 for name in sdata.namelist():
 
-                    filename = os.path.basename(member)
+                    filename = os.path.basename(name)
 
                     # skip directories
                     if filename:
                         # copy file (taken from zipfile's extract)
-                        source = zip_file.open(member)
-                        target = file(os.path.join(my_dir, filename), "wb")
+                        source = zip_file.open(name)
+                        target = file(os.path.join(workDir, filename), "wb")
                         with source, target:
                             shutil.copyfileobj(source, target)
-                            
+
                     if re.search(r'\.zip$', name) is not None:
                         nestedZip = True
                         sdataread = StringIO(sdata.read(name))
