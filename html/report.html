@@ -6,10 +6,95 @@
 <link rel="stylesheet" type="text/css" href="css/report.css" />
 <link href='http://fonts.googleapis.com/css?family=Lato:300' rel='stylesheet' type='text/css'>
 <script src="js/jquery-1.10.2.min.js" type="text/javascript"></script>
+<script src="js/jquery-migrate-1.2.1.min.js" type="text/javascript"></script>
+<script src="js/jquery.lightbox_me.js" type="text/javascript"></script>
 <script src="js/reportFunctions.js" type="text/javascript"></script>
 <script src="js/reportFactory.js" type="text/javascript"></script>
+
+<link rel="stylesheet" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.5/js/dojo/dijit/themes/claro/claro.css">
+<link rel="stylesheet" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.5/js/esri/css/esri.css">
+<script src="http://serverapi.arcgisonline.com/jsapi/arcgis/3.5/"></script>
+<script>
+dojo.require("esri.map");
+function init(site) {
+    $('#map-lightbox').show();
+    $('#map').show();
+    var layerURL = "http://maps3.lternet.edu/arcgis/rest/services/Test/" + site + "_layers/MapServer";
+    var mapServiceLink = $("<a />").attr("href", layerURL).text(
+            "Click here to go to the " + site.toUpperCase() + " map service."
+            ).click(function () {
+                showMapLightbox(siteCode);
+            });
+    $('#map-service-link').html(mapServiceLink);
+    var lterCoords = {
+        //"and": [44.21, -122.26],
+        "and": [44.24, -122.18],
+        "arc": [66.63, -149.6],
+        "bes": [39.1, -76.3],
+        "bnz": [64.86, -147.85],
+        "cce": [32.87, -120.28],
+        "cdr": [45.4, -93.2],
+        "cap": [33.43, -111.93],
+        "cwt": [35, -83.5],
+        "fce": [25.47, -80.85],
+        "gce": [31.43, -81.37],
+        "hfr": [42.53, -72.19],
+        "hbr": [43.94, -71.75],
+        "jrn": [32.62, -106.74],
+        "kbs": [42.4, -85.4],
+        "knz": [39.09, -96.58],
+        "lno": [35.08, -106.62],
+        "luq": [18.3, -65.8],
+        "mcm": [-77, 162.52],
+        "mcr": [-17.49, -149.83],
+        "nwt": [40.04, -105.59],
+        //"nwt": [39.99, -105.38],
+        "ntl": [46.01, -89.67],
+        "pal": [-64.77, -64.05],
+        "pie": [42.76, -70.89],
+        "sbc": [34.41, -119.84],
+        "sev": [34.35, -106.88],
+        "sgs": [40.83, -104.72],
+        "vcr": [37.28, -75.91]
+    };
+    var lterZoom = {"bnz": 8};
+    var initZoom;
+    if (lterZoom[site]) {
+        initZoom = lterZoom[site];
+    }
+    else {
+        initZoom = 12; 
+    }
+    var map = new esri.Map("map", {
+        basemap: 'satellite',
+        center: [lterCoords[site][1], lterCoords[site][0]], //long, lat
+        zoom: initZoom,
+        sliderStyle: "small"
+    });
+    var layer = new esri.layers.ArcGISDynamicMapServiceLayer(layerURL);
+    map.addLayer(layer);
+    /*var resizeTimer;
+    dojo.connect(map, 'onLoad', function(theMap) {
+        dojo.connect(dijit.byId('map'), 'resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                map.resize();
+                map.reposition();
+            }, 500);
+        });
+     });*/
+}
+
+function showMapLightbox(siteCode) {
+    $('#map-lightbox').lightbox_me({centered: true});
+    //dojo.ready(init);
+    init(siteCode);
+    return false;
+}
+</script>
+
 </head>
-<body>
+<body class="claro">
 <div class="wrapper">
 <div id="body_wrapper">
 
@@ -47,7 +132,7 @@
             <div id="all-report-title"></div>
             <div id="all-report"></div>
         </div>-->
-        <div class="cleaner"></div> 
+        <div class="cleaner"></div>
     </div>
 
     <div class="cleaner"></div>
@@ -63,6 +148,16 @@
         </div> 
     </div>
 </div>-->
+
+<!-- Lightbox -->
+<div id="map-lightbox">
+    <div id="close_button">
+        <a href="#" onclick="$('#map-lightbox').trigger('close'); $('#map').close(); return false;"><img src="images/close_button.png" alt="close" width="18px" /></a>
+    </div>
+    <p id="map-service-link"></p>
+    <div id='map'></div>
+</div>
+<!-- End lightbox -->
 
 </body>
 </html>

@@ -376,3 +376,77 @@ hr {
 	height: 100%;
 	margin: 0 auto -20px; /* the bottom margin is the negative value of the footer's height */
 }
+
+/* Lightbox CSS */
+.try { 
+    width: 93px;
+    height: 31px;
+    background-position: -30px -156px;
+}
+.try:hover {
+    background-position: -30px -187px;
+}
+.try:active {
+    background-position: -30px -218px;
+}
+.white {
+    background: white;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    padding: 10px;
+}
+.hover-item {
+    position:relative;
+    cursor:pointer;
+}
+.hover-item span {
+    display:none;
+    position:absolute;
+    top:-25px;
+    left:-200px;
+    z-index:1;
+    width:170px;
+    padding:10px;
+    border:1px solid #630;
+    background-color:#fff;
+    box-shadow:1px 1px 1px #999;
+    font-size:75%;
+    color:#630;
+    cursor:default;
+    font-weight:normal;
+}
+.hover-item:hover span {
+    display:block;
+}
+/* Intro text */
+#map-lightbox {
+    left: 15px;
+    top: 195px;
+    width: 70%;
+    height: 500px;
+    display: none;
+    font-size: 11pt;
+    position: absolute;
+    border: 1px solid #777;
+    border-radius: 0px;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 10px;
+    padding-bottom: 5px;
+    background-color: #fff;
+}
+#map-lightbox a {
+    color: #000;
+}
+#close_button {
+    float: right;
+    text-align: right;
+}
+
+/* Arc JS map */
+#map {
+    width: 100%;
+    height: 450px;
+    margin: 0;
+    padding: 0;
+}

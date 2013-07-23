@@ -1,6 +1,7 @@
 $(document).ready(function () {
     var reportUrl, siteReportUrl, siteCode;
     var pid = getPID();
+    siteCode = pid.split('.')[0];
     if (pid !== "") {
         $('#pid').html(pid);
 
@@ -70,10 +71,15 @@ $(document).ready(function () {
             }
 
             // Map and image server info
-            $('#map-service').html(
-                "<a href='" + services.map.split('/').slice(0, -1).join('/') + "'>" +
-                "Map service</a>"
-            );
+            //"<a href='" + services.map.split('/').slice(0, -1).join('/') + "'>" +
+            //"Map service</a>"
+            //"<a href='http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+            //pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
+            // $(\'#intro\').lightbox_me({centered: true}); return false;
+            var linkToMapService = $("<a />").attr("href", "#").text("Map service").click(function () {
+                showMapLightbox(siteCode.split('-')[2]);
+            });
+            $('#map-service').html(linkToMapService);
             $('#image-service').html(
                 "<a href='http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
                 pid.split('.')[0].split('-')[2] + "_mosaic/ImageServer'>Image service</a>"
@@ -85,7 +91,6 @@ $(document).ready(function () {
         $('#package-report').html("<p style='text-align: center; padding-top: 20px;'>Data set not found.</p>");
 
         // Other data sets from the same site
-        siteCode = pid.split('.')[0];
         siteReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
             "Search/MapServer/2/query?where=packageid+like+%27" + siteCode +
             "%%27&returnGeometry=true&f=pjson&callback=?";
