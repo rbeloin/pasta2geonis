@@ -332,15 +332,11 @@ hr {
 #linkbar a:hover {
     text-decoration: none;
 }
-#map-service {
+#map-service, #image-service, #view-map {
     border: 1px solid #ccc;
     border-radius: 5px;
 }
-#image-service {
-    border: 1px solid #ccc;
-    border-radius: 5px;
-}
-#map-service a, #image-service a {
+#map-service a, #image-service a, #view-map a {
     font-size: 115%;
 }
 #vector-report-header {

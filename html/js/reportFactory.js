@@ -76,10 +76,14 @@ $(document).ready(function () {
             //"<a href='http://maps3.lternet.edu/arcgis/rest/services/Test/" +
             //pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
             // $(\'#intro\').lightbox_me({centered: true}); return false;
-            var linkToMapService = $("<a />").attr("href", "#").text("Map service").click(function () {
+            var linkToMapLightbox = $("<a />").attr("href", "#").text("View map").click(function () {
                 showMapLightbox(siteCode.split('-')[2]);
             });
-            $('#map-service').html(linkToMapService);
+            $('#view-map').html(linkToMapLightbox);
+            $('#map-service').html(
+                "<a href='http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+                pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
+            );
             $('#image-service').html(
                 "<a href='http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
                 pid.split('.')[0].split('-')[2] + "_mosaic/ImageServer'>Image service</a>"
