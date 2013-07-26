@@ -200,6 +200,35 @@ function pluralize(str, count) {
     return (count == 1 ? str : plural);
 }
 
+// Insert reports and section headers into the html document
+function writeReports(reports, counter) {
+    var packageOk;
+    if (counter.package) {
+        $('#linkbar').show();
+        packageOk = "<p><span class='entity-name'></span><ul><li>No errors found.</li></p>";
+        if (reports.package === packageOk) {
+            $('#package-report').html('');
+        }
+        else {
+            $('#package-report').html(reports.package);
+        }
+    }
+    if (counter.vector) {
+        $('#vector-banner').show();
+        $('#vector-report-header').html(
+            '<h3>' + counter.vector + ' vector ' + pluralize('dataset', counter.vector) + '</h3>'
+        ).show();
+        $('#vector-report').html(reports.vector);
+    }
+    if (counter.raster) {
+        $('#raster-banner').show();
+        $('#raster-report-header').html(
+            '<h3>' + counter.raster + ' raster ' + pluralize('dataset', counter.raster) + '</h3>'
+        ).show();
+        $('#raster-report').html(reports.raster);
+    }
+}
+
 // Create and display the ArcGIS map inside a lightbox
 function init(site, service, entities) {
 
@@ -302,33 +331,4 @@ function createServiceButtons(site, entities) {
     $('#view-image').html(linkToImageLightbox);
     $('#map-service').html(linkToMapService);
     $('#image-service').html(linkToImageService);
-}
-
-// Insert reports and section headers into the html document
-function writeReports(reports, counter) {
-    var packageOk;
-    if (counter.package) {
-        $('#linkbar').show();
-        packageOk = "<p><span class='entity-name'></span><ul><li>No errors found.</li></p>";
-        if (reports.package === packageOk) {
-            $('#package-report').html('');
-        }
-        else {
-            $('#package-report').html(reports.package);
-        }
-    }
-    if (counter.vector) {
-        $('#vector-banner').show();
-        $('#vector-report-header').html(
-            '<h3>' + counter.vector + ' vector ' + pluralize('dataset', counter.vector) + '</h3>'
-        ).show();
-        $('#vector-report').html(reports.vector);
-    }
-    if (counter.raster) {
-        $('#raster-banner').show();
-        $('#raster-report-header').html(
-            '<h3>' + counter.raster + ' raster ' + pluralize('dataset', counter.raster) + '</h3>'
-        ).show();
-        $('#raster-report').html(reports.raster);
-    }
 }
