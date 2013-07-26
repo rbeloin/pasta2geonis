@@ -41,40 +41,37 @@ $(document).ready(function () {
 
     pid = getPID();
     siteCode = pid.split('.')[0];
+    site = siteCode.split('-')[2];
     if (pid !== "") {
-        $('#pid').html(pid);
+        generateBanner(pid);
         entities = [];
+        
+        // Fetch report from database using the Search service, then parse
+        // the report, extract information about the report from the
+        // stringified-JSON structure, then write output to document.
         reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
             "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
             "%27&returnGeometry=true&outFields=report&f=pjson&callback=?";
         $.getJSON(reportUrl, function (response) {
-            var i, foundServerInfo, serverInfo, parsed, counter, services, reports;
+            var i, serverInfo, parsed, counter, reports;
 
             // The error report is pipe-delimited from other useful info stored in
             // the report field, in stringified-JSON format
-            foundServerInfo = false;
             counter = {'package': 0, 'vector': 0, 'raster': 0};
             reports = {'package': '', 'vector': '', 'raster': ''};
-            generateBanner(pid);
             for (i = 0; i < response.features.length; i++) {
 
-                // First parse the raw report
+                // Parse the raw report from the Search service
                 parsed = parseReport(response.features[i].attributes.report);
                 formatted = checkTables(parsed.biography, parsed.report, parsed.reportType);
                 counter[formatted.subject]++;
-
-                //alert(JSON.stringify(parsed.biography));
                 entities.push(
                     (parsed.biography.entityname === 'None') ?
                     'Untitled ' + formatted.subject + ' data set' :
                     parsed.biography.entityname
                 );
-
-                // Generate a banner with the site name, id, and revision, if we haven't
-                // done so already
-                if (!foundServerInfo) {
+                if (!serverInfo) {
                     serverInfo = getServerInfo(parsed.biography);
-                    foundServerInfo = true;
                 }
 
                 // Append the report text onto the appropriate section
@@ -85,7 +82,7 @@ $(document).ready(function () {
             writeReports(reports, counter);
 
             // Map and image buttons
-            createServiceButtons(siteCode.split('-')[2], entities);
+            createServiceButtons(site, entities);
 
             // Append server information and download link to the bottom of the report
             appendServerInfo(serverInfo, parsed.biography);

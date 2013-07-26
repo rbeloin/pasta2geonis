@@ -335,6 +335,7 @@ hr {
 #map-service, #image-service, #view-map, #view-image {
     border: 1px solid #ccc;
     border-radius: 5px;
+    display: none;
 }
 #map-service a, #image-service a, #view-map a, #view-image a {
     font-size: 115%;

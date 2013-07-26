@@ -224,43 +224,63 @@ function writeReports(reports, counter) {
  * the lightboxed map and images.
  */
 function createServiceButtons(site, entities) {
-    //"<a href='" + services.map.split('/').slice(0, -1).join('/') + "'>" +
-    //"Map service</a>"
-    //"<a href='http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-    //pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
-    // $(\'#intro\').lightbox_me({centered: true}); return false;
-    var linkToMapLightbox = $("<a />")
-        .attr("href", "#")
-        .text("View map")
-        .click(function () {
-            showLightbox(site, 'map', entities);
+
+    // Check if map and/or image services exist for this site
+    var services = {'map': true, 'image': true};
+    var mapUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+        site + "_layers/MapServer";
+    var imageUrl = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
+        site + "_mosaic/ImageServer";
+    $.getJSON(mapUrl + "?f=pjson", function (response) {
+        if (!response.error) {
+            services.map = true;
+            var linkToMapLightbox = $("<a />")
+                .attr("href", "#")
+                .text("View map")
+                .click(function () {
+                    showLightbox(site, 'map', entities);
+                }
+            );
+            var linkToMapService = $("<a />")
+                .attr(
+                    "href",
+                    "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+                        site + "_layers/MapServer"
+                )
+                .text("Map service");
+            $('#view-map').html(linkToMapLightbox).show();
+            $('#map-service').html(linkToMapService).show();
         }
-    );
-    var linkToImageLightbox = $("<a />")
-        .attr("href", "#")
-        .text("View image")
-        .click(function () {
-            showLightbox(site, 'image', entities);
+        else {
+            $('#view-map').hide();
+            $('#map-service').hide();
         }
-    );
-    var linkToMapService = $("<a />")
-        .attr(
-            "href",
-            "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-                site + "_layers/MapServer"
-        )
-        .text("Map service");
-    var linkToImageService = $("<a />")
-        .attr(
-            "href",
-            "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
-                site + "_mosaic/ImageServer"
-        )
-        .text("Image service");
-    $('#view-map').html(linkToMapLightbox);
-    $('#view-image').html(linkToImageLightbox);
-    $('#map-service').html(linkToMapService);
-    $('#image-service').html(linkToImageService);
+    });
+    $.getJSON(imageUrl + "?f=pjson", function (response) {
+        if (!response.error) {
+            services.image = true;
+            var linkToImageLightbox = $("<a />")
+                .attr("href", "#")
+                .text("View image")
+                .click(function () {
+                    showLightbox(site, 'image', entities);
+                }
+            );
+            var linkToImageService = $("<a />")
+                .attr(
+                    "href",
+                    "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
+                        site + "_mosaic/ImageServer"
+                )
+                .text("Image service");
+            $('#view-image').html(linkToImageLightbox).show();
+            $('#image-service').html(linkToImageService).show();
+        }
+        else {
+            $('#view-image').hide();
+            $('#image-service').hide();
+        }
+    });
 }
 
 // Call the map creator function when user clicks on the "view map" button
@@ -273,6 +293,58 @@ function showLightbox(siteCode, service, entities) {
 
 // Create and display the ArcGIS map inside a lightbox
 function init(site, service, entities) {
+
+    // Do we need separate view map/view image buttons??
+    // Idea: just have one button, and allow the user to switch layers on/off
+    // as needed...
+    var map, layer, layerURL, serviceLink;
+    $('#' + service + '-lightbox').show();
+    $('#' + service).show();
+
+    // If this is a map service
+    if (service === "map") {
+        layerURL = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+            site + "_layers/MapServer";
+        serviceLink = $("<a />")
+            .attr("href", layerURL)
+            .text("Click here to go to the " + site.toUpperCase() + " map service.");
+        $('#map-service-link').html(serviceLink);
+        layer = new esri.layers.ArcGISDynamicMapServiceLayer(layerURL);
+    }
+
+    // If this is an image service
+    else {
+        layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
+            site + "_mosaic/ImageServer";
+        //layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/and_gi01001/ImageServer";
+        serviceLink = $("<a />")
+            .attr("href", layerURL)
+            .text("Click here to go to the " + site.toUpperCase() + " image service.");
+        $('#image-service-link').html(serviceLink);
+
+        var params = new esri.layers.ImageServiceParameters();
+        params.noData = 0;
+        layer = new esri.layers.ArcGISImageServiceLayer(layerURL, {
+            imageServiceParameters: params,
+            opacity: 0.75
+        });
+        //layer = new esri.layers.ArcGISImageServiceLayer(layerURL);
+    }
+    map = new esri.Map(service, {
+        basemap: 'satellite',
+        center: [lter[site].coords[1], lter[site].coords[0]], // longitude, latitude
+        zoom: (lter[site].zoom) ? lter[site].zoom : 12,
+        sliderStyle: "small"
+    });
+    map.addLayer(layer);
+
+    /*layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/and_gi01007/ImageServer";
+    layer = new esri.layers.ArcGISImageServiceLayer(layerURL);
+    map.addLayer(layer);*/
+}
+
+// Create and display the ArcGIS map inside a lightbox
+function initOld(site, service, entities) {
 
     // Do we need separate view map/view image buttons??
     // Idea: just have one button, and allow the user to switch layers on/off
