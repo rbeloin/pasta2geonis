@@ -1,6 +1,46 @@
 $(document).ready(function () {
-    var reportUrl, siteReportUrl, siteCode;
-    var pid = getPID();
+    var reportUrl, siteReportUrl, siteCode, entities;
+    entities = [];
+
+    // Add onclick handlers to the map and image lightbox close buttons
+    $('#close-map-lightbox').click(function (event) {
+        event.preventDefault(event);
+        $('#map-lightbox').trigger('close');
+        $('#map').close();
+    });
+    $('#close-image-lightbox').click(function (event) {
+        event.preventDefault(event);
+        $('#image-lightbox').trigger('close');
+        $('#image').close();
+    });
+
+    // Set up the LTER link bar
+    //var lterLinks = '';
+    $.each(lter, function (i, site) {
+        var linkId = 'link-' + i;
+        var tooltip = linkId + '-tooltip';
+        $('#' + linkId).mouseenter(function () {
+            $('#' + tooltip)
+                .text(site.name)
+                .css({
+                    position: 'absolute',
+                    display: 'none',
+                    border: '1px solid #ccc',
+                    padding: '0 10px',
+                    background: '#fff',
+                    color: '#000',
+                    top: $(this).position().top,
+                    left: $(this).position().left
+                })
+                .fadeIn('fast');
+            })
+            .mouseleave(function () {
+                $('#' + tooltip).fadeOut('fast');
+            });
+    });
+    //$('#lter-links').html(lterLinks);
+
+    pid = getPID();
     siteCode = pid.split('.')[0];
     if (pid !== "") {
         $('#pid').html(pid);
@@ -10,7 +50,7 @@ $(document).ready(function () {
             "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
             "%27&returnGeometry=true&outFields=report&f=pjson&callback=?";
         $.getJSON(reportUrl, function (response) {
-            var i, replaceBanner, serverInfo, parsed, counter, services, reports;
+            var i, replaceBanner, serverInfo, parsed, counter, services, reports, packageOk;
 
             // The error report is pipe-delimited from other useful info stored in
             // the report field, in stringified-JSON format
@@ -24,6 +64,8 @@ $(document).ready(function () {
                 parsed = parseReport(response.features[i].attributes.report);
                 formatted = checkTables(parsed.biography, parsed.report, parsed.reportType);
                 counter[formatted.subject]++;
+
+                //alert(JSON.stringify(parsed.biography));
 
                 // Generate a banner with the site name, id, and revision, if we haven't
                 // done so already
@@ -42,13 +84,13 @@ $(document).ready(function () {
                 }
 
                 // Insert the reports into the report div
-                //insertReport('<p>' + formatted.report + '</p>', 'report', i === 0);
                 reports[formatted.subject] += '<p>' + formatted.report + '</p>';
             }
 
             if (counter.package) {
                 $('#linkbar').show();
-                if (reports.package === "<p><span class='entity-name'></span><ul><li>No errors found.</li></p>") {
+                packageOk = "<p><span class='entity-name'></span><ul><li>No errors found.</li></p>";
+                if (reports.package === packageOk) {
                     $('#package-report').html('');
                 }
                 else {
@@ -77,9 +119,13 @@ $(document).ready(function () {
             //pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
             // $(\'#intro\').lightbox_me({centered: true}); return false;
             var linkToMapLightbox = $("<a />").attr("href", "#").text("View map").click(function () {
-                showMapLightbox(siteCode.split('-')[2]);
+                showLightbox(siteCode.split('-')[2], 'map');
             });
             $('#view-map').html(linkToMapLightbox);
+            var linkToImageLightbox = $("<a />").attr("href", "#").text("View image").click(function () {
+                showLightbox(siteCode.split('-')[2], 'image');
+            });
+            $('#view-image').html(linkToImageLightbox);
             $('#map-service').html(
                 "<a href='http://maps3.lternet.edu/arcgis/rest/services/Test/" +
                 pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"

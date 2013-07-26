@@ -332,11 +332,11 @@ hr {
 #linkbar a:hover {
     text-decoration: none;
 }
-#map-service, #image-service, #view-map {
+#map-service, #image-service, #view-map, #view-image {
     border: 1px solid #ccc;
     border-radius: 5px;
 }
-#map-service a, #image-service a, #view-map a {
+#map-service a, #image-service a, #view-map a, #view-image a {
     font-size: 115%;
 }
 #vector-report-header {
@@ -414,8 +414,8 @@ hr {
 .hover-item:hover span {
     display:block;
 }
-/* Intro text */
-#map-lightbox {
+/* Lightboxes */
+#map-lightbox, #image-lightbox {
     left: 15px;
     top: 195px;
     width: 70%;
@@ -431,10 +431,10 @@ hr {
     padding-bottom: 5px;
     background-color: #fff;
 }
-#map-lightbox a {
+#map-lightbox a, #image-lightbox a {
     color: #000;
 }
-#close_button {
+.close-button {
     float: right;
     text-align: right;
 }
@@ -445,4 +445,16 @@ hr {
     height: 450px;
     margin: 0;
     padding: 0;
+}
+#image {
+    width: 100%;
+    height: 450px;
+    margin: 0;
+    padding: 0;
+}
+
+#lter-links li {
+    display: inline;
+    list-style-type: none;
+    padding-right: 20px;
 }

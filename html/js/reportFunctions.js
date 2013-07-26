@@ -199,3 +199,56 @@ function pluralize(str, count) {
     plural = str + 's';
     return (count == 1 ? str : plural);
 }
+
+// Create and display the ArcGIS map inside a lightbox
+function init(site, service) {
+    var map, layer, layerURL, serviceLink;
+    $('#' + service + '-lightbox').show();
+    $('#' + service).show();
+    if (service === "map") {
+        layerURL = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+            site + "_layers/MapServer";
+        serviceLink = $("<a />")
+            .attr("href", layerURL)
+            .text("Click here to go to the " + site.toUpperCase() + " map service.");
+        $('#map-service-link').html(serviceLink);
+        layer = new esri.layers.ArcGISDynamicMapServiceLayer(layerURL);
+    }
+    else {
+        layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
+            site + "_mosaic/ImageServer";
+        //layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/and_gi01001/ImageServer";
+        serviceLink = $("<a />")
+            .attr("href", layerURL)
+            .text("Click here to go to the " + site.toUpperCase() + " image service.");
+        $('#image-service-link').html(serviceLink);
+
+        var params = new esri.layers.ImageServiceParameters();
+        params.noData = 0;
+        layer = new esri.layers.ArcGISImageServiceLayer(layerURL, {
+            imageServiceParameters: params,
+            opacity: 0.75
+        });
+        //layer = new esri.layers.ArcGISImageServiceLayer(layerURL);
+    }
+    map = new esri.Map(service, {
+        basemap: 'satellite',
+        center: [lter[site].coords[1], lter[site].coords[0]], // longitude, latitude
+        zoom: (lter[site].zoom) ? lter[site].zoom : 12,
+        sliderStyle: "small"
+    });
+    map.addLayer(layer);
+
+    /*layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/and_gi01007/ImageServer";
+    layer = new esri.layers.ArcGISImageServiceLayer(layerURL);
+    map.addLayer(layer);*/
+}
+
+// Call the map creator function when user clicks on the "view map" button
+function showLightbox(siteCode, service) {
+    dojo.require("esri.map");
+    $('#' + service + '-lightbox').lightbox_me({centered: true});
+    dojo.ready(init(siteCode, service));
+    return false;
+}
+
