@@ -48,14 +48,15 @@ $(document).ready(function () {
             "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
             "%27&returnGeometry=true&outFields=report&f=pjson&callback=?";
         $.getJSON(reportUrl, function (response) {
-            var i, replaceBanner, serverInfo, parsed, counter, services, reports;
+            var i, foundServerInfo, serverInfo, parsed, counter, services, reports;
 
             // The error report is pipe-delimited from other useful info stored in
             // the report field, in stringified-JSON format
-            replaceBanner = false;
+            foundServerInfo = false;
             counter = {'package': 0, 'vector': 0, 'raster': 0};
             services = {'image': false, 'map': false};
             reports = {'package': '', 'vector': '', 'raster': ''};
+            generateBanner(pid);
             for (i = 0; i < response.features.length; i++) {
 
                 // First parse the raw report
@@ -66,23 +67,15 @@ $(document).ready(function () {
                 //alert(JSON.stringify(parsed.biography));
                 entities.push(
                     (parsed.biography.entityname === 'None') ?
-                    'Untitled data set' : parsed.biography.entityname
+                    'Untitled ' + formatted.subject + ' data set' :
+                    parsed.biography.entityname
                 );
 
                 // Generate a banner with the site name, id, and revision, if we haven't
                 // done so already
-                if (!replaceBanner) {
-                    serverInfo = generateBanner(parsed.biography);
-                    replaceBanner = true;
-                }
-
-                if (formatted.service !== null) {
-                    if (!services.image && formatted.subject === 'raster') {
-                        services.image = formatted.service;
-                    }
-                    else if (!services.map && formatted.subject === 'vector') {
-                        services.map = formatted.service;
-                    }
+                if (!foundServerInfo) {
+                    serverInfo = getServerInfo(parsed.biography);
+                    foundServerInfo = true;
                 }
 
                 // Append the report text onto the appropriate section
@@ -98,7 +91,9 @@ $(document).ready(function () {
             // Append server information and download link to the bottom of the report
             appendServerInfo(serverInfo, parsed.biography);
         });
-        $('#package-report').html("<p style='text-align: center; padding-top: 20px;'>Data set not found.</p>");
+        $('#package-report').html(
+            "<p style='text-align: center; padding-top: 20px;'>Data set not found.</p>"
+        );
 
         // Other data sets from the same site
         siteReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +

@@ -82,7 +82,7 @@ function checkTables(biography, report, reportType) {
  * Check for report entries in the entity table, and append them to its error report.
  */
 function checkPackage(biography, report) {
-    return "<span class='entity-name'></span>" + report;
+    return report;
 }
 
 /**
@@ -96,18 +96,23 @@ function checkEntity(biography, report, spatialType) {
 }
 
 /**
- * Replaces the default "Searching for package..." with a readable site ID: revision
- * banner, and determines whether this package was retrieved from the staging
+ * Replaces the default "Searching for package..." with a readable 
+ * site ID: revision banner.
+ */
+function generateBanner(pid) {
+    var splitPid = pid.split('.');
+    $('#pid').html(
+        splitPid[0].split('-')[2].toUpperCase() + " " + splitPid[1] +
+        ", revision " + splitPid[2]
+    );
+}
+
+/**
+ * Determines whether this package was retrieved from the staging
  * (pasta-s.lternet.edu) or live (pasta.lternet.edu) server.
  */
-function generateBanner(biography) {
+function getServerInfo(biography) {
     var serverInfo;
-    if (biography['scope'] !== 'undefined') {
-        $('#pid').html(
-            biography['scope'].toUpperCase() + " " + biography['identifier'] +
-            ", revision " + biography['revision']
-        );
-    }
     if (biography['pasta'].indexOf('pasta-s') !== -1) {
         serverInfo = {
             'server': 'staging',
@@ -205,7 +210,7 @@ function writeReports(reports, counter) {
     var packageOk;
     if (counter.package) {
         $('#linkbar').show();
-        packageOk = "<p><span class='entity-name'></span><ul><li>No errors found.</li></p>";
+        packageOk = "<p><ul><li>No errors found.</li></p>";
         if (reports.package === packageOk) {
             $('#package-report').html('');
         }
