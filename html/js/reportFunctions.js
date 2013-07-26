@@ -202,9 +202,15 @@ function pluralize(str, count) {
 
 // Create and display the ArcGIS map inside a lightbox
 function init(site, service, entities) {
+
+    // Do we need separate view map/view image buttons??
+    // Idea: just have one button, and allow the user to switch layers on/off
+    // as needed...
     var map, layer, layerURL, serviceLink;
     $('#' + service + '-lightbox').show();
     $('#' + service).show();
+
+    // If this is a map service
     if (service === "map") {
         layerURL = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
             site + "_layers/MapServer";
@@ -214,6 +220,8 @@ function init(site, service, entities) {
         $('#map-service-link').html(serviceLink);
         layer = new esri.layers.ArcGISDynamicMapServiceLayer(layerURL);
     }
+
+    // If this is an image service
     else {
         layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
             site + "_mosaic/ImageServer";
@@ -252,3 +260,75 @@ function showLightbox(siteCode, service, entities) {
     return false;
 }
 
+/**
+ * Create the buttons linking to the map and image services, and to
+ * the lightboxed map and images.
+ */
+function createServiceButtons(site, entities) {
+    //"<a href='" + services.map.split('/').slice(0, -1).join('/') + "'>" +
+    //"Map service</a>"
+    //"<a href='http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+    //pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
+    // $(\'#intro\').lightbox_me({centered: true}); return false;
+    var linkToMapLightbox = $("<a />")
+        .attr("href", "#")
+        .text("View map")
+        .click(function () {
+            showLightbox(site, 'map', entities);
+        }
+    );
+    var linkToImageLightbox = $("<a />")
+        .attr("href", "#")
+        .text("View image")
+        .click(function () {
+            showLightbox(site, 'image', entities);
+        }
+    );
+    var linkToMapService = $("<a />")
+        .attr(
+            "href",
+            "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+                site + "_layers/MapServer"
+        )
+        .text("Map service");
+    var linkToImageService = $("<a />")
+        .attr(
+            "href",
+            "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
+                site + "_mosaic/ImageServer"
+        )
+        .text("Image service");
+    $('#view-map').html(linkToMapLightbox);
+    $('#view-image').html(linkToImageLightbox);
+    $('#map-service').html(linkToMapService);
+    $('#image-service').html(linkToImageService);
+}
+
+// Insert reports and section headers into the html document
+function writeReports(reports, counter) {
+    var packageOk;
+    if (counter.package) {
+        $('#linkbar').show();
+        packageOk = "<p><span class='entity-name'></span><ul><li>No errors found.</li></p>";
+        if (reports.package === packageOk) {
+            $('#package-report').html('');
+        }
+        else {
+            $('#package-report').html(reports.package);
+        }
+    }
+    if (counter.vector) {
+        $('#vector-banner').show();
+        $('#vector-report-header').html(
+            '<h3>' + counter.vector + ' vector ' + pluralize('dataset', counter.vector) + '</h3>'
+        ).show();
+        $('#vector-report').html(reports.vector);
+    }
+    if (counter.raster) {
+        $('#raster-banner').show();
+        $('#raster-report-header').html(
+            '<h3>' + counter.raster + ' raster ' + pluralize('dataset', counter.raster) + '</h3>'
+        ).show();
+        $('#raster-report').html(reports.raster);
+    }
+}

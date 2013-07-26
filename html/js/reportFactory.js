@@ -48,7 +48,7 @@ $(document).ready(function () {
             "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
             "%27&returnGeometry=true&outFields=report&f=pjson&callback=?";
         $.getJSON(reportUrl, function (response) {
-            var i, replaceBanner, serverInfo, parsed, counter, services, reports, packageOk;
+            var i, replaceBanner, serverInfo, parsed, counter, services, reports;
 
             // The error report is pipe-delimited from other useful info stored in
             // the report field, in stringified-JSON format
@@ -85,57 +85,15 @@ $(document).ready(function () {
                     }
                 }
 
-                // Insert the reports into the report div
+                // Append the report text onto the appropriate section
                 reports[formatted.subject] += '<p>' + formatted.report + '</p>';
             }
 
-            if (counter.package) {
-                $('#linkbar').show();
-                packageOk = "<p><span class='entity-name'></span><ul><li>No errors found.</li></p>";
-                if (reports.package === packageOk) {
-                    $('#package-report').html('');
-                }
-                else {
-                    $('#package-report').html(reports.package);
-                }
-            }
-            if (counter.vector) {
-                $('#vector-banner').show();
-                $('#vector-report-header').html(
-                    '<h3>' + counter.vector + ' vector ' + pluralize('dataset', counter.vector) + '</h3>'
-                ).show();
-                $('#vector-report').html(reports.vector);
-            }
-            if (counter.raster) {
-                $('#raster-banner').show();
-                $('#raster-report-header').html(
-                    '<h3>' + counter.raster + ' raster ' + pluralize('dataset', counter.raster) + '</h3>'
-                ).show();
-                $('#raster-report').html(reports.raster);
-            }
+            // Insert report text into document, and create section headers
+            writeReports(reports, counter);
 
-            // Map and image server info
-            //"<a href='" + services.map.split('/').slice(0, -1).join('/') + "'>" +
-            //"Map service</a>"
-            //"<a href='http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-            //pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
-            // $(\'#intro\').lightbox_me({centered: true}); return false;
-            var linkToMapLightbox = $("<a />").attr("href", "#").text("View map").click(function () {
-                showLightbox(siteCode.split('-')[2], 'map', entities);
-            });
-            $('#view-map').html(linkToMapLightbox);
-            var linkToImageLightbox = $("<a />").attr("href", "#").text("View image").click(function () {
-                showLightbox(siteCode.split('-')[2], 'image', entities);
-            });
-            $('#view-image').html(linkToImageLightbox);
-            $('#map-service').html(
-                "<a href='http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-                pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
-            );
-            $('#image-service').html(
-                "<a href='http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
-                pid.split('.')[0].split('-')[2] + "_mosaic/ImageServer'>Image service</a>"
-            );
+            // Map and image buttons
+            createServiceButtons(siteCode.split('-')[2], entities);
 
             // Append server information and download link to the bottom of the report
             appendServerInfo(serverInfo, parsed.biography);
