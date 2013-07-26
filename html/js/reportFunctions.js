@@ -145,21 +145,6 @@ function appendServerInfo(serverInfo, biography) {
     );
 }
 
-// Creates initial HTML or appends HTML to a div, as appropriate...
-function insertReport(report, reportDiv, isFirstReport) {
-    var nextReport;
-    if (isFirstReport) {
-        $('#' + reportDiv).html(report);
-    }
-    else {
-        nextReport = document.createElement('div');
-        nextReport.innerHTML = report;
-        while (nextReport.firstChild) {
-            document.getElementById(reportDiv).appendChild(nextReport.firstChild);
-        }
-    }
-}
-
 Array.prototype.getUnique = function () {
     var u = {}, a = [];
     for(var i = 0, l = this.length; i < l; ++i){
@@ -234,6 +219,58 @@ function writeReports(reports, counter) {
     }
 }
 
+/**
+ * Create the buttons linking to the map and image services, and to
+ * the lightboxed map and images.
+ */
+function createServiceButtons(site, entities) {
+    //"<a href='" + services.map.split('/').slice(0, -1).join('/') + "'>" +
+    //"Map service</a>"
+    //"<a href='http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+    //pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
+    // $(\'#intro\').lightbox_me({centered: true}); return false;
+    var linkToMapLightbox = $("<a />")
+        .attr("href", "#")
+        .text("View map")
+        .click(function () {
+            showLightbox(site, 'map', entities);
+        }
+    );
+    var linkToImageLightbox = $("<a />")
+        .attr("href", "#")
+        .text("View image")
+        .click(function () {
+            showLightbox(site, 'image', entities);
+        }
+    );
+    var linkToMapService = $("<a />")
+        .attr(
+            "href",
+            "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+                site + "_layers/MapServer"
+        )
+        .text("Map service");
+    var linkToImageService = $("<a />")
+        .attr(
+            "href",
+            "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
+                site + "_mosaic/ImageServer"
+        )
+        .text("Image service");
+    $('#view-map').html(linkToMapLightbox);
+    $('#view-image').html(linkToImageLightbox);
+    $('#map-service').html(linkToMapService);
+    $('#image-service').html(linkToImageService);
+}
+
+// Call the map creator function when user clicks on the "view map" button
+function showLightbox(siteCode, service, entities) {
+    dojo.require("esri.map");
+    $('#' + service + '-lightbox').lightbox_me({centered: true});
+    dojo.ready(init(siteCode, service, entities));
+    return false;
+}
+
 // Create and display the ArcGIS map inside a lightbox
 function init(site, service, entities) {
 
@@ -284,56 +321,4 @@ function init(site, service, entities) {
     /*layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/and_gi01007/ImageServer";
     layer = new esri.layers.ArcGISImageServiceLayer(layerURL);
     map.addLayer(layer);*/
-}
-
-// Call the map creator function when user clicks on the "view map" button
-function showLightbox(siteCode, service, entities) {
-    dojo.require("esri.map");
-    $('#' + service + '-lightbox').lightbox_me({centered: true});
-    dojo.ready(init(siteCode, service, entities));
-    return false;
-}
-
-/**
- * Create the buttons linking to the map and image services, and to
- * the lightboxed map and images.
- */
-function createServiceButtons(site, entities) {
-    //"<a href='" + services.map.split('/').slice(0, -1).join('/') + "'>" +
-    //"Map service</a>"
-    //"<a href='http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-    //pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
-    // $(\'#intro\').lightbox_me({centered: true}); return false;
-    var linkToMapLightbox = $("<a />")
-        .attr("href", "#")
-        .text("View map")
-        .click(function () {
-            showLightbox(site, 'map', entities);
-        }
-    );
-    var linkToImageLightbox = $("<a />")
-        .attr("href", "#")
-        .text("View image")
-        .click(function () {
-            showLightbox(site, 'image', entities);
-        }
-    );
-    var linkToMapService = $("<a />")
-        .attr(
-            "href",
-            "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-                site + "_layers/MapServer"
-        )
-        .text("Map service");
-    var linkToImageService = $("<a />")
-        .attr(
-            "href",
-            "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
-                site + "_mosaic/ImageServer"
-        )
-        .text("Image service");
-    $('#view-map').html(linkToMapLightbox);
-    $('#view-image').html(linkToImageLightbox);
-    $('#map-service').html(linkToMapService);
-    $('#image-service').html(linkToImageService);
 }
