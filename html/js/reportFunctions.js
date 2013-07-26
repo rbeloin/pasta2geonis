@@ -194,7 +194,6 @@ function pluralize(str, count) {
 function writeReports(reports, counter) {
     var packageOk;
     if (counter.package) {
-        $('#linkbar').show();
         packageOk = "<p><ul><li>No errors found.</li></p>";
         if (reports.package === packageOk) {
             $('#package-report').html('');
@@ -242,11 +241,7 @@ function createServiceButtons(site, entities) {
                 }
             );
             var linkToMapService = $("<a />")
-                .attr(
-                    "href",
-                    "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-                        site + "_layers/MapServer"
-                )
+                .attr("href", mapUrl)
                 .text("Map service");
             $('#view-map').html(linkToMapLightbox).show();
             $('#map-service').html(linkToMapService).show();
@@ -267,11 +262,7 @@ function createServiceButtons(site, entities) {
                 }
             );
             var linkToImageService = $("<a />")
-                .attr(
-                    "href",
-                    "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
-                        site + "_mosaic/ImageServer"
-                )
+                .attr("href", imageUrl)
                 .text("Image service");
             $('#view-image').html(linkToImageLightbox).show();
             $('#image-service').html(linkToImageService).show();
@@ -280,6 +271,7 @@ function createServiceButtons(site, entities) {
             $('#view-image').hide();
             $('#image-service').hide();
         }
+        $('#linkbar').show();
     });
 }
 
