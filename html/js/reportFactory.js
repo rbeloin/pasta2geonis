@@ -1,6 +1,5 @@
 $(document).ready(function () {
     var reportUrl, siteReportUrl, siteCode, entities;
-    entities = [];
 
     // Add onclick handlers to the map and image lightbox close buttons
     $('#close-map-lightbox').click(function (event) {
@@ -44,8 +43,7 @@ $(document).ready(function () {
     siteCode = pid.split('.')[0];
     if (pid !== "") {
         $('#pid').html(pid);
-
-        // There are multiple entities w/ the same packageid...
+        entities = [];
         reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
             "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
             "%27&returnGeometry=true&outFields=report&f=pjson&callback=?";
@@ -66,6 +64,10 @@ $(document).ready(function () {
                 counter[formatted.subject]++;
 
                 //alert(JSON.stringify(parsed.biography));
+                entities.push(
+                    (parsed.biography.entityname === 'None') ?
+                    'Untitled data set' : parsed.biography.entityname
+                );
 
                 // Generate a banner with the site name, id, and revision, if we haven't
                 // done so already
@@ -119,11 +121,11 @@ $(document).ready(function () {
             //pid.split('.')[0].split('-')[2] + "_layers/MapServer'>Map service</a>"
             // $(\'#intro\').lightbox_me({centered: true}); return false;
             var linkToMapLightbox = $("<a />").attr("href", "#").text("View map").click(function () {
-                showLightbox(siteCode.split('-')[2], 'map');
+                showLightbox(siteCode.split('-')[2], 'map', entities);
             });
             $('#view-map').html(linkToMapLightbox);
             var linkToImageLightbox = $("<a />").attr("href", "#").text("View image").click(function () {
-                showLightbox(siteCode.split('-')[2], 'image');
+                showLightbox(siteCode.split('-')[2], 'image', entities);
             });
             $('#view-image').html(linkToImageLightbox);
             $('#map-service').html(

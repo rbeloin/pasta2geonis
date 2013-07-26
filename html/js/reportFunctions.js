@@ -201,7 +201,7 @@ function pluralize(str, count) {
 }
 
 // Create and display the ArcGIS map inside a lightbox
-function init(site, service) {
+function init(site, service, entities) {
     var map, layer, layerURL, serviceLink;
     $('#' + service + '-lightbox').show();
     $('#' + service).show();
@@ -245,10 +245,10 @@ function init(site, service) {
 }
 
 // Call the map creator function when user clicks on the "view map" button
-function showLightbox(siteCode, service) {
+function showLightbox(siteCode, service, entities) {
     dojo.require("esri.map");
     $('#' + service + '-lightbox').lightbox_me({centered: true});
-    dojo.ready(init(siteCode, service));
+    dojo.ready(init(siteCode, service, entities));
     return false;
 }
 
