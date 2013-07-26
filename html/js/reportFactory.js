@@ -54,7 +54,6 @@ $(document).ready(function () {
             // the report field, in stringified-JSON format
             foundServerInfo = false;
             counter = {'package': 0, 'vector': 0, 'raster': 0};
-            services = {'image': false, 'map': false};
             reports = {'package': '', 'vector': '', 'raster': ''};
             generateBanner(pid);
             for (i = 0; i < response.features.length; i++) {
