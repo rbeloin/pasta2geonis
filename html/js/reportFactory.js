@@ -88,7 +88,9 @@
                     sitePackages += '<li><a href="report.html?packageid=' + sitePackageArray[i] + '">' +
                         sitePackageArray[i] + '</a></li>';
                 }
-                $('#site-report').html('<ul>' + sitePackages + '</ul>');
+                if (sitePackageArray.length) {
+                    $('#site-report').html('<ul>' + sitePackages + '</ul>');
+                }
             });
         }
     });
