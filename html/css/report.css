@@ -415,8 +415,8 @@ hr {
 .hover-item:hover span {
     display:block;
 }
-/* Lightboxes */
-#map-lightbox, #image-lightbox {
+/* Lightbox */
+#map-lightbox {
     left: 15px;
     top: 195px;
     width: 70%;
@@ -432,7 +432,7 @@ hr {
     padding-bottom: 5px;
     background-color: #fff;
 }
-#map-lightbox a, #image-lightbox a {
+#map-lightbox a {
     color: #000;
 }
 .close-button {
@@ -442,12 +442,6 @@ hr {
 
 /* Arc JS map */
 #map {
-    width: 100%;
-    height: 450px;
-    margin: 0;
-    padding: 0;
-}
-#image {
     width: 100%;
     height: 450px;
     margin: 0;

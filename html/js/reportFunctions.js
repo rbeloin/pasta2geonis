@@ -237,7 +237,7 @@ function createServiceButtons(site, entities) {
                 .attr("href", "#")
                 .text("View map")
                 .click(function () {
-                    showLightbox(site, 'map', entities);
+                    showLightbox(site, 'map', mapUrl, imageUrl, entities, services);
                 }
             );
             var linkToMapService = $("<a />")
@@ -258,7 +258,7 @@ function createServiceButtons(site, entities) {
                 .attr("href", "#")
                 .text("View image")
                 .click(function () {
-                    showLightbox(site, 'image', entities);
+                    showLightbox(site, 'image', mapUrl, imageUrl, entities, services);
                 }
             );
             var linkToImageService = $("<a />")
@@ -276,61 +276,63 @@ function createServiceButtons(site, entities) {
 }
 
 // Call the map creator function when user clicks on the "view map" button
-function showLightbox(siteCode, service, entities) {
+function showLightbox(site, service, mapUrl, imageUrl, entities, services) {
     dojo.require("esri.map");
-    $('#' + service + '-lightbox').lightbox_me({centered: true});
-    dojo.ready(init(siteCode, service, entities));
-    return false;
+    $('#map-lightbox').lightbox_me({centered: true});
+    dojo.ready(init(site, service, mapUrl, imageUrl, entities, services));
 }
 
 // Create and display the ArcGIS map inside a lightbox
-function init(site, service, entities) {
+function init(site, service, mapUrl, imageUrl, entities, services) {
+    var map, layer, serviceLink, imageParams, mapLayer, imageLayer;
+    $('#map-lightbox').show();
+    $('#map').show();
 
-    // Do we need separate view map/view image buttons??
-    // Idea: just have one button, and allow the user to switch layers on/off
-    // as needed...
-    var map, layer, layerURL, serviceLink;
-    $('#' + service + '-lightbox').show();
-    $('#' + service).show();
-
-    // If this is a map service
-    if (service === "map") {
-        layerURL = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-            site + "_layers/MapServer";
+    /*if (services.map) {
         serviceLink = $("<a />")
             .attr("href", layerURL)
             .text("Click here to go to the " + site.toUpperCase() + " map service.");
         $('#map-service-link').html(serviceLink);
         layer = new esri.layers.ArcGISDynamicMapServiceLayer(layerURL);
-    }
+    }*/
 
-    // If this is an image service
-    else {
-        layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
-            site + "_mosaic/ImageServer";
-        //layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/and_gi01001/ImageServer";
+    if (service === "map") {
         serviceLink = $("<a />")
-            .attr("href", layerURL)
+            .attr("href", mapUrl)
+            .text("Click here to go to the " + site.toUpperCase() + " map service.");
+        $('#service-link').html(serviceLink);
+        layer = new esri.layers.ArcGISDynamicMapServiceLayer(mapUrl);
+    }
+    else {
+        serviceLink = $("<a />")
+            .attr("href", imageUrl)
             .text("Click here to go to the " + site.toUpperCase() + " image service.");
-        $('#image-service-link').html(serviceLink);
-
-        var params = new esri.layers.ImageServiceParameters();
-        params.noData = 0;
-        layer = new esri.layers.ArcGISImageServiceLayer(layerURL, {
-            imageServiceParameters: params,
+        $('#service-link').html(serviceLink);
+        imageParams = new esri.layers.ImageServiceParameters();
+        imageParams.noData = 0;
+        layer = new esri.layers.ArcGISImageServiceLayer(imageUrl, {
+            imageServiceParameters: imageParams,
             opacity: 0.75
         });
-        //layer = new esri.layers.ArcGISImageServiceLayer(layerURL);
     }
-    map = new esri.Map(service, {
+    map = new esri.Map('map', {
         basemap: 'satellite',
         center: [lter[site].coords[1], lter[site].coords[0]], // longitude, latitude
         zoom: (lter[site].zoom) ? lter[site].zoom : 12,
-        sliderStyle: "small"
+        sliderStyle: 'small'
     });
     map.addLayer(layer);
 
-    /*layerURL = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/and_gi01007/ImageServer";
-    layer = new esri.layers.ArcGISImageServiceLayer(layerURL);
-    map.addLayer(layer);*/
+    // Now get the other layers for this site
+    if (services.map) {
+        mapLayer = new esri.layers.ArcGISDynamicMapServiceLayer(mapUrl);
+    }
+    if (services.image) {
+        imageParams = new esri.layers.ImageServiceParameters();
+        imageParams.noData = 0;
+        imageLayer = new esri.layers.ArcGISImageServiceLayer(imageUrl, {
+            imageServiceParameters: imageParams,
+            opacity: 0.75
+        });
+    }
 }
