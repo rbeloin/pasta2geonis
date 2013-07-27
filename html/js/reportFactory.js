@@ -9,35 +9,10 @@
             $('#map').close();
         });
 
-        // Set up the LTER link bar
-        //var lterLinks = '';
-        $.each(lter, function (i, site) {
-            var linkId = 'link-' + i;
-            var tooltip = linkId + '-tooltip';
-            $('#' + linkId).mouseenter(function () {
-                $('#' + tooltip)
-                    .text(site.name)
-                    .css({
-                        position: 'absolute',
-                        display: 'none',
-                        border: '1px solid #ccc',
-                        padding: '0 10px',
-                        background: '#fff',
-                        color: '#000',
-                        top: $(this).position().top,
-                        left: $(this).position().left
-                    })
-                    .fadeIn('fast');
-                })
-                .mouseleave(function () {
-                    $('#' + tooltip).fadeOut('fast');
-                });
-        });
-        //$('#lter-links').html(lterLinks);
-
         pid = getPID();
         siteCode = pid.split('.')[0];
         site = siteCode.split('-')[2];
+        $('#' + site).addClass('selected');
         if (pid !== "") {
             generateBanner(pid);
             entities = [];

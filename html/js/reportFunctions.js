@@ -102,9 +102,14 @@ function checkEntity(biography, report, spatialType) {
 function generateBanner(pid) {
     var splitPid = pid.split('.');
     $('#pid').html(
+        lter[splitPid[0].split('-')[2]].name + " #" + splitPid[1] +
+        ", version " + splitPid[2]
+    );
+    /*
+    $('#pid').html(
         splitPid[0].split('-')[2].toUpperCase() + " " + splitPid[1] +
         ", revision " + splitPid[2]
-    );
+    );*/
 }
 
 /**
