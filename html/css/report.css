@@ -135,6 +135,9 @@ h1 {
     border-bottom: 1px solid #ccc;
     background-color: #086A87;
 }
+.welcome-message {
+	line-height: 16pt;
+}
 
 .banner {
 	clear: right;
