@@ -58,9 +58,11 @@
                 // Append server information and download link to the bottom of the report
                 appendServerInfo(serverInfo, parsed.biography);
             });
-            $('#package-report').html(
-                "<p style='text-align: center; padding-top: 20px;'>Data set not found.</p>"
-            );
+            if (pid.split('.')[1]) {
+                $('#package-report').html(
+                    "<p style='text-align: center; padding-top: 20px;'>Data set not found.</p>"
+                );
+            }
 
             // Other data sets from the same site
             siteReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +

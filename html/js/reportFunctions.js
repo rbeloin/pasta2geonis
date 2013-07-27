@@ -55,7 +55,7 @@ function checkTables(biography, report, reportType) {
     isPackage = (reportType === 'package-report');
     if (isPackage) {
         formatted = {
-            'report': checkPackage(biography, report),
+            'report': report,
             'subject': 'package',
             'service': null
         };
@@ -81,13 +81,6 @@ function checkTables(biography, report, reportType) {
 /**
  * Check for report entries in the entity table, and append them to its error report.
  */
-function checkPackage(biography, report) {
-    return report;
-}
-
-/**
- * Check for report entries in the entity table, and append them to its error report.
- */
 function checkEntity(biography, report, spatialType) {
     entityname = (biography['entityname'] === 'None') ?
         'Untitled ' + spatialType + ' data set' : biography['entityname'];
@@ -101,15 +94,11 @@ function checkEntity(biography, report, spatialType) {
  */
 function generateBanner(pid) {
     var splitPid = pid.split('.');
-    $('#pid').html(
-        lter[splitPid[0].split('-')[2]].name + " #" + splitPid[1] +
-        ", version " + splitPid[2]
-    );
-    /*
-    $('#pid').html(
-        splitPid[0].split('-')[2].toUpperCase() + " " + splitPid[1] +
-        ", revision " + splitPid[2]
-    );*/
+    var banner = lter[splitPid[0].split('-')[2]].name;
+    if (splitPid[1] && splitPid[2]) {
+         banner += " #" + splitPid[1] + ", version " + splitPid[2];
+    }
+    $('#pid').html(banner);
 }
 
 /**
@@ -118,7 +107,7 @@ function generateBanner(pid) {
  */
 function getServerInfo(biography) {
     var serverInfo;
-    if (biography['pasta'].indexOf('pasta-s') !== -1) {
+    if (biography.pasta.indexOf('pasta-s') !== -1) {
         serverInfo = {
             'server': 'staging',
             'baseURL': 'pasta-s.lternet.edu'
