@@ -313,11 +313,13 @@ function showLightbox(mapInfo, serviceType) {
 }
 
 function loadMapBlock(mapInfo) {
-    var djConfig = {parseOnLoad: true};
-    dojo.require("esri.map");
-    dojo.require("esri.layers.FeatureLayer");
+    // TODO: Initial map should ONLY show LTER boundary, and layers should be switchable
+    var dojoConfig = {parseOnLoad: true};
+    dojo.require("dojo.parser");
     dojo.require("dijit.layout.BorderContainer");
     dojo.require("dijit.layout.ContentPane");
+    dojo.require("esri.map");
+    dojo.require("esri.dijit.Scalebar");
     var map;
     function innerinit() {
         map = new esri.Map('map-block', {
@@ -329,16 +331,28 @@ function loadMapBlock(mapInfo) {
         var layer = new esri.layers.ArcGISDynamicMapServiceLayer(mapInfo.mapUrl);
         map.addLayer(layer);
         var resizeTimer;
-        dojo.connect(map, 'onLoad', function (theMap) {
+        dojo.connect(map, "onLoad", function(theMap) {
+            var scalebar = new esri.dijit.Scalebar({
+                map: map,
+                srcNodeRef: '#scale',
+                // "dual" displays both miles and kilmometers
+                // "english" is the default, which displays miles
+                // use "metric" for kilometers
+                scalebarUnit: "dual"
+            });
+            $('#scale').append(
+                $('.esriScalebar').removeClass('scalebar_bottom-left')
+            );
             dojo.connect(dijit.byId('map'), 'resize', function () {
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(function () {
-                    map.resize();
-                    map.reposition();
-                    }, 500);
-                });
+                        map.resize();
+                        map.reposition();
+                    }, 500
+                );
             });
-        }
+        });
+    }
     dojo.addOnLoad(innerinit);
 }
 

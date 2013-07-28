@@ -392,6 +392,13 @@ hr {
     margin: 0;
     padding: 0;
 }
+#scale {
+	float: right;
+	clear: right;
+	position: relative !important;
+	top: 0;
+	left: -800px;
+}
 
 /* Link grid */
 .leftbar-grid {
