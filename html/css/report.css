@@ -384,6 +384,14 @@ hr {
     margin: 0;
     padding: 0;
 }
+#map-block {
+    width: 82%;
+    float: right;
+    clear: right;
+    height: 650px;
+    margin: 0;
+    padding: 0;
+}
 
 /* Link grid */
 .leftbar-grid {
@@ -454,3 +462,5 @@ hr {
 #lter-links p:hover span {
     display: block;
 }
+
+

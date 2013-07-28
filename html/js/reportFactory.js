@@ -17,6 +17,49 @@
             $('#pid').html("Welcome to GeoNIS!");
             $('#welcome-message').show();
         }
+        else if (!pid.split('.')[1] || !pid.split('.')[2]) {
+            generateBanner(pid);
+            $('#package-report').hide();
+            $('#workflow-info').hide();
+            $('.banner').css('border', 'none');
+            $('#pid').css('border', '1px solid #ccc');
+
+            var services = {'map': true, 'image': true};
+            var mapUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+                site + "_layers/MapServer";
+            var imageUrl = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
+                site + "_mosaic/ImageServer";
+            loadMapBlock(site, 'map', mapUrl, imageUrl, entities, services);
+
+            // Other data sets from the same site
+            siteReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+                "Search/MapServer/2/query?where=packageid+like+%27" + siteCode +
+                "%%27&returnGeometry=true&f=pjson&callback=?";
+            $.getJSON(siteReportUrl, function (response) {
+                var i, sitePackages;
+                var sitePackageArray = [];
+                for (i = 0; i < response.features.length; i++) {
+                    sitePackageArray.push(response.features[i].attributes.packageid);
+                }
+                sitePackageArray = sitePackageArray.getUnique().sortNumeric();
+                packagePlural = (sitePackageArray.length === 1) ? " package" : " packages";
+                $('#site-report-title').html(
+                    "<p>" +
+                    "<span class='entity-name'>" +
+                    siteCode.split('-').slice(-1)[0].toUpperCase() +
+                    " (" + sitePackageArray.length + packagePlural + ")" +
+                    "</span></p>"
+                );
+                sitePackages = '';
+                for (i = 0; i < sitePackageArray.length; i++) {
+                    sitePackages += '<li><a href="report.html?packageid=' + sitePackageArray[i] + '">' +
+                        sitePackageArray[i] + '</a></li>';
+                }
+                if (sitePackageArray.length) {
+                    $('#site-report').html('<ul>' + sitePackages + '</ul>');
+                }
+            });
+        }
         else {
             generateBanner(pid);
             entities = [];
@@ -60,11 +103,13 @@
                 createServiceButtons(site, entities);
 
                 // Append server information and download link to the bottom of the report
-                appendServerInfo(serverInfo, parsed.biography);
+                if (parsed && parsed.biography) {
+                    appendServerInfo(serverInfo, parsed.biography);
+                }
             });
             if (pid.split('.')[1]) {
                 $('#package-report').html(
-                    "<p style='text-align: center; padding-top: 20px;'>Data set not found.</p>"
+                    "<p style='text-align: center; padding-top: 5px;'>Data set not found.</p>"
                 );
             }
 

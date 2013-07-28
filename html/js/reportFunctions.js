@@ -276,19 +276,42 @@ function showLightbox(site, service, mapUrl, imageUrl, entities, services) {
     dojo.ready(init(site, service, mapUrl, imageUrl, entities, services));
 }
 
+function loadMapBlock(site, service, mapUrl, imageUrl, entities, services) {
+    var djConfig = {parseOnLoad: true};
+    dojo.require("esri.map");
+    //dojo.ready(init(site, service, mapUrl, imageUrl, entities, services, false));
+    dojo.require("dijit.layout.BorderContainer");
+    dojo.require("dijit.layout.ContentPane");
+    var map;
+    function innerinit() {
+        map = new esri.Map('map-block', {
+            basemap: 'satellite',
+            center: [lter[site].coords[1], lter[site].coords[0]], // longitude, latitude
+            zoom: (lter[site].zoom) ? lter[site].zoom : 12,
+            sliderStyle: 'small'
+        });
+        var layer = new esri.layers.ArcGISDynamicMapServiceLayer(mapUrl);
+        map.addLayer(layer);
+        var resizeTimer;
+        dojo.connect(map, 'onLoad', function(theMap) {
+          dojo.connect(dijit.byId('map'), 'resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+              map.resize();
+              map.reposition();
+             }, 500);
+           });
+         });
+        }
+    dojo.addOnLoad(innerinit);
+}
+
 // Create and display the ArcGIS map inside a lightbox
 function init(site, service, mapUrl, imageUrl, entities, services) {
-    var map, layer, serviceLink, imageParams, mapLayer, imageLayer;
+    var map, mapDiv, layer, serviceLink, imageParams, mapLayer, imageLayer;
+    mapDiv = "map";
     $('#map-lightbox').show();
     $('#map').show();
-
-    /*if (services.map) {
-        serviceLink = $("<a />")
-            .attr("href", layerURL)
-            .text("Click here to go to the " + site.toUpperCase() + " map service.");
-        $('#map-service-link').html(serviceLink);
-        layer = new esri.layers.ArcGISDynamicMapServiceLayer(layerURL);
-    }*/
 
     if (service === "map") {
         serviceLink = $("<a />")
@@ -309,7 +332,7 @@ function init(site, service, mapUrl, imageUrl, entities, services) {
             opacity: 0.75
         });
     }
-    map = new esri.Map('map', {
+    map = new esri.Map(mapDiv, {
         basemap: 'satellite',
         center: [lter[site].coords[1], lter[site].coords[0]], // longitude, latitude
         zoom: (lter[site].zoom) ? lter[site].zoom : 12,
