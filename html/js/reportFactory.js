@@ -15,8 +15,7 @@
         $('#' + site).addClass('selected');
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
-            welcomeMessage = "<p class='welcome-message'>GeoNIS is a geospatial module for the <a href='https://nis.lternet.edu/'>LTER Network Information System</a> (NIS) which harvests geospatial data and makes it freely accessible as a web service.  The NIS is intended to provide a number of tools and services to promote data access and availability. These include standardized approaches to metadata management and data access, programs and workflows to create and maintain integrated derived datasets, and applications for data discovery, access, and use. These services will be enabled by the Provenance Aware Synthesis Tracking Architecture (PASTA) framework, the core component of the NIS that harvests site metadata and data into the NIS. The initial development of the NIS focuses on supporting well-documented tabular data only, leaving more complex data (such as geospatial data) to a later date. Many LTER sites have considerable geospatial data holdings; at some sites, geospatial data constitute the majority of their datasets.</p><p class='welcome-message'>To get started, click on one of the LTER sites in the grid to your left.</p>";
-            $('#package-report').html(welcomeMessage);
+            $('#welcome-message').show();
         }
         else {
             generateBanner(pid);
