@@ -139,6 +139,37 @@ function appendServerInfo(serverInfo, biography) {
     );
 }
 
+// Fetch a list of other packages from the same site containing spatial data
+function fetchSitePackages(siteCode) {
+    siteReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+        "Search/MapServer/2/query?where=packageid+like+%27" + siteCode +
+        "%%27&returnGeometry=true&f=pjson&callback=?";
+    $.getJSON(siteReportUrl, function (response) {
+        var i, sitePackages;
+        var sitePackageArray = [];
+        for (i = 0; i < response.features.length; i++) {
+            sitePackageArray.push(response.features[i].attributes.packageid);
+        }
+        sitePackageArray = sitePackageArray.getUnique().sortNumeric();
+        packagePlural = (sitePackageArray.length === 1) ? " package" : " packages";
+        $('#site-report-title').html(
+            "<p>" +
+            "<span class='entity-name'>" +
+            siteCode.split('-').slice(-1)[0].toUpperCase() +
+            " (" + sitePackageArray.length + packagePlural + ")" +
+            "</span></p>"
+        );
+        sitePackages = '';
+        for (i = 0; i < sitePackageArray.length; i++) {
+            sitePackages += '<li><a href="report.html?packageid=' + sitePackageArray[i] + '">' +
+                sitePackageArray[i] + '</a></li>';
+        }
+        if (sitePackageArray.length) {
+            $('#site-report').html('<ul>' + sitePackages + '</ul>');
+        }
+    });
+}
+
 Array.prototype.getUnique = function () {
     var u = {}, a = [];
     for(var i = 0, l = this.length; i < l; ++i){
@@ -219,23 +250,26 @@ function writeReports(reports, counter) {
 function createServiceButtons(site, entities) {
 
     // Check if map and/or image services exist for this site
-    var services = {'map': true, 'image': true};
-    var mapUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-        site + "_layers/MapServer";
-    var imageUrl = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
-        site + "_mosaic/ImageServer";
-    $.getJSON(mapUrl + "?f=pjson", function (response) {
+    var servicesUrl = "http://maps3.lternet.edu/arcgis/rest/services/";
+    var mapInfo = {
+        'site': site,
+        'services': {'map': true, 'image': true},
+        'mapUrl': servicesUrl + "Test/" + site + "_layers/MapServer",
+        'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer",
+        'entities': entities
+    };
+    $.getJSON(mapInfo.mapUrl + "?f=pjson", function (response) {
         if (!response.error) {
-            services.map = true;
+            mapInfo.services.map = true;
             var linkToMapLightbox = $("<a />")
                 .attr("href", "#")
                 .text("View map")
                 .click(function () {
-                    showLightbox(site, 'map', mapUrl, imageUrl, entities, services);
+                    showLightbox(mapInfo, 'map');
                 }
             );
             var linkToMapService = $("<a />")
-                .attr("href", mapUrl)
+                .attr("href", mapInfo.mapUrl)
                 .text("Map service");
             $('#view-map').html(linkToMapLightbox).show();
             $('#map-service').html(linkToMapService).show();
@@ -245,18 +279,18 @@ function createServiceButtons(site, entities) {
             $('#map-service').hide();
         }
     });
-    $.getJSON(imageUrl + "?f=pjson", function (response) {
+    $.getJSON(mapInfo.imageUrl + "?f=pjson", function (response) {
         if (!response.error) {
-            services.image = true;
+            mapInfo.services.image = true;
             var linkToImageLightbox = $("<a />")
                 .attr("href", "#")
                 .text("View image")
                 .click(function () {
-                    showLightbox(site, 'image', mapUrl, imageUrl, entities, services);
+                    showLightbox(mapInfo, 'image');
                 }
             );
             var linkToImageService = $("<a />")
-                .attr("href", imageUrl)
+                .attr("href", mapInfo.imageUrl)
                 .text("Image service");
             $('#view-image').html(linkToImageLightbox).show();
             $('#image-service').html(linkToImageService).show();
@@ -270,84 +304,93 @@ function createServiceButtons(site, entities) {
 }
 
 // Call the map creator function when user clicks on the "view map" button
-function showLightbox(site, service, mapUrl, imageUrl, entities, services) {
+function showLightbox(mapInfo, serviceType) {
+    mapInfo.serviceType = serviceType;
     dojo.require("esri.map");
+    dojo.require("esri.layers.FeatureLayer");
     $('#map-lightbox').lightbox_me({centered: true});
-    dojo.ready(init(site, service, mapUrl, imageUrl, entities, services));
+    dojo.addOnLoad(init(mapInfo));
 }
 
-function loadMapBlock(site, service, mapUrl, imageUrl, entities, services) {
+function loadMapBlock(mapInfo) {
     var djConfig = {parseOnLoad: true};
     dojo.require("esri.map");
-    //dojo.ready(init(site, service, mapUrl, imageUrl, entities, services, false));
+    dojo.require("esri.layers.FeatureLayer");
     dojo.require("dijit.layout.BorderContainer");
     dojo.require("dijit.layout.ContentPane");
     var map;
     function innerinit() {
         map = new esri.Map('map-block', {
             basemap: 'satellite',
-            center: [lter[site].coords[1], lter[site].coords[0]], // longitude, latitude
+            center: [lter[site].coords[1], lter[site].coords[0]],
             zoom: (lter[site].zoom) ? lter[site].zoom : 12,
             sliderStyle: 'small'
         });
-        var layer = new esri.layers.ArcGISDynamicMapServiceLayer(mapUrl);
+        var layer = new esri.layers.ArcGISDynamicMapServiceLayer(mapInfo.mapUrl);
         map.addLayer(layer);
         var resizeTimer;
-        dojo.connect(map, 'onLoad', function(theMap) {
-          dojo.connect(dijit.byId('map'), 'resize', function() {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(function() {
-              map.resize();
-              map.reposition();
-             }, 500);
-           });
-         });
+        dojo.connect(map, 'onLoad', function (theMap) {
+            dojo.connect(dijit.byId('map'), 'resize', function () {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function () {
+                    map.resize();
+                    map.reposition();
+                    }, 500);
+                });
+            });
         }
     dojo.addOnLoad(innerinit);
 }
 
 // Create and display the ArcGIS map inside a lightbox
-function init(site, service, mapUrl, imageUrl, entities, services) {
-    var map, mapDiv, layer, serviceLink, imageParams, mapLayer, imageLayer;
+function init(mapInfo) {
+    var mapDiv, layer, serviceLink, imageParams, mapLayer, imageLayer;
     mapDiv = "map";
+
+    // Add onclick handler to the map lightbox close button
+    $('#close-map-lightbox').click(function (event) {
+        event.preventDefault(event);
+        $('#map-lightbox').trigger('close');
+        $('#map').empty();
+    });
+
     $('#map-lightbox').show();
     $('#map').show();
-
-    if (service === "map") {
+    if (mapInfo.serviceType === "map") {
         serviceLink = $("<a />")
-            .attr("href", mapUrl)
-            .text("Click here to go to the " + site.toUpperCase() + " map service.");
+            .attr("href", mapInfo.mapUrl)
+            .text("Click here to go to the " + mapInfo.site.toUpperCase() + " map service.");
         $('#service-link').html(serviceLink);
-        layer = new esri.layers.ArcGISDynamicMapServiceLayer(mapUrl);
+        layer = new esri.layers.ArcGISDynamicMapServiceLayer(mapInfo.mapUrl);
     }
     else {
         serviceLink = $("<a />")
-            .attr("href", imageUrl)
-            .text("Click here to go to the " + site.toUpperCase() + " image service.");
+            .attr("href", mapInfo.imageUrl)
+            .text("Click here to go to the " + mapInfo.site.toUpperCase() + " image service.");
         $('#service-link').html(serviceLink);
         imageParams = new esri.layers.ImageServiceParameters();
         imageParams.noData = 0;
-        layer = new esri.layers.ArcGISImageServiceLayer(imageUrl, {
+        layer = new esri.layers.ArcGISImageServiceLayer(mapInfo.imageUrl, {
             imageServiceParameters: imageParams,
             opacity: 0.75
         });
     }
-    map = new esri.Map(mapDiv, {
+    self.map = new esri.Map(mapDiv, {
         basemap: 'satellite',
         center: [lter[site].coords[1], lter[site].coords[0]], // longitude, latitude
         zoom: (lter[site].zoom) ? lter[site].zoom : 12,
         sliderStyle: 'small'
     });
-    map.addLayer(layer);
+    self.map.addLayer(layer);
 
     // Now get the other layers for this site
-    if (services.map) {
-        mapLayer = new esri.layers.ArcGISDynamicMapServiceLayer(mapUrl);
+    if (mapInfo.services.map) {
+        mapLayer = new esri.layers.ArcGISDynamicMapServiceLayer(mapInfo.mapUrl);
     }
-    if (services.image) {
+    if (mapInfo.services.image) {
         imageParams = new esri.layers.ImageServiceParameters();
         imageParams.noData = 0;
-        imageLayer = new esri.layers.ArcGISImageServiceLayer(imageUrl, {
+        imageLayer = new esri.layers.ArcGISImageServiceLayer(mapInfo.imageUrl, {
             imageServiceParameters: imageParams,
             opacity: 0.75
         });

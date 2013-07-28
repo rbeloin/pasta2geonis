@@ -1,14 +1,6 @@
 (function () {
     $(document).ready(function () {
         var welcomeMessage, reportUrl, siteReportUrl, siteCode, entities;
-
-        // Add onclick handlers to the map and image lightbox close buttons
-        $('#close-map-lightbox').click(function (event) {
-            event.preventDefault(event);
-            $('#map-lightbox').trigger('close');
-            $('#map').close();
-        });
-
         pid = getPID();
         siteCode = pid.split('.')[0];
         site = siteCode.split('-')[2];
@@ -16,6 +8,7 @@
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
             $('#welcome-message').show();
+            return;
         }
         else if (!pid.split('.')[1] || !pid.split('.')[2]) {
             generateBanner(pid);
@@ -24,41 +17,14 @@
             $('.banner').css('border', 'none');
             $('#pid').css('border', '1px solid #ccc');
 
-            var services = {'map': true, 'image': true};
-            var mapUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-                site + "_layers/MapServer";
-            var imageUrl = "http://maps3.lternet.edu/arcgis/rest/services/ImageTest/" +
-                site + "_mosaic/ImageServer";
-            loadMapBlock(site, 'map', mapUrl, imageUrl, entities, services);
-
-            // Other data sets from the same site
-            siteReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-                "Search/MapServer/2/query?where=packageid+like+%27" + siteCode +
-                "%%27&returnGeometry=true&f=pjson&callback=?";
-            $.getJSON(siteReportUrl, function (response) {
-                var i, sitePackages;
-                var sitePackageArray = [];
-                for (i = 0; i < response.features.length; i++) {
-                    sitePackageArray.push(response.features[i].attributes.packageid);
-                }
-                sitePackageArray = sitePackageArray.getUnique().sortNumeric();
-                packagePlural = (sitePackageArray.length === 1) ? " package" : " packages";
-                $('#site-report-title').html(
-                    "<p>" +
-                    "<span class='entity-name'>" +
-                    siteCode.split('-').slice(-1)[0].toUpperCase() +
-                    " (" + sitePackageArray.length + packagePlural + ")" +
-                    "</span></p>"
-                );
-                sitePackages = '';
-                for (i = 0; i < sitePackageArray.length; i++) {
-                    sitePackages += '<li><a href="report.html?packageid=' + sitePackageArray[i] + '">' +
-                        sitePackageArray[i] + '</a></li>';
-                }
-                if (sitePackageArray.length) {
-                    $('#site-report').html('<ul>' + sitePackages + '</ul>');
-                }
-            });
+            var servicesUrl = "http://maps3.lternet.edu/arcgis/rest/services/";
+            var mapInfo = {
+                'site': site,
+                'services': {'map': true, 'image': true},
+                'mapUrl': servicesUrl + "Test/" + site + "_layers/MapServer",
+                'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer"
+            };
+            loadMapBlock(mapInfo);
         }
         else {
             generateBanner(pid);
@@ -112,35 +78,9 @@
                     "<p style='text-align: center; padding-top: 5px;'>Data set not found.</p>"
                 );
             }
-
-            // Other data sets from the same site
-            siteReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-                "Search/MapServer/2/query?where=packageid+like+%27" + siteCode +
-                "%%27&returnGeometry=true&f=pjson&callback=?";
-            $.getJSON(siteReportUrl, function (response) {
-                var i, sitePackages;
-                var sitePackageArray = [];
-                for (i = 0; i < response.features.length; i++) {
-                    sitePackageArray.push(response.features[i].attributes.packageid);
-                }
-                sitePackageArray = sitePackageArray.getUnique().sortNumeric();
-                packagePlural = (sitePackageArray.length === 1) ? " package" : " packages";
-                $('#site-report-title').html(
-                    "<p>" +
-                    "<span class='entity-name'>" +
-                    siteCode.split('-').slice(-1)[0].toUpperCase() +
-                    " (" + sitePackageArray.length + packagePlural + ")" +
-                    "</span></p>"
-                );
-                sitePackages = '';
-                for (i = 0; i < sitePackageArray.length; i++) {
-                    sitePackages += '<li><a href="report.html?packageid=' + sitePackageArray[i] + '">' +
-                        sitePackageArray[i] + '</a></li>';
-                }
-                if (sitePackageArray.length) {
-                    $('#site-report').html('<ul>' + sitePackages + '</ul>');
-                }
-            });
         }
+
+        // Other data sets from the same site
+        fetchSitePackages(siteCode);
     });
 })();
