@@ -28,6 +28,7 @@ var GEONIS = (function () {
         }
         else {
             generateBanner(pid);
+            $('#site-report').show();
             entities = [];
 
             // Fetch report from database using the Search service, then parse
