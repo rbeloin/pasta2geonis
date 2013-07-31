@@ -181,6 +181,15 @@ h1 {
 
 #site-report-title {
 	padding-top: 10px;
+	font-size: 115%;
+}
+#site-report-title a:hover {
+	color: #086A87;
+}
+
+#site-report {
+	display: none;
+	padding-bottom: 10px;
 }
 #site-report ul {
     border-bottom: 1px solid #ccc;
@@ -476,10 +485,15 @@ hr {
 	background-color: #CEECF5;
 }
 #layer-checks-title {
-	padding-top: 10px;
 	font-size: 115%;
 }
+#layer-checks-title a:hover {
+	color: #086A87;
+}
 
+#layer-checks {
+	display: none;
+}
 #layer-checks ul {
     border-bottom: 1px solid #ccc;
 }

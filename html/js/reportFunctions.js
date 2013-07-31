@@ -145,20 +145,22 @@ function fetchSitePackages(siteCode) {
         "Search/MapServer/2/query?where=packageid+like+%27" + siteCode +
         "%%27&returnGeometry=true&f=pjson&callback=?";
     $.getJSON(siteReportUrl, function (response) {
-        var i, sitePackages;
+        var i, sitePackages, packageTitleLink;
         var sitePackageArray = [];
         for (i = 0; i < response.features.length; i++) {
             sitePackageArray.push(response.features[i].attributes.packageid);
         }
         sitePackageArray = sitePackageArray.getUnique().sortNumeric();
-        packagePlural = (sitePackageArray.length === 1) ? " package" : " packages";
-        $('#site-report-title').html(
-            "<p>" +
-            "<span class='entity-name'>" +
-            siteCode.split('-').slice(-1)[0].toUpperCase() +
-            " (" + sitePackageArray.length + packagePlural + ")" +
-            "</span></p>"
-        );
+        //var packagePlural = (sitePackageArray.length === 1) ? "Package " : "Packages ";
+        packageTitleLink = $('<a />')
+            .attr('href', '#')
+            .text("Packages (" + sitePackageArray.length + ")")
+        if (sitePackageArray.length) {
+            packageTitleLink.click(function () {
+                $('#site-report').slideToggle('fast');
+            });
+        }
+        $('#site-report-title').append($('<p />').append(packageTitleLink));
         sitePackages = '';
         for (i = 0; i < sitePackageArray.length; i++) {
             sitePackages += '<li><a href="report.html?packageid=' + sitePackageArray[i] + '">' +
@@ -323,6 +325,12 @@ function loadMapBlock() {
     dojo.addOnLoad(embedInit);
 }
 
+/**
+ * Fetch layers from the map service, which are grouped into
+ * a "stack" of layers, and process the layers.
+ * Initially, only the site boundary is shown (if present).
+ * Other layers can be shown by clicking on their checkboxes.
+ */
 function embedInit() {
     window.embeddedMap = new esri.Map('map-block', {
         basemap: 'satellite',
@@ -330,27 +338,27 @@ function embedInit() {
         zoom: lter[site].zoom || 12,
         sliderStyle: 'small'
     });
-
-    /**
-     * Fetch layers from the map service, which are grouped into
-     * a "stack" of layers, and process the layers.
-     * Initially, only the site boundary is shown (if present).
-     * Other layers can be shown by clicking on their checkboxes.
-     */
     window.layerStack = new esri.layers.ArcGISDynamicMapServiceLayer(
         window.mapInfo.mapUrl,
         {id: 'layerStack'}
     );
     dojo.connect(window.layerStack, 'onLoad', function (layers) {
-        var i, layerInfo, siteBoundary, layerChecks, checklist, checkbox;
+        var i, layerInfo, layerTitleLink, siteBoundary, layerChecks, checklist, checkbox;
         layerInfo = layers.layerInfos;
+        layerTitleLink = $('<a />')
+            .attr('href', '#')
+            .text("Layers (" + layerInfo.length + ")")
+            .click(function () {
+                $('#layer-checks').slideToggle('fast');
+            });
+        $('#layer-checks-title').append($('<p />').append(layerTitleLink));
         layerChecks = $('<ul />').appendTo('#layer-checks');
         for (i = 0; i < layerInfo.length; i++) {
             checkbox = $('<a />')
                 .attr('href', '#')
                 .click({'index': i}, function (event) {
                     event.preventDefault(event);
-                    mapLayerToggle(event);
+                    mapLayerToggle(event, true);
                 });
             if (layerInfo[i].name === "LTER site boundary") {
                 siteBoundary = i;
@@ -380,20 +388,20 @@ function embedInit() {
         dojo.connect(dijit.byId('map-block'), 'resize', function () {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function () {
-                    map.resize();
-                    map.reposition();
-                }, 500
-            );
+                map.resize();
+                map.reposition();
+            }, 500);
         });
     });
 }
 
 // Show/hide layers in response to user clicks
-function mapLayerToggle(event) {
-    var layer, listItem, showLayers, layerIndex;
+function mapLayerToggle(event, isVector) {
+    var layer, listItem, substack, showLayers, layerIndex;
     layer = event.data['index'];
     listItem = $(event.target).parent();
-    showLayers = window.layerStack.visibleLayers;
+    substack = (isVector) ? window.layerStack : window.imageStack;
+    showLayers = substack.visibleLayers;
     layerIndex = showLayers.indexOf(layer);
     if (!showLayers.length) {
         window.layerStack.show();
@@ -406,9 +414,9 @@ function mapLayerToggle(event) {
         showLayers.splice(layerIndex, 1);
         listItem.removeClass('show-layer');
     }
-    window.layerStack.setVisibleLayers(showLayers);
-    if (!window.layerStack.visibleLayers.length) {
-        window.layerStack.hide();
+    substack.setVisibleLayers(showLayers);
+    if (!substack.visibleLayers.length) {
+        substack.hide();
     }
 }
 
