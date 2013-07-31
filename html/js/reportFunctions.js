@@ -350,14 +350,12 @@ function embedInit() {
                 .attr('href', '#')
                 .click({'index': i}, function (event) {
                     event.preventDefault(event);
-                    //$(event.target).parent().addClass('show-layer');
-                    //changeMap(event.data['index'], $(event.target).parent());
                     mapLayerToggle(event);
                 });
             if (layerInfo[i].name === "LTER site boundary") {
                 siteBoundary = i;
                 checkbox.text('Boundary');
-                layerChecks.prepend($('<li />').append(checkbox));
+                layerChecks.prepend($('<li class="show-layer" />').append(checkbox));
             }
             else {
                 checkbox.text(layerInfo[i].name);
@@ -397,6 +395,9 @@ function mapLayerToggle(event) {
     listItem = $(event.target).parent();
     showLayers = window.layerStack.visibleLayers;
     layerIndex = showLayers.indexOf(layer);
+    if (!showLayers.length) {
+        window.layerStack.show();
+    }
     if (layerIndex === -1) {
         showLayers.push(layer);
         listItem.addClass('show-layer');
@@ -406,6 +407,9 @@ function mapLayerToggle(event) {
         listItem.removeClass('show-layer');
     }
     window.layerStack.setVisibleLayers(showLayers);
+    if (!window.layerStack.visibleLayers.length) {
+        window.layerStack.hide();
+    }
 }
 
 // Create and display the ArcGIS map inside a lightbox

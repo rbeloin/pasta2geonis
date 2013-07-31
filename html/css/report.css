@@ -475,6 +475,27 @@ hr {
 #layer-checks .show-layer {
 	background-color: #CEECF5;
 }
+#layer-checks-title {
+	padding-top: 10px;
+	font-size: 115%;
+}
 
-
+#layer-checks ul {
+    border-bottom: 1px solid #ccc;
+}
+#layer-checks ul li {
+    border-top: 1px solid #ccc;
+    border-left: 1px solid #ccc;
+    border-right: 1px solid #ccc;
+    line-height: 18pt;
+}
+#layer-checks ul li:hover {
+    background-color: #CEECF5;
+}
+#layer-checks a {
+    color: #0B2161;
+}
+#layer-checks a:hover {
+    text-decoration: none;
+}
 
