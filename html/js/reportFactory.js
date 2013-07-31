@@ -1,4 +1,4 @@
-(function () {
+var GEONIS = (function () {
     $(document).ready(function () {
         var welcomeMessage, reportUrl, siteReportUrl, siteCode, entities;
         pid = getPID();
@@ -18,13 +18,13 @@
             $('#pid').css('border', '1px solid #ccc');
 
             var servicesUrl = "http://maps3.lternet.edu/arcgis/rest/services/";
-            var mapInfo = {
+            window.mapInfo = {
                 'site': site,
                 'services': {'map': true, 'image': true},
                 'mapUrl': servicesUrl + "Test/" + site + "_layers/MapServer",
                 'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer"
             };
-            loadMapBlock(mapInfo);
+            loadMapBlock();
         }
         else {
             generateBanner(pid);

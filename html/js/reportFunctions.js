@@ -312,48 +312,90 @@ function showLightbox(mapInfo, serviceType) {
     dojo.addOnLoad(init(mapInfo));
 }
 
-function loadMapBlock(mapInfo) {
-    // TODO: Initial map should ONLY show LTER boundary, and layers should be switchable
+// Load an embedded map in response to user clicking on the LTER site grid
+function loadMapBlock() {
     var dojoConfig = {parseOnLoad: true};
     dojo.require("dojo.parser");
     dojo.require("dijit.layout.BorderContainer");
     dojo.require("dijit.layout.ContentPane");
     dojo.require("esri.map");
     dojo.require("esri.dijit.Scalebar");
-    var map;
-    function innerinit() {
-        map = new esri.Map('map-block', {
-            basemap: 'satellite',
-            center: [lter[site].coords[1], lter[site].coords[0]],
-            zoom: (lter[site].zoom) ? lter[site].zoom : 12,
-            sliderStyle: 'small'
-        });
-        var layer = new esri.layers.ArcGISDynamicMapServiceLayer(mapInfo.mapUrl);
-        map.addLayer(layer);
+    dojo.addOnLoad(embedInit);
+}
+
+function embedInit() {
+    window.embeddedMap = new esri.Map('map-block', {
+        basemap: 'satellite',
+        center: [lter[site].coords[1], lter[site].coords[0]],
+        zoom: lter[site].zoom || 12,
+        sliderStyle: 'small'
+    });
+
+    /**
+     * Fetch layers from the map service, which are grouped into
+     * a "stack" of layers, and process the layers.
+     * Initially, only the site boundary is shown (if present).
+     * Other layers can be shown by clicking on their checkboxes.
+     */
+    window.layerStack = new esri.layers.ArcGISDynamicMapServiceLayer(
+        window.mapInfo.mapUrl,
+        {id: 'layerStack'}
+    );
+    dojo.connect(window.layerStack, 'onLoad', function (layers) {
+        var i, layerInfo, siteBoundary, layerChecks, checklist, checkbox;
+        layerInfo = layers.layerInfos;
+        layerChecks = $('<ul />').appendTo('#layer-checks');
+        for (i = 0; i < layerInfo.length; i++) {
+            checkbox = $('<a />')
+                .attr('href', '#')
+                .click({'index': i}, function (event) {
+                    event.preventDefault(event);
+                    $(event.target).parent().addClass('show-layer');
+                    changeMap(event.data['index']);
+                });
+            if (layerInfo[i].name === "LTER site boundary") {
+                siteBoundary = i;
+                checkbox.text('Boundary');
+                layerChecks.prepend($('<li />').append(checkbox));
+            }
+            else {
+                checkbox.text(layerInfo[i].name);
+                layerChecks.append($('<li />').append(checkbox));
+            }
+        }
+        layers.setVisibleLayers([siteBoundary]);
+    });
+
+    // Once the map is loaded, add layers, resize, and scalebar
+    dojo.connect(window.embeddedMap, 'onLoad', function (theMap) {
         var resizeTimer;
-        dojo.connect(map, "onLoad", function(theMap) {
-            var scalebar = new esri.dijit.Scalebar({
-                map: map,
-                srcNodeRef: '#scale',
-                // "dual" displays both miles and kilmometers
-                // "english" is the default, which displays miles
-                // use "metric" for kilometers
-                scalebarUnit: "dual"
-            });
-            $('#scale').append(
-                $('.esriScalebar').removeClass('scalebar_bottom-left')
-            );
-            dojo.connect(dijit.byId('map'), 'resize', function () {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(function () {
-                        map.resize();
-                        map.reposition();
-                    }, 500
-                );
-            });
+        theMap.addLayer(window.layerStack);
+        var scalebar = new esri.dijit.Scalebar({
+            map: theMap,
+            srcNodeRef: '#scale',
+            scalebarUnit: 'dual'
         });
+        $('#scale').append(
+            $('.esriScalebar').removeClass('scalebar_bottom-left')
+        );
+        dojo.connect(dijit.byId('map-block'), 'resize', function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function () {
+                    map.resize();
+                    map.reposition();
+                }, 500
+            );
+        });
+    });
+}
+
+// Show/hide layers in response to user clicks
+function changeMap(layer) {
+    var showLayers = window.layerStack.visibleLayers;
+    if (showLayers.indexOf(layer) === -1) {
+        showLayers.push(layer);
     }
-    dojo.addOnLoad(innerinit);
+    window.layerStack.setVisibleLayers(showLayers);
 }
 
 // Create and display the ArcGIS map inside a lightbox
@@ -389,13 +431,13 @@ function init(mapInfo) {
             opacity: 0.75
         });
     }
-    self.map = new esri.Map(mapDiv, {
+    window.map = new esri.Map(mapDiv, {
         basemap: 'satellite',
         center: [lter[site].coords[1], lter[site].coords[0]], // longitude, latitude
-        zoom: (lter[site].zoom) ? lter[site].zoom : 12,
+        zoom: lter[site].zoom || 12,
         sliderStyle: 'small'
     });
-    self.map.addLayer(layer);
+    window.map.addLayer(layer);
 
     // Now get the other layers for this site
     if (mapInfo.services.map) {

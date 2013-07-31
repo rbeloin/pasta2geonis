@@ -471,4 +471,10 @@ hr {
     z-index: 100;
 }
 
+/* Layer show/hide */
+#layer-checks .show-layer {
+	background-color: #CEECF5;
+}
+
+
 
