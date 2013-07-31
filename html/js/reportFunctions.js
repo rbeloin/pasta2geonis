@@ -350,8 +350,9 @@ function embedInit() {
                 .attr('href', '#')
                 .click({'index': i}, function (event) {
                     event.preventDefault(event);
-                    $(event.target).parent().addClass('show-layer');
-                    changeMap(event.data['index']);
+                    //$(event.target).parent().addClass('show-layer');
+                    //changeMap(event.data['index'], $(event.target).parent());
+                    mapLayerToggle(event);
                 });
             if (layerInfo[i].name === "LTER site boundary") {
                 siteBoundary = i;
@@ -390,10 +391,19 @@ function embedInit() {
 }
 
 // Show/hide layers in response to user clicks
-function changeMap(layer) {
-    var showLayers = window.layerStack.visibleLayers;
-    if (showLayers.indexOf(layer) === -1) {
+function mapLayerToggle(event) {
+    var layer, listItem, showLayers, layerIndex;
+    layer = event.data['index'];
+    listItem = $(event.target).parent();
+    showLayers = window.layerStack.visibleLayers;
+    layerIndex = showLayers.indexOf(layer);
+    if (layerIndex === -1) {
         showLayers.push(layer);
+        listItem.addClass('show-layer');
+    }
+    else {
+        showLayers.splice(layerIndex, 1);
+        listItem.removeClass('show-layer');
     }
     window.layerStack.setVisibleLayers(showLayers);
 }
