@@ -80,11 +80,12 @@ var GEONIS = (function () {
                         .append($('<td />').text(entityname))
                         .append($('<td />').text(title))
                         .click(function (event) {
-                            var details = $('#detail' + layerID);
+                            var details = $('#layer-detail-row-' + layerID);
                             if (!details.length) {
+                                $('.detail-box:visible').hide();
                                 $(event.target).parent().after(
                                     $('<tr class="detail-box" />')
-                                        .attr('id', 'detail' + layerID)
+                                        .attr('id', 'layer-detail-row-' + layerID)
                                         .append($('<td />')
                                             .attr('colspan', 4)
                                             .append($('<div />')
@@ -98,15 +99,29 @@ var GEONIS = (function () {
                                 detailText.append(fullAbstract);
                             }
                             else {
-                                details.toggle();
+                                if ($('.detail-box:visible').length === 1 && details.is(':visible')) {
+                                    details.hide();
+                                }
+                                else if ($('.detail-box:visible').length > 1 && details.is(':visible')) {
+                                    $('.detail-box:visible').hide();
+                                }
+                                else if ($('.detail-box:visible').length === 1 && !details.is(':visible')) {
+                                    $('.detail-box:visible').hide();
+                                    details.show();
+                                }
+                                else {
+                                    details.show();
+                                }
                             }
                         })
                         .hover(
                             function () {
                                 $(this).css('background-color', '#CEECF5');
+                                $(this).css('cursor', 'pointer');
                             },
                             function () {
                                 $(this).css('background-color', '#FFF');
+                                $(this).css('cursor', 'default');
                             }
                         )
                         .addClass('hidden');

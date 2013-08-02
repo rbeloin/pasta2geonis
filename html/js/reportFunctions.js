@@ -435,6 +435,7 @@ function mapLayerToggle(event, isVector) {
         isBoundary = (layerStack.layerInfos[substack.visibleLayers[0]].name ===
             'LTER site boundary');
         if (substack.visibleLayers.length === 1 && isBoundary) {
+            $('.detail-box').hide();
             $('#active-layers').hide();
         }
     }
