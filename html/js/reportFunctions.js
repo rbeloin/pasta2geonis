@@ -82,7 +82,7 @@ function checkTables(biography, report, reportType) {
  * Check for report entries in the entity table, and append them to its error report.
  */
 function checkEntity(biography, report, spatialType) {
-    entityname = (biography['entityname'] === 'None') ?
+    var entityname = (biography['entityname'] === 'None') ?
         'Untitled ' + spatialType + ' data set' : biography['entityname'];
     report = "<span class='entity-name'>" + entityname + "</span> " + report;
     return report;
@@ -397,9 +397,14 @@ function embedInit() {
 
 // Show/hide layers in response to user clicks
 function mapLayerToggle(event, isVector) {
-    var layer, listItem, substack, showLayers, layerIndex;
+    var layer, listItem, layerName, layerDetail, substack;
+    var showLayers, layerIndex, isBoundary;
     layer = event.data['index'];
     listItem = $(event.target).parent();
+    layerName = $(event.target).text();
+    if (window.layerData[layerName]) {
+        layerDetail = window.layerData[layerName].ESRI_OID;
+    }
     substack = (isVector) ? window.layerStack : window.imageStack;
     showLayers = substack.visibleLayers;
     layerIndex = showLayers.indexOf(layer);
@@ -409,14 +414,29 @@ function mapLayerToggle(event, isVector) {
     if (layerIndex === -1) {
         showLayers.push(layer);
         listItem.addClass('show-layer');
+        if (layerDetail) {
+            $('#active-layers').fadeIn('fast');
+            $('#layer' + layerDetail).removeClass('hidden');
+        }
     }
     else {
         showLayers.splice(layerIndex, 1);
         listItem.removeClass('show-layer');
+        if (layerDetail) {
+            $('#layer' + layerDetail).addClass('hidden');
+        }
     }
     substack.setVisibleLayers(showLayers);
     if (!substack.visibleLayers.length) {
         substack.hide();
+        $('#active-layers').hide();
+    }
+    if (substack.visibleLayers.length) {
+        isBoundary = (layerStack.layerInfos[substack.visibleLayers[0]].name ===
+            'LTER site boundary');
+        if (substack.visibleLayers.length === 1 && isBoundary) {
+            $('#active-layers').hide();
+        }
     }
 }
 

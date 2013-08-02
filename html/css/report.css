@@ -397,7 +397,7 @@ hr {
     width: 82%;
     float: right;
     clear: right;
-    height: 650px;
+    height: 525px;
     margin: 0;
     padding: 0;
 }
@@ -407,6 +407,48 @@ hr {
 	position: relative !important;
 	top: 0;
 	left: -800px;
+}
+
+#active-layers {
+    width: 82%;
+    float: right;
+    clear: right;
+    margin: 0;
+    padding: 0;
+    display: none;
+}
+#active-layers table {
+	text-align: left;
+	width: 100%;
+}
+#active-layers th {
+	font-weight: bold;
+	font-size: 90%;
+	border-bottom: 1px solid #ccc;
+}
+#active-layers td {
+	font-size: 90%;
+}
+#active-layers ul {
+	padding: 10px 20px;
+}
+#active-layers .detail-title {
+	font-size: 105%;
+}
+#active-layers .detail-sourceloc {
+	font-style: italic;
+}
+#active-layers a, a:visited {
+	color: #0B2161;
+}
+#active-layers a:hover {
+	color: #2E9AFE;
+}
+#active-layers p {
+	line-height: 17px;
+}
+#active-layers .detail-box {
+	border: 1px solid #ccc;
 }
 
 /* Link grid */
@@ -511,5 +553,9 @@ hr {
 }
 #layer-checks a:hover {
     text-decoration: none;
+}
+
+.hidden {
+	display: none;
 }
 
