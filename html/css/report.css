@@ -179,37 +179,6 @@ h1 {
 	color: #0B2161;
 }
 
-#site-report-title {
-	padding-top: 10px;
-	font-size: 115%;
-}
-#site-report-title a:hover {
-	color: #086A87;
-}
-
-#site-report {
-	display: none;
-	padding-bottom: 10px;
-}
-#site-report ul {
-    border-bottom: 1px solid #ccc;
-}
-#site-report ul li {
-    border-top: 1px solid #ccc;
-    border-left: 1px solid #ccc;
-    border-right: 1px solid #ccc;
-    line-height: 18pt;
-}
-#site-report ul li:hover {
-    background-color: #CEECF5;
-}
-#site-report a {
-    color: #0B2161;
-}
-#site-report a:hover {
-    text-decoration: none;
-}
-
 #workflow-info {
     margin-top: 15px;
     margin-left: 25px;
@@ -455,13 +424,17 @@ hr {
 .leftbar-grid {
     clear: left;
     float: left;
-    width: 16%;
+    width: 17%;
     font-size: 14px;
     color: #000;
     margin-top: 10px;
     padding-top: 12px;
+    padding-right: 3px;
     line-height: normal;
     text-align: center;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 800px;
 }
 .leftbar-grid h3 {
     color: #000;
@@ -527,14 +500,15 @@ hr {
 	background-color: #CEECF5;
 }
 #layer-checks-title {
+	padding-top: 10px;
 	font-size: 115%;
 }
 #layer-checks-title a:hover {
 	color: #086A87;
 }
-
 #layer-checks {
 	display: none;
+	padding-bottom: 10px;
 }
 #layer-checks ul {
     border-bottom: 1px solid #ccc;
@@ -555,7 +529,37 @@ hr {
     text-decoration: none;
 }
 
+/* List of packages */
+#site-report-title {
+	font-size: 115%;
+}
+#site-report-title a:hover {
+	color: #086A87;
+}
+#site-report {
+	display: none;
+}
+#site-report ul {
+    border-bottom: 1px solid #ccc;
+}
+#site-report ul li {
+    border-top: 1px solid #ccc;
+    border-left: 1px solid #ccc;
+    border-right: 1px solid #ccc;
+    line-height: 18pt;
+}
+#site-report ul li:hover {
+    background-color: #CEECF5;
+}
+#site-report a {
+    color: #0B2161;
+}
+#site-report a:hover {
+    text-decoration: none;
+}
+
 .hidden {
 	display: none;
 }
+
 

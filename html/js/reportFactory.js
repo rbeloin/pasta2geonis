@@ -5,6 +5,7 @@ var GEONIS = (function () {
         siteCode = pid.split('.')[0];
         site = siteCode.split('-')[2];
         $('#' + site).addClass('selected');
+        $('.leftbar-grid').css('max-height', $(window).height() - 100);
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
             $('#welcome-message').show();
@@ -25,28 +26,6 @@ var GEONIS = (function () {
                 'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer"
             };
             loadMapBlock();
-
-            /*window.layerLabels = {};
-            reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-                "Search/MapServer/2/query?where=packageid+like+%27%%" + pid +
-                "%%%27&returnGeometry=true&outFields=report&f=pjson&callback=?";
-            $.getJSON(reportUrl, function (response) {
-                var i, parsed;
-                for (i = 0; i < response.features.length; i++) {
-                    parsed = parseReport(response.features[i].attributes.report);
-                    formatted = checkTables(
-                        parsed.biography, parsed.report, parsed.reportType
-                    );
-                    if (parsed.reportType === 'entity-report' &&
-                        formatted.subject === 'vector' && parsed.biography.mxd) {
-                        window.layerLabels[parsed.biography.layername] =
-                            (parsed.biography.entityname === 'None') ?
-                            'Untitled ' + formatted.subject + ' data set' :
-                            parsed.biography.entityname;
-                    }
-                }
-            });*/
-
             window.layerData = {};
             entityUrl = servicesUrl + "Test/queryGeonisLayer/MapServer/1/query?" +
                 "where=scope+%3D+%27" + site + "%27&returnGeometry=true&" +
