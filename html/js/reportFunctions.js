@@ -415,7 +415,7 @@ function mapLayerToggle(event, isVector) {
         showLayers.push(layer);
         listItem.addClass('show-layer');
         if (layerDetail) {
-            $('#active-layers').fadeIn('fast');
+            $('#active-layers').show();
             $('#layer' + layerDetail).removeClass('hidden');
         }
     }

@@ -1857,6 +1857,7 @@ class UpdateMXDs(ArcpyTool):
         lyrFile = scratchFld + os.sep + layerName + ".lyr"
         arcpy.SaveToLayerFile_management(layerName, lyrFile)
         arcpy.mapping.AddLayer(layersFrame, arcpy.mapping.Layer(lyrFile))
+        pdb.set_trace()
         mxd.save()
         workingData["layerName"] = layerName
         writeWorkingDataToXML(workDir, workingData)

@@ -31,7 +31,7 @@ var lter = {
     "cap": {
         "coords": [33.43, -111.93],
         "name": "Central Arizona - Phoenix LTER",
-        "zoom": 7
+        "zoom": 8
     },
     "cwt": {
         "coords": [35.07, -83.5],
