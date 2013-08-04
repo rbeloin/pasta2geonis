@@ -471,7 +471,7 @@ class Setup(ArcpyTool):
             if stmt3 is not None:
                 cur.execute(stmt3)
 
-        if hasattr(self, 'flush') and self.flush and not hasattr(self, 'flushAndGo'):
+        if hasattr(self, 'flush') and self.flush and not hasattr(self, 'whitelist'):
             self.flushData()
             return
 
@@ -488,9 +488,8 @@ class Setup(ArcpyTool):
                     scopeList = [s.split('-')[-1] for s in urllib2.urlopen(
                         getConfigValue('pastaurl') + '/package/eml'
                     ).read().split('\n') if s.startswith('knb-lter-')]
-                    if hasattr(self, whitelist):
+                    if hasattr(self, 'whitelist'):
                         scopeList = list(self.whitelist & set(scopeList))
-                        self.flushData()
                 else:
                     scopeList = [self.scope]
 
@@ -550,6 +549,8 @@ class Setup(ArcpyTool):
                 stmt3 = "insert into limit_identifier values(%(inc)s);"
                 cur.executemany(stmt3, valsTuple)
             if parameters[5].value:
+                if hasattr(self, 'whitelist'):
+                    self.flushData()
                 self.cleanUp(valsArr)
 
 
