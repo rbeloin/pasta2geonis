@@ -19,7 +19,7 @@ def parse_parameters(argv, parameters):
         opts, args = getopt(
             argv,
             'hp:s:i:SMROf:',
-            ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only', 'flush=', '--standard-test']
+            ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only', 'flush=', 'standard-test']
         )
     except GetoptError:
         print usage
