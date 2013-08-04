@@ -1858,10 +1858,10 @@ class UpdateMXDs(ArcpyTool):
         for layer in arcpy.mapping.ListLayers(mxd, '', layersFrame):
             if layer.name == layerName:
                 layer.description = workingData['entityDesc']
-                layer.name = insertObj['title'] + ": " + layer.name
+                layer.name += ": " + insertObj['title']
                 layerName = layer.name
         mxd.save()
-        workingData["layerName"] = layer.name
+        workingData["layerName"] = layerName
         writeWorkingDataToXML(workDir, workingData)
         os.remove(lyrFile)
         del layersFrame, mxd
