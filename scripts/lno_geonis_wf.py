@@ -471,7 +471,7 @@ class Setup(ArcpyTool):
             if stmt3 is not None:
                 cur.execute(stmt3)
 
-        if hasattr(self, 'flush') and self.flush and not hasattr(self, 'whitelist'):
+        if hasattr(self, 'flush') and self.flush:
             self.flushData()
             return
 
@@ -549,8 +549,6 @@ class Setup(ArcpyTool):
                 stmt3 = "insert into limit_identifier values(%(inc)s);"
                 cur.executemany(stmt3, valsTuple)
             if parameters[5].value:
-                if hasattr(self, 'whitelist'):
-                    self.flushData()
                 self.cleanUp(valsArr)
 
 

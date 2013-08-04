@@ -19,22 +19,12 @@ def parse_parameters(argv, parameters):
         opts, args = getopt(
             argv,
             'hp:s:i:SMROf:',
-            ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only', 'flush=', 'standard-test']
+            ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only', 'flush=']
         )
     except GetoptError:
         print usage
         sys.exit(2)
     optlist = [j[0] for j in opts]
-    if '--standard-test' in optlist:
-        parameters['staging_server'] = True
-        parameters['flush'] = True
-        parameters['site'] = 'standard-test'
-        parameters['id'] = '*'
-        parameters['run_setup_arg'] = True
-        parameters['run_model_arg'] = True
-        for key in ('rfm_only_arg', 'rso_arg'):
-            parameters[key] = False
-        return parameters
     if '-p' not in optlist:
         print "Warning: no pasta server specified, defaulting to pasta-s.lternet.edu"
         parameters['staging_server'] = True
@@ -108,9 +98,7 @@ def setup(parameters):
     tool.setScopeIdManually = True
     if parameters['site'] == 'standard-test':
         tool.scope = '*'
-        tool.flushAndGo = True
-        tool.whitelist = set(('nwt', 'ntl'))
-        #tool.whitelist = set(('and', 'nwt', 'ntl', 'cap', 'bnz', 'knz', 'pie'))
+        tool.whitelist = set(('and', 'nwt', 'ntl', 'cap', 'bnz', 'knz', 'pie'))
     else:
         tool.scope = parameters['site']
     tool.id = parameters['id']
@@ -215,7 +203,7 @@ def main(argv):
     parameters = parse_parameters(argv, parameters)
 
     # Are we doing a flush?
-    if parameters['flush'] and parameters['site'] != 'standard-test':
+    if parameters['flush']:
         print "Flushing data for", parameters['flush']
         setup(parameters)
         sys.exit('Flush complete.')
