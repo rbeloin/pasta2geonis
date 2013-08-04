@@ -107,7 +107,7 @@ class Setup(ArcpyTool):
 
         # Kill all ArcSDE connections
         arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
-        
+
         with cursorContext(self.logger) as cur:
             site = self.scope
             srch = '%' + site + '%'
@@ -123,15 +123,6 @@ class Setup(ArcpyTool):
                     INFO,
                     "Dropped " + geodbTable + " from geodatabase"
                 )
-                '''except Exception as err:
-                    # Looking for: ERROR 000464: Cannot get exclusive schema lock.
-                    # Workaround (?): Stop all services that are listed in the geodb
-                    if err[0].find('ERROR 000464') != -1:
-                        self.logger.logMessage(
-                            WARN,
-                            "Could not get exclusive schema lock on " + getConfigValue('geodatabase') + ", geodatabase table " + siteWF + " has not been cleared."
-                        )
-                    raise(Exception)'''
 
             # Clear the map
             if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
