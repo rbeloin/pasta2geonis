@@ -401,7 +401,7 @@ function mapLayerToggle(event, isVector) {
     var showLayers, layerIndex, isBoundary;
     layer = event.data['index'];
     listItem = $(event.target).parent();
-    layerName = $(event.target).text();
+    layerName = $(event.target).text().split(':')[0];
     if (window.layerData[layerName]) {
         layerDetail = window.layerData[layerName].ESRI_OID;
     }
