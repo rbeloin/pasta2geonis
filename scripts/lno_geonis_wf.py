@@ -110,74 +110,76 @@ class Setup(ArcpyTool):
         arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
 
         with cursorContext(self.logger) as cur:
-            site = self.scope
-            srch = '%' + site + '%'
-            self.logger.logMessage(WARN, "Flushing data for " + site)
+            if type(self.scope) != list:
+                self.scope = [self.scope]
+            for site in self.scope:
+                srch = '%' + site + '%'
+                self.logger.logMessage(WARN, "Flushing data for " + site)
 
-            # Drop tables from geodb
-            siteWF = site + getConfigValue('datasetscopesuffix')
-            geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
-            if arcpy.Exists(geodbTable):
-                #try:
-                arcpy.Delete_management(geodbTable)
-                self.logger.logMessage(
-                    INFO,
-                    "Dropped " + geodbTable + " from geodatabase"
-                )
+                # Drop tables from geodb
+                siteWF = site + getConfigValue('datasetscopesuffix')
+                geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
+                if arcpy.Exists(geodbTable):
+                    #try:
+                    arcpy.Delete_management(geodbTable)
+                    self.logger.logMessage(
+                        INFO,
+                        "Dropped " + geodbTable + " from geodatabase"
+                    )
 
-            # Clear the map
-            if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
-                mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
-                mxd = arcpy.mapping.MapDocument(mxdfile)
-                self.logger.logMessage(INFO, "Clearing selections from " + site + ".mxd")
-                df = arcpy.mapping.ListDataFrames(mxd)[0]
-                for lyr in arcpy.mapping.ListLayers(mxd):
-                    arcpy.SelectLayerByAttribute_management(lyr, 'CLEAR_SELECTION')
-                for aTable in arcpy.mapping.ListTableViews(mxd):
-                    arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
+                # Clear the map
+                if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
+                    mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
+                    mxd = arcpy.mapping.MapDocument(mxdfile)
+                    self.logger.logMessage(INFO, "Clearing selections from " + site + ".mxd")
+                    df = arcpy.mapping.ListDataFrames(mxd)[0]
+                    for lyr in arcpy.mapping.ListLayers(mxd):
+                        arcpy.SelectLayerByAttribute_management(lyr, 'CLEAR_SELECTION')
+                    for aTable in arcpy.mapping.ListTableViews(mxd):
+                        arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
 
-                # Only drop layers listed in entity table so we don't remove the boundary layer
-                cur.execute(
-                    "SELECT layername FROM entity WHERE packageid LIKE %s",
-                    (srch, )
-                )
-                entityLayerList = [row[0] for row in cur.fetchall() if row[0] is not None]
+                    # Only drop layers listed in entity table so we don't remove the boundary layer
+                    cur.execute(
+                        "SELECT layername FROM entity WHERE packageid LIKE %s",
+                        (srch, )
+                    )
+                    entityLayerList = [row[0] for row in cur.fetchall() if row[0] is not None]
 
-                # First drop all layers from the MXD file and save it
-                layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
-                mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
-                mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                for layer in mapLayerList:
-                    #if layer in entityLayerList:
-                    if layer != 'LTER site boundary':
-                        self.logger.logMessage(INFO, "Removing layer " + layer)
-                        layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
-                        arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-                    else:
-                        self.logger.logMessage(INFO, "Skipping layer " + layer)
-                mxd.save()
-                del layersFrame
+                    # First drop all layers from the MXD file and save it
+                    layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                    mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                    mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                    for layer in mapLayerList:
+                        #if layer in entityLayerList:
+                        if layer != 'LTER site boundary':
+                            self.logger.logMessage(INFO, "Removing layer " + layer)
+                            layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                            arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                        else:
+                            self.logger.logMessage(INFO, "Skipping layer " + layer)
+                    mxd.save()
+                    del layersFrame
 
-            # Drop all matching rows from the workflow tables
-            self.logger.logMessage(INFO, "Clearing database tables")
-            cur.execute("DELETE FROM geonis_layer WHERE packageid LIKE %s", (srch, ))
-            self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from geonis_layer")
-            cur.execute("DELETE FROM entity WHERE packageid LIKE %s", (srch, ))
-            self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from entity")
-            cur.execute("DELETE FROM package WHERE packageid LIKE %s", (srch, ))
-            self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from package")
+                # Drop all matching rows from the workflow tables
+                self.logger.logMessage(INFO, "Clearing database tables")
+                cur.execute("DELETE FROM geonis_layer WHERE packageid LIKE %s", (srch, ))
+                self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from geonis_layer")
+                cur.execute("DELETE FROM entity WHERE packageid LIKE %s", (srch, ))
+                self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from entity")
+                cur.execute("DELETE FROM package WHERE packageid LIKE %s", (srch, ))
+                self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from package")
 
-            # Delete folders in the raster data folder
-            rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
-            if os.path.isdir(rasterFolder):
-                rasterSubfolders = os.listdir(rasterFolder)
-                if rasterSubfolders is not None:
-                    for f in rasterSubfolders:
-                        rmtree(rasterFolder + os.sep + f)
-                        self.logger.logMessage(
-                            INFO,
-                            "Removed %s" % rasterFolder + os.sep + f
-                        )
+                # Delete folders in the raster data folder
+                rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
+                if os.path.isdir(rasterFolder):
+                    rasterSubfolders = os.listdir(rasterFolder)
+                    if rasterSubfolders is not None:
+                        for f in rasterSubfolders:
+                            rmtree(rasterFolder + os.sep + f)
+                            self.logger.logMessage(
+                                INFO,
+                                "Removed %s" % rasterFolder + os.sep + f
+                            )
 
             # Delete the raster mosaic
             mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWF
@@ -469,7 +471,7 @@ class Setup(ArcpyTool):
             if stmt3 is not None:
                 cur.execute(stmt3)
 
-        if hasattr(self, 'flush') and self.flush:
+        if hasattr(self, 'flush') and self.flush and not hasattr(self, 'flushAndGo'):
             self.flushData()
             return
 
@@ -486,6 +488,9 @@ class Setup(ArcpyTool):
                     scopeList = [s.split('-')[-1] for s in urllib2.urlopen(
                         getConfigValue('pastaurl') + '/package/eml'
                     ).read().split('\n') if s.startswith('knb-lter-')]
+                    if hasattr(self, whitelist):
+                        scopeList = list(self.whitelist & set(scopeList))
+                        self.flushData()
                 else:
                     scopeList = [self.scope]
 

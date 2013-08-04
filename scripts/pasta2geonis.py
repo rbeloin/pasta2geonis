@@ -12,7 +12,6 @@ import lno_geonis_wf
 from geonis_postgresql import getConfigValue
 import pdb
 
-
 def parse_parameters(argv, parameters):
     usage = "Usage: pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
     argv = [j for j in argv if not j.endswith('.py') and not j.endswith('.pyc')]
@@ -20,12 +19,20 @@ def parse_parameters(argv, parameters):
         opts, args = getopt(
             argv,
             'hp:s:i:SMROf:',
-            ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only', 'flush=']
+            ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only', 'flush=', '--standard-test']
         )
     except GetoptError:
         print usage
         sys.exit(2)
     optlist = [j[0] for j in opts]
+    if '--standard-test' in optlist:
+        parameters['staging_server'] = True
+        parameters['flush'] = True
+        parameters['site'] = 'standard-test'
+        parameters['id'] = '*'
+        parameters['run_setup_arg'] = True
+        parameters['run_model_arg'] = True
+        return parameters
     if '-p' not in optlist:
         print "Warning: no pasta server specified, defaulting to pasta-s.lternet.edu"
         parameters['staging_server'] = True
@@ -97,6 +104,10 @@ def setup(parameters):
     tool = lno_geonis_wf.Setup()
     tool._isRunningAsTool = False
     tool.setScopeIdManually = True
+    if parameters['site'] == 'standard-test':
+        tool.scope = '*'
+        tool.flushAndGo = True
+        tool.whitelist = set(('and', 'nwt', 'ntl', 'cap', 'bnz', 'knz', 'pie'))
     tool.scope = parameters['site']
     tool.id = parameters['id']
     tool.flush = parameters['flush']
