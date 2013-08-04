@@ -136,7 +136,7 @@ class Setup(ArcpyTool):
                 for aTable in arcpy.mapping.ListTableViews(mxd):
                     arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
 
-                # Only drop layers listed in entity table so we don't remove the base layer
+                # Only drop layers listed in entity table so we don't remove the boundary layer
                 cur.execute(
                     "SELECT layername FROM entity WHERE packageid LIKE %s",
                     (srch, )
@@ -148,7 +148,8 @@ class Setup(ArcpyTool):
                 mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
                 mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
                 for layer in mapLayerList:
-                    if layer in entityLayerList:
+                    #if layer in entityLayerList:
+                    if layer != 'LTER site boundary':
                         self.logger.logMessage(INFO, "Removing layer " + layer)
                         layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
                         arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
@@ -199,6 +200,11 @@ class Setup(ArcpyTool):
             return
 
     def cleanUp(self, pkgArray):
+
+        # Kill all ArcSDE connections
+        self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
+        arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
+
         for p in pkgArray:
             self.logger.logMessage(DEBUG, "Found package " + p.values()[0])
 
@@ -1852,9 +1858,10 @@ class UpdateMXDs(ArcpyTool):
         for layer in arcpy.mapping.ListLayers(mxd, '', layersFrame):
             if layer.name == layerName:
                 layer.description = workingData['entityDesc']
-                layer.name = insertObj['title']
+                layer.name = insertObj['title'] + ": " + layer.name
+                layerName = layer.name
         mxd.save()
-        workingData["layerName"] = layerName
+        workingData["layerName"] = layer.name
         writeWorkingDataToXML(workDir, workingData)
         os.remove(lyrFile)
         del layersFrame, mxd
