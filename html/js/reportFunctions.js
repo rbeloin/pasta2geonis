@@ -366,8 +366,15 @@ function embedInit() {
                 layerChecks.prepend($('<li class="show-layer" />').append(checkbox));
             }
             else {
-                checkbox.text(layerInfo[i].name);
-                layerChecks.append($('<li />').append(checkbox));
+                var layerDesc = layerInfo[i].name.split(':');
+                checkbox.text(layerDesc[0]);
+                /*var layerButton = $('<li />').append(
+                    $('<p />').append(checkbox).append(
+                        $('<span />').text(layerDesc[1].trim())
+                    )
+                );*/
+                var layerButton = $('<li />').append(checkbox);
+                layerChecks.append(layerButton);
             }
         }
         layers.setVisibleLayers([siteBoundary]);
@@ -401,7 +408,7 @@ function mapLayerToggle(event, isVector) {
     var showLayers, layerIndex, isBoundary;
     layer = event.data['index'];
     listItem = $(event.target).parent();
-    layerName = $(event.target).text().split(':')[0];
+    layerName = $(event.target).text(); //.split(':')[0];
     if (window.layerData[layerName]) {
         layerDetail = window.layerData[layerName].ESRI_OID;
     }

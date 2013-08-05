@@ -5,7 +5,7 @@ var GEONIS = (function () {
         siteCode = pid.split('.')[0];
         site = siteCode.split('-')[2];
         $('#' + site).addClass('selected');
-        $('.leftbar-grid').css('max-height', $(window).height() - 100);
+        $('.leftbar-menu').css('max-height', $(window).height() - $('.leftbar-grid').height() - 100);
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
             $('#welcome-message').show();

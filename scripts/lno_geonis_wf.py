@@ -107,7 +107,7 @@ class Setup(ArcpyTool):
 
         # Kill all ArcSDE connections
         self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
-        arcpy.DisconnectUser("Database Connections/sde@Connection to Maps3.sde", "ALL")
+        arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
 
         with cursorContext(self.logger) as cur:
             if type(self.scope) != list:

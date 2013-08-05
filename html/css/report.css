@@ -432,9 +432,6 @@ hr {
     padding-right: 3px;
     line-height: normal;
     text-align: center;
-    overflow-x: hidden;
-    overflow-y: auto;
-    height: 800px;
 }
 .leftbar-grid h3 {
     color: #000;
@@ -465,6 +462,10 @@ hr {
 	background-color: #CEECF5;
 }
 
+.leftbar-menu {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
 
 /* LTER full name popup */
 #lter-links span {
@@ -562,4 +563,30 @@ hr {
 	display: none;
 }
 
-
+/* Layername popup */
+#layer-checks span {
+    background: none repeat scroll 0 0 #fff;
+    border: 1px solid #ccc;
+    color: #000;
+    font-size: 13px;
+    height: 30px;
+    line-height: 30px;
+    margin: 0 auto;
+    position: absolute;
+    text-align: center;
+    top: -35px;
+    left: -45px;
+    display: none;
+    padding: 0 20px;
+    border-radius: 3px;
+}
+/*#layer-checks p {
+	margin: 0;
+    padding: 0;
+    position: relative;
+    cursor: pointer;
+}
+#layer-checks p:hover span {
+    display: block;
+    z-index: 100;
+}*/
