@@ -198,8 +198,19 @@ class Setup(ArcpyTool):
                 rmtree(tempDir + os.sep + folder)
                 self.logger.logMessage(INFO, "Removed " + tempDir + os.sep + folder)
 
-            self.flush = True
-            return
+            # Now that we're done making changes, refresh the map services
+            # if available:
+            RMS = RefreshMapService()
+            RMS._isRunningAsTool = False
+            RMS.selectService = site
+            paramsRMS = RMS.getParameterInfo()
+            paramsRMS[0].value = True
+            paramsRMS[1].value = self.logfile
+            RMS.execute(paramsRMS, [])
+            del RMS
+
+        self.flush = True
+        return
 
     def cleanUp(self, pkgArray):
 
@@ -2241,20 +2252,20 @@ class RefreshMapService(ArcpyTool):
 
             # If execute has been called programatically, then only
             # refresh the specified services
-            #if hasattr(self, 'calledFromScript'):
-            #    mxds = [self.calledFromScript + '.mxd']
+            if hasattr(self, 'selectService'):
+                mxds = [self.selectService + '.mxd']
 
             # Otherwise, get list of map services where entity record
             # exists, is OK, has mxd, but not in geonis_layer
-            #else:
-            stmt = "SELECT * FROM vw_stalemapservices;"
-            with cursorContext(self.logger) as cur:
-                cur.execute(stmt)
-                rows = cur.fetchall()
-                mxds = [cols[0] for cols in rows]
-            if hasattr(self, 'calledFromScript'):
-                mxds.extend([s + '.mxd' for s in self.calledFromScript])
-            del rows
+            else:
+                stmt = "SELECT * FROM vw_stalemapservices;"
+                with cursorContext(self.logger) as cur:
+                    cur.execute(stmt)
+                    rows = cur.fetchall()
+                    mxds = [cols[0] for cols in rows]
+                if hasattr(self, 'calledFromScript'):
+                    mxds.extend([s + '.mxd' for s in self.calledFromScript])
+                del rows
 
             if not mxds:
                 self.logger.logMessage(INFO, "No new vector data added to any maps.")
