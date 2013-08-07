@@ -332,19 +332,19 @@ function loadMapBlock() {
  * Other layers can be shown by clicking on their checkboxes.
  */
 function embedInit() {
+
+    // Create the map, centered on the current LTER site
     window.embeddedMap = new esri.Map('map-block', {
         basemap: 'satellite',
         center: [lter[site].coords[1], lter[site].coords[0]],
         zoom: lter[site].zoom || 12,
         sliderStyle: 'small'
     });
+
+    // Create the layer stack and click handlers for the layer menu
     window.layerStack = new esri.layers.ArcGISDynamicMapServiceLayer(
         mapInfo.mapUrl,
         {id: 'layerStack'}
-    );
-    window.imageStack = new esri.layers.ArcGISImageServiceLayer(
-        mapInfo.imageUrl,
-        {id: 'imageStack'}
     );
     dojo.connect(layerStack, 'onLoad', function (layers) {
         var i, layerInfo, layerTitleLink, siteBoundary, layerChecks, checkbox;
@@ -384,9 +384,18 @@ function embedInit() {
         layers.setVisibleLayers([siteBoundary]);
     });
 
+    // Create the image stack and click handlers for the image menu
+    var imageParams = new esri.layers.ImageServiceParameters();
+    imageParams.noData = 0;
+    window.imageStack = new esri.layers.ArcGISImageServiceLayer(
+        mapInfo.imageUrl, {
+            id: 'imageStack',
+            imageServiceParameters: imageParams,
+            opacity: 0.75
+        }
+    );
     dojo.connect(imageStack, 'onLoad', function (images) {
         var i, imageTitleLink, imageChecks;
-        //for (i = 0; i < Object.keys(imageData).length; i++) {
         imageTitleLink = $('<a />')
             .attr('href', '#')
             .text("Images (" + Object.keys(imageData).length + ")")
@@ -407,8 +416,17 @@ function embedInit() {
                         "where": "Name='" + event.data.layername + "'"
                     });
                     imageStack.setMosaicRule(mosaicRule);
+                    $(event.target).parent().addClass('show-layer');
+                    var visibleImage =
+                        imageStack.mosaicRule.where.split('=')[1].split('\'')[1];
                     if (embeddedMap.layerIds.indexOf('imageStack') === -1) {
                         embeddedMap.addLayer(imageStack);
+                    }
+                    else if (visibleImage === event.data.layername) {
+                        embeddedMap.removeLayer(
+                            embeddedMap.getLayer('imageStack')
+                        );
+                        $(event.target).parent().removeClass('show-layer');
                     }
                 })
                 .text(this.layername);
