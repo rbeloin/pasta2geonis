@@ -408,17 +408,21 @@ function embedInit() {
             var checkbox = $('<a />')
                 .attr('href', '#')
                 .click({'layername': this.layername}, function (event) {
+                    var visibleImage, mosaicRule;
                     event.preventDefault(event);
-                    var mosaicRule = new esri.layers.MosaicRule({
+                    if (embeddedMap.layerIds.indexOf('imageStack') !== -1) {
+                        visibleImage =
+                            imageStack.mosaicRule.where.split('=')[1].split('\'')[1];
+                    }
+                    mosaicRule = new esri.layers.MosaicRule({
                         "method": esri.layers.MosaicRule.METHOD_LOCKRASTER,
                         "ascending": true,
                         "operation": esri.layers.MosaicRule.OPERATION_FIRST,
                         "where": "Name='" + event.data.layername + "'"
                     });
                     imageStack.setMosaicRule(mosaicRule);
+                    $(event.target).parent().parent().children().removeClass('show-layer');
                     $(event.target).parent().addClass('show-layer');
-                    var visibleImage =
-                        imageStack.mosaicRule.where.split('=')[1].split('\'')[1];
                     if (embeddedMap.layerIds.indexOf('imageStack') === -1) {
                         embeddedMap.addLayer(imageStack);
                     }
@@ -426,12 +430,11 @@ function embedInit() {
                         embeddedMap.removeLayer(
                             embeddedMap.getLayer('imageStack')
                         );
-                        $(event.target).parent().removeClass('show-layer');
+                        $(event.target).parent().parent().children().removeClass('show-layer');
                     }
                 })
                 .text(this.layername);
-            var imageButton = $('<li />').append(checkbox);
-            imageChecks.append(imageButton);
+            imageChecks.append($('<li />').append(checkbox));
         });
     });
 
