@@ -530,6 +530,40 @@ hr {
     text-decoration: none;
 }
 
+/* Image show/hide */
+#image-checks .show-layer {
+	background-color: #CEECF5;
+}
+#image-checks-title {
+	font-size: 115%;
+}
+#image-checks-title a:hover {
+	color: #086A87;
+}
+#image-checks {
+	display: none;
+	padding-bottom: 10px;
+}
+#image-checks ul {
+    border-bottom: 1px solid #ccc;
+}
+#image-checks ul li {
+    border-top: 1px solid #ccc;
+    border-left: 1px solid #ccc;
+    border-right: 1px solid #ccc;
+    line-height: 18pt;
+}
+#image-checks ul li:hover {
+    background-color: #CEECF5;
+}
+#image-checks a {
+    color: #0B2161;
+}
+#image-checks a:hover {
+    text-decoration: none;
+}
+
+
 /* List of packages */
 #site-report-title {
 	font-size: 115%;

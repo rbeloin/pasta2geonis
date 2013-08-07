@@ -339,11 +339,15 @@ function embedInit() {
         sliderStyle: 'small'
     });
     window.layerStack = new esri.layers.ArcGISDynamicMapServiceLayer(
-        window.mapInfo.mapUrl,
+        mapInfo.mapUrl,
         {id: 'layerStack'}
     );
-    dojo.connect(window.layerStack, 'onLoad', function (layers) {
-        var i, layerInfo, layerTitleLink, siteBoundary, layerChecks, checklist, checkbox;
+    window.imageStack = new esri.layers.ArcGISImageServiceLayer(
+        mapInfo.imageUrl,
+        {id: 'imageStack'}
+    );
+    dojo.connect(layerStack, 'onLoad', function (layers) {
+        var i, layerInfo, layerTitleLink, siteBoundary, layerChecks, checkbox;
         layerInfo = layers.layerInfos;
         layerTitleLink = $('<a />')
             .attr('href', '#')
@@ -380,10 +384,43 @@ function embedInit() {
         layers.setVisibleLayers([siteBoundary]);
     });
 
+    dojo.connect(imageStack, 'onLoad', function (images) {
+        var i, imageTitleLink, imageChecks;
+        //for (i = 0; i < Object.keys(imageData).length; i++) {
+        imageTitleLink = $('<a />')
+            .attr('href', '#')
+            .text("Images (" + Object.keys(imageData).length + ")")
+            .click(function () {
+                $('#image-checks').slideToggle('fast');
+            });
+        $('#image-checks-title').append($('<p />').append(imageTitleLink));
+        imageChecks = $('<ul />').appendTo('#image-checks');
+        $.each(imageData, function () {
+            var checkbox = $('<a />')
+                .attr('href', '#')
+                .click({'layername': this.layername}, function (event) {
+                    event.preventDefault(event);
+                    var mosaicRule = new esri.layers.MosaicRule({
+                        "method": esri.layers.MosaicRule.METHOD_LOCKRASTER,
+                        "ascending": true,
+                        "operation": esri.layers.MosaicRule.OPERATION_FIRST,
+                        "where": "Name='" + event.data.layername + "'"
+                    });
+                    imageStack.setMosaicRule(mosaicRule);
+                    if (embeddedMap.layerIds.indexOf('imageStack') === -1) {
+                        embeddedMap.addLayer(imageStack);
+                    }
+                })
+                .text(this.layername);
+            var imageButton = $('<li />').append(checkbox);
+            imageChecks.append(imageButton);
+        });
+    });
+
     // Once the map is loaded, add layers, resize, and scalebar
-    dojo.connect(window.embeddedMap, 'onLoad', function (theMap) {
+    dojo.connect(embeddedMap, 'onLoad', function (theMap) {
         var resizeTimer;
-        theMap.addLayer(window.layerStack);
+        theMap.addLayer(layerStack);
         var scalebar = new esri.dijit.Scalebar({
             map: theMap,
             srcNodeRef: '#scale',
@@ -409,14 +446,14 @@ function mapLayerToggle(event, isVector) {
     layer = event.data['index'];
     listItem = $(event.target).parent();
     layerName = $(event.target).text(); //.split(':')[0];
-    if (window.layerData[layerName]) {
-        layerDetail = window.layerData[layerName].ESRI_OID;
+    if (layerData[layerName]) {
+        layerDetail = layerData[layerName].ESRI_OID;
     }
-    substack = (isVector) ? window.layerStack : window.imageStack;
+    substack = (isVector) ? layerStack : imageStack;
     showLayers = substack.visibleLayers;
     layerIndex = showLayers.indexOf(layer);
     if (!showLayers.length) {
-        window.layerStack.show();
+        layerStack.show();
     }
     if (layerIndex === -1) {
         showLayers.push(layer);

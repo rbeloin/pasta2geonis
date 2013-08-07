@@ -1,11 +1,14 @@
 var GEONIS = (function () {
     $(document).ready(function () {
-        var welcomeMessage, servicesUrl, entityUrl, reportUrl, siteReportUrl, siteCode, entities;
+        var welcomeMessage, servicesUrl, reportUrl, siteReportUrl, siteCode, entities;
         pid = getPID();
         siteCode = pid.split('.')[0];
         site = siteCode.split('-')[2];
         $('#' + site).addClass('selected');
-        $('.leftbar-menu').css('max-height', $(window).height() - $('.leftbar-grid').height() - 100);
+        $('.leftbar-menu').css(
+            'max-height',
+            $(window).height() - $('.leftbar-grid').height() - 100
+        );
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
             $('#welcome-message').show();
@@ -23,23 +26,36 @@ var GEONIS = (function () {
                 'site': site,
                 'services': {'map': true, 'image': true},
                 'mapUrl': servicesUrl + "Test/" + site + "_layers/MapServer",
-                'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer"
+                'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer",
+                'entityUrl': servicesUrl + "Test/queryGeonisLayer/MapServer/1/query?" +
+                    "where=scope+%3D+%27" + site + "%27&returnGeometry=true&" +
+                    "outFields=*&f=pjson",
+                'rasterEntityUrl': servicesUrl + "ImageTest/queryRaster/MapServer/1/query?" +
+                    "where=packageid+like+%27knb-lter-" + site + "%%%27&returnGeometry=true" +
+                    "&outFields=*&f=pjson"
             };
+            window.imageData = {};
+            $.getJSON(mapInfo.rasterEntityUrl, function (response) {
+                $.each(response.features, function () {
+                    imageData[this.attributes.id] = {
+                        'packageid': this.attributes.packageid,
+                        'entityname': this.attributes.entityname,
+                        'layername': this.attributes.lyrname
+                    };
+                });
+            });
             loadMapBlock();
             window.layerData = {};
-            entityUrl = servicesUrl + "Test/queryGeonisLayer/MapServer/1/query?" +
-                "where=scope+%3D+%27" + site + "%27&returnGeometry=true&" +
-                "outFields=*&f=pjson";
-            $.getJSON(entityUrl, function (response) {
+            $.getJSON(mapInfo.entityUrl, function (response) {
                 $.each(response.features, function () {
-                    window.layerData[this.attributes.layername] = {
+                    layerData[this.attributes.layername] = {
                         'packageid': this.attributes.packageid,
                         'title': this.attributes.title,
                         'entityname': this.attributes.entityname,
                         'abstract': this.attributes.abstract,
                         'sourceloc': this.attributes.sourceloc,
                         'ESRI_OID': this.attributes.ESRI_OID
-                    }
+                    };
                     var packageid =
                         this.attributes.packageid.split('.').slice(1, 3).join('.');
                     var title = shorten(this.attributes.title);
@@ -110,6 +126,82 @@ var GEONIS = (function () {
                     }
                 });
             });
+            /*$.getJSON(mapInfo.rasterEntityUrl, function (response) {
+                $.each(response.features, function () {
+                    window.imageData[this.attributes.entityname] = {
+                        'packageid': this.attributes.packageid,
+                        'ESRI_OID': this.attributes.ESRI_OID
+                    };
+                    var packageid =
+                        this.attributes.packageid.split('.').slice(1, 3).join('.');
+                    var title = shorten(this.attributes.title);
+                    var abstract = shorten(this.attributes.abstract);
+                    var entityname = shorten(this.attributes.entityname);
+                    var layerID = this.attributes.ESRI_OID;
+                    var fullTitle = $('<li class="detail-title" />').text(this.attributes.title);
+                    var fullSourceloc = $('<li class="detail-sourceloc" />').append($('<a />')
+                        .attr('href', this.attributes.sourceloc)
+                        .text(this.attributes.sourceloc)
+                    );
+                    var fullAbstract = $('<li />').append($('<p />').text(this.attributes.abstract));
+                    var row = $('<tr />')
+                        .attr('id', 'layer' + layerID)
+                        .append($('<td />').text(this.attributes.layername))
+                        .append($('<td />').text(packageid))
+                        .append($('<td />').text(entityname))
+                        .append($('<td />').text(title))
+                        .click(function (event) {
+                            var details = $('#layer-detail-row-' + layerID);
+                            if (!details.length) {
+                                $('.detail-box:visible').hide();
+                                $(event.target).parent().after(
+                                    $('<tr class="detail-box" />')
+                                        .attr('id', 'layer-detail-row-' + layerID)
+                                        .append($('<td />')
+                                            .attr('colspan', 4)
+                                            .append($('<div />')
+                                                .attr('id', 'detailText' + layerID)
+                                            )
+                                        )
+                                );
+                                var detailText = $('<ul />').appendTo($('#detailText' + layerID));
+                                detailText.append(fullTitle);
+                                detailText.append(fullSourceloc);
+                                detailText.append(fullAbstract);
+                            }
+                            else {
+                                if ($('.detail-box:visible').length === 1 && details.is(':visible')) {
+                                    details.hide();
+                                }
+                                else if ($('.detail-box:visible').length > 1 && details.is(':visible')) {
+                                    $('.detail-box:visible').hide();
+                                }
+                                else if ($('.detail-box:visible').length === 1 && !details.is(':visible')) {
+                                    $('.detail-box:visible').hide();
+                                    details.show();
+                                }
+                                else {
+                                    details.show();
+                                }
+                            }
+                        })
+                        .hover(
+                            function () {
+                                $(this).css('background-color', '#CEECF5');
+                                $(this).css('cursor', 'pointer');
+                            },
+                            function () {
+                                $(this).css('background-color', '#FFF');
+                                $(this).css('cursor', 'default');
+                            }
+                        )
+                        .addClass('hidden');
+                    $('#active-layers tbody').append(row);
+                    function shorten(data) {
+                        return (data.length < 40) ? data : data.slice(0, 39) + '...';
+                    }
+                });
+            });*/
         }
         else {
             generateBanner(pid);

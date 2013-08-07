@@ -28,6 +28,11 @@ CREATE OR REPLACE VIEW workflow_d.vw_maxrevs as select scope, identifier,  max(r
 -- view for query layer
 CREATE OR REPLACE VIEW workflow_d.vw_publist AS
  SELECT geonis_layer.packageid AS package, geonis_layer.scope AS site_code, geonis_layer.entityname AS entity, geonis_layer.entitydescription AS description, geonis_layer.title, geonis_layer.abstract, geonis_layer.purpose, geonis_layer.keywords, geonis_layer.sourceloc AS source, geonis_layer.layername AS lyrname, geonis_layer.arcloc AS service, geonis_layer.layerid AS lyrid FROM geonis_layer WHERE geonis_layer.layerid <> (-1);
+--
+-- view for raster query layer
+CREATE OR REPLACE VIEW workflow_d.vw_rasterentities AS
+ SELECT id, packageid, entityname, layername FROM entity WHERE israster = 't' AND layername IS NOT NULL;
+
 --WORKFLOW
 set search_path to workflow;
 --package exists, we have not yet counted its spatial nodes 
@@ -55,6 +60,11 @@ CREATE OR REPLACE VIEW workflow.vw_maxrevs as select scope, identifier,  max(rev
 -- view for query layer
 CREATE OR REPLACE VIEW workflow.vw_publist AS
  SELECT geonis_layer.packageid AS package, geonis_layer.scope AS site_code, geonis_layer.entityname AS entity, geonis_layer.entitydescription AS description, geonis_layer.title, geonis_layer.abstract, geonis_layer.purpose, geonis_layer.keywords, geonis_layer.sourceloc AS source, geonis_layer.layername AS lyrname, geonis_layer.arcloc AS service, geonis_layer.layerid AS lyrid FROM geonis_layer WHERE geonis_layer.layerid <> (-1);
+
+--
+-- view for raster query layer
+CREATE OR REPLACE VIEW workflow.vw_rasterentities AS
+ SELECT id, packageid, entityname, layername FROM entity WHERE israster = 't' AND layername IS NOT NULL;
 
 /* this view works, but not needed. update mxd tool needs to create rec in layer table 
 CREATE OR REPLACE VIEW workflow_d.vw_newvectorlayer AS
