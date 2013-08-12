@@ -1919,6 +1919,10 @@ class UpdateMXDs(ArcpyTool):
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self):
         noErrorsFound = "No errors found."
+        
+        # Are the "Report" fields of the package/entity tables already present in multiple copies?
+        # Or, is the error happening in this function??
+        pdb.set_trace()
 
         # First modify the package table reports
         with cursorContext(self.logger) as cur:

@@ -347,7 +347,7 @@ function embedInit() {
         {id: 'layerStack'}
     );
     dojo.connect(layerStack, 'onLoad', function (layers) {
-        var i, layerInfo, layerTitleLink, siteBoundary, layerChecks, checkbox;
+        var i, layerInfo, layerTitleLink, siteBoundary, layerChecks, checkbox, checkboxLink;
         layerInfo = layers.layerInfos;
         layerTitleLink = $('<a />')
             .attr('href', '#')
@@ -358,25 +358,37 @@ function embedInit() {
         $('#layer-checks-title').append($('<p />').append(layerTitleLink));
         layerChecks = $('<ul />').appendTo('#layer-checks');
         for (i = 0; i < layerInfo.length; i++) {
-            checkbox = $('<a />')
+            /*checkboxLink = $('<a />')
                 .attr('href', '#')
                 .click({'index': i}, function (event) {
                     event.preventDefault(event);
                     mapLayerToggle(event, true);
-                });
+                });*/
             if (layerInfo[i].name === "LTER site boundary") {
                 siteBoundary = i;
-                checkbox.text('Boundary');
-                layerChecks.prepend($('<li class="show-layer" />').append(checkbox));
+                checkbox = $('<label />').text('Boundary');
+                checkbox.prepend($('<input />')
+                    .attr('type', 'checkbox')
+                    .attr('name', 'checkbox' + i)
+                    .attr('id', 'checkbox' + i)
+                    .prop('checked', true)
+                    .click({'index': i}, function (event) {
+                        mapLayerToggle(event, true);
+                    })
+                );
+                layerChecks.prepend($('<li />').append(checkbox));
             }
             else {
                 var layerDesc = layerInfo[i].name.split(':');
-                checkbox.text(layerDesc[0]);
-                /*var layerButton = $('<li />').append(
-                    $('<p />').append(checkbox).append(
-                        $('<span />').text(layerDesc[1].trim())
-                    )
-                );*/
+                checkbox = $('<label />').text(layerDesc[0]);
+                checkbox.prepend($('<input />')
+                    .attr('type', 'checkbox')
+                    .attr('name', 'checkbox' + i)
+                    .attr('id', 'checkbox' + i)
+                    .click({'index': i}, function (event) {
+                        mapLayerToggle(event, true);
+                    })
+                );
                 var layerButton = $('<li />').append(checkbox);
                 layerChecks.append(layerButton);
             }
@@ -466,7 +478,7 @@ function mapLayerToggle(event, isVector) {
     var showLayers, layerIndex, isBoundary;
     layer = event.data['index'];
     listItem = $(event.target).parent();
-    layerName = $(event.target).text(); //.split(':')[0];
+    layerName = listItem.text(); //.split(':')[0];
     if (layerData[layerName]) {
         layerDetail = layerData[layerName].ESRI_OID;
     }
@@ -478,7 +490,8 @@ function mapLayerToggle(event, isVector) {
     }
     if (layerIndex === -1) {
         showLayers.push(layer);
-        listItem.addClass('show-layer');
+        //listItem.addClass('show-layer');
+        $(event.target).prop('checked', true);
         if (layerDetail) {
             $('#active-layers').show();
             $('#layer' + layerDetail).removeClass('hidden');
@@ -486,7 +499,8 @@ function mapLayerToggle(event, isVector) {
     }
     else {
         showLayers.splice(layerIndex, 1);
-        listItem.removeClass('show-layer');
+        //listItem.removeClass('show-layer');
+        $(event.target).prop('checked', false);
         if (layerDetail) {
             $('#layer' + layerDetail).addClass('hidden');
         }
