@@ -417,11 +417,14 @@ function embedInit() {
         $('#image-checks-title').append($('<p />').append(imageTitleLink));
         imageChecks = $('<ul />').appendTo('#image-checks');
         $.each(imageData, function () {
-            var checkbox = $('<a />')
-                .attr('href', '#')
+            checkbox = $('<label />').text(this.layername);
+            checkbox.prepend($('<input />')
+                .attr('type', 'checkbox')
+                .attr('name', 'checkbox-' + this.layername)
+                .attr('id', 'checkbox-' + this.layername)
                 .click({'layername': this.layername}, function (event) {
                     var visibleImage, mosaicRule;
-                    event.preventDefault(event);
+                    //event.preventDefault(event);
                     if (embeddedMap.layerIds.indexOf('imageStack') !== -1) {
                         visibleImage =
                             imageStack.mosaicRule.where.split('=')[1].split('\'')[1];
@@ -433,8 +436,10 @@ function embedInit() {
                         "where": "Name='" + event.data.layername + "'"
                     });
                     imageStack.setMosaicRule(mosaicRule);
-                    $(event.target).parent().parent().children().removeClass('show-layer');
-                    $(event.target).parent().addClass('show-layer');
+                    $(event.target).parents().eq(2).find(':checked').prop('checked', false);
+                    $(event.target).prop('checked', true);
+                    //$(event.target).parent().parent().children().removeClass('show-layer');
+                    //$(event.target).parent().addClass('show-layer');
                     if (embeddedMap.layerIds.indexOf('imageStack') === -1) {
                         embeddedMap.addLayer(imageStack);
                     }
@@ -442,10 +447,11 @@ function embedInit() {
                         embeddedMap.removeLayer(
                             embeddedMap.getLayer('imageStack')
                         );
-                        $(event.target).parent().parent().children().removeClass('show-layer');
+                        $(event.target).parent().children().prop('checked', false);
+                        //$(event.target).parent().parent().children().removeClass('show-layer');
                     }
                 })
-                .text(this.layername);
+            );
             imageChecks.append($('<li />').append(checkbox));
         });
     });
