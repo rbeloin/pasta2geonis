@@ -2053,7 +2053,10 @@ class UpdateMXDs(ArcpyTool):
                     with cursorContext(self.logger) as cur:
                         cur.execute(stmt, (status[:499], workingData["packageId"], workingData["entityName"]))
                     # Add extra info to the error reports as needed
-                    self.modifyErrorReport(pkgId)
+                    try:
+                        self.modifyErrorReport(pkgId)
+                    except:
+                        pass
 
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
