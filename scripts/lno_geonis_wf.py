@@ -21,7 +21,7 @@ from cStringIO import StringIO
 from zipfile import ZipFile
 from lxml import etree
 import arcpy
-from geonis_log import EvtLog, errHandledWorkflowTask
+from geonis_log import EvtLog, errHandledWorkflowTask, updateReports
 from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as arcAddWarn
 from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
@@ -724,8 +724,6 @@ class QueryPasta(ArcpyTool):
             del row
         del rows
 
-
-
     def execute(self, parameters, messages):
         """
         Fetches a list of updated packages, and inserts their ID's into the
@@ -747,9 +745,14 @@ class QueryPasta(ArcpyTool):
             rmtree(tempDir + os.sep + folder)
             self.logger.logMessage(INFO, "Removed " + tempDir + os.sep + folder)
        
-        packageDir = self.getParamAsText(parameters,2)
+        packageDir = self.getParamAsText(parameters, 2)
         if packageDir is None or packageDir == '' or packageDir == '#':
             packageDir = getConfigValue("pathtodownloadedpkgs")
+
+        if 'entityCols.txt' in os.listdir(r'C:\pasta2geonis'):
+            os.remove(r'C:\pasta2geonis\entityCols.txt')
+        if 'packageCols.txt' in os.listdir(r'C:\pasta2geonis'):
+            os.remove(r'C:\pasta2geonis\packageCols.txt')
 
         #check db for limits to scopes/identifiers
         with cursorContext(self.logger) as cur:
@@ -816,7 +819,7 @@ class UnpackPackages(ArcpyTool):
         super(UnpackPackages, self).updateMessages(parameters)
 
     @errHandledWorkflowTask(taskName="Open Package")
-    def unzipPkg(self, apackage, locationDir):
+    def unzipPkg(self, apackage, locationDir, **kwargs):
         name, ext = os.path.splitext(os.path.basename(apackage))
         testpath = os.path.join(locationDir,name)
         destpath = testpath
@@ -838,7 +841,7 @@ class UnpackPackages(ArcpyTool):
         return destpath
 
     @errHandledWorkflowTask(taskName="Parse EML")
-    def parseEML(self, workDir):
+    def parseEML(self, workDir, **kwargs):
         retval = []
         if not os.path.isdir(workDir):
             self.logger.logMessage(WARN,"Not a directory %s" % (workDir,))
@@ -887,7 +890,7 @@ class UnpackPackages(ArcpyTool):
 ##            cur.execute(stmt, vals)
 
     @errHandledWorkflowTask(taskName="Read URL from emlSubset")
-    def readURL(self, workDir):
+    def readURL(self, workDir, **kwargs):
         emldata = readWorkingData(workDir, self.logger)
         url = readFromEmlSubset(workDir, "//physical/distribution/online/url", self.logger)
         if len(url) > 0:
@@ -896,7 +899,7 @@ class UnpackPackages(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Retrieve and unzip data")
-    def retrieveData(self, workDir):
+    def retrieveData(self, workDir, **kwargs):
         emldata = readWorkingData(workDir, self.logger)
         dataloc = emldata["physical/distribution/online/url"]
         resource = None
@@ -982,7 +985,7 @@ class UnpackPackages(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Entity initial entry")
-    def makeEntityRec(self, workDir):
+    def makeEntityRec(self, workDir, **kwargs):
         """Inserts record into entity table """
         emldata = readWorkingData(workDir, self.logger)
         stmt, vals = getEntityInsert()
@@ -1000,7 +1003,7 @@ class UnpackPackages(ArcpyTool):
     def execute(self, parameters, messages):
         super(UnpackPackages, self).execute(parameters, messages)
         carryForwardList = []
-        packageDir = self.getParamAsText(parameters,2)
+        packageDir = self.getParamAsText(parameters, 2)
         outputDir = self.getParamAsText(parameters, 3)
         self.logger.logMessage(DEBUG,  "in: %s; out: %s" % (packageDir, outputDir))
         if not os.path.isdir(outputDir):
@@ -1009,10 +1012,12 @@ class UnpackPackages(ArcpyTool):
         allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.xml']
         #loop over packages, handling one at a time. an error will drop the current package and go to the next one
         for pkg in allpackages:
-            self.logger.logMessage(DEBUG, "Starting work on %s" % (pkg,))
+            self.logger.logMessage(DEBUG, "Starting work on %s" % (pkg, ))
             try:
-                workdir = self.unzipPkg(pkg, outputDir)
-                packageId, dataDirs = self.parseEML(workdir)
+                xmlFile = pkg.split(os.sep)[-1]
+                pkgId = xmlFile[:-4] if xmlFile.endswith('.xml') else xmlFile
+                workdir = self.unzipPkg(pkg, outputDir, packageId=pkgId)
+                packageId, dataDirs = self.parseEML(workdir, packageId=pkgId)
                 for dir in dataDirs:
                     #loop over data package dirs, in most cases just one, if error keep trying others
                     try:
@@ -1026,9 +1031,9 @@ class UnpackPackages(ArcpyTool):
                             with cursorContext(self.logger) as cur:
                                 cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
                     try:
-                        self.readURL(dir)
-                        self.retrieveData(dir)
-                        self.makeEntityRec(dir)
+                        self.readURL(dir, packageId=pkgId)
+                        self.retrieveData(dir, packageId=pkgId)
+                        self.makeEntityRec(dir, packageId=pkgId)
                         carryForwardList.append(dir)
                     except Exception as err:
                         self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (dir, err.message))
@@ -1049,7 +1054,7 @@ class UnpackPackages(ArcpyTool):
                         cur.execute("SELECT addpackageerrorreport(%s,%s,%s);", (pkgId, contact, err.message ))
                         #cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,pkgId))
                         #cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (pkgId,contact))
-        arcpy.SetParameterAsText(4,  ";".join(carryForwardList))
+        arcpy.SetParameterAsText(4, ";".join(carryForwardList))
 
 
 ## *****************************************************************************
@@ -1080,7 +1085,7 @@ class CheckSpatialData(ArcpyTool):
         super(CheckSpatialData, self).updateMessages(parameters)
 
     @errHandledWorkflowTask(taskName="Examine EML data for type")
-    def examineEMLforType(self, emldata):
+    def examineEMLforType(self, emldata, **kwargs):
         spatialTypeItem = emldata["spatialType"]
         if spatialTypeItem == "spatialVector":
             self.logger.logMessage(INFO, "Found spatialVector tag")
@@ -1111,7 +1116,7 @@ class CheckSpatialData(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Data type check")
-    def acceptableDataType(self, apackageDir, emldata):
+    def acceptableDataType(self, apackageDir, emldata, **kwargs):
         if not os.path.isdir(apackageDir):
             self.logger.logMessage(WARN,"Parameter not a directory.")
             return (None, GeoNISDataType.NA)
@@ -1235,7 +1240,7 @@ class CheckSpatialData(ArcpyTool):
             return (None, GeoNISDataType.NA)
 
     @errHandledWorkflowTask(taskName="Data name check")
-    def entityNameMatch(self, emlName, dataFilePath):
+    def entityNameMatch(self, emlName, dataFilePath, **kwargs):
         dataFileName = os.path.basename(dataFilePath).lower()
         if emlName.lower() == dataFileName:
             return True
@@ -1249,7 +1254,7 @@ class CheckSpatialData(ArcpyTool):
                 return False
 
     @errHandledWorkflowTask(taskName="Attribute name check")
-    def attributeNames(self, workDir, dataFilePath):
+    def attributeNames(self, workDir, dataFilePath, **kwargs):
         # (datadir, datafilepath)
         emlAttNames = []
         entityAttNames = []
@@ -1268,7 +1273,7 @@ class CheckSpatialData(ArcpyTool):
         return diff
 
     @errHandledWorkflowTask(taskName="Checking precision")
-    def checkPrecision(self, dataFilePath):
+    def checkPrecision(self, dataFilePath, **kwargs):
         passed = True
         fields = arcpy.ListFields(dataFilePath)
         for fld in fields:
@@ -1312,9 +1317,14 @@ class CheckSpatialData(ArcpyTool):
                     reportfilePath = os.path.join(dataDir, shortPkgId + "_geonis_report.txt")
                     entityName = emldata["entityName"]
                     objectName = emldata["objectName"]
-                    hint = self.examineEMLforType(emldata)
+                    hint = self.examineEMLforType(emldata, packageId=pkgId, entityName=entityName)
                     emldata["type(eml)"] = hint
-                    foundFile, spatialType = self.acceptableDataType(dataDir, emldata)
+                    foundFile, spatialType = self.acceptableDataType(
+                        dataDir,
+                        emldata,
+                        packageId=pkgId,
+                        entityName=entityName
+                    )
                     if spatialType == GeoNISDataType.NA:
                         emldata["type"] = "NOT FOUND"
                         status = "Data type not found with tentative type %s" % hint
@@ -1323,7 +1333,12 @@ class CheckSpatialData(ArcpyTool):
                     status = "Found acceptable data file."
                     nameMatch = False
                     if emldata['spatialType'] == 'spatialVector':
-                        nameMatch = self.entityNameMatch(objectName, foundFile)
+                        nameMatch = self.entityNameMatch(
+                            objectName,
+                            foundFile,
+                            packageId=pkgId,
+                            entityName=entityName
+                        )
                         emldata["datafileMatchesEntity"] = nameMatch
                     else:
                         emldata["datafileMatchesEntity"] = True
@@ -1331,7 +1346,7 @@ class CheckSpatialData(ArcpyTool):
                     if not nameMatch:
                         datafilename = os.path.splitext(os.path.basename(foundFile))[0]
                         if len(datafilename) > 0:
-                            datafilename = stringToValidName(datafilename, max = 31)
+                            datafilename = stringToValidName(datafilename, max=31)
                             emldata["objectName"] = datafilename
                     if spatialType == GeoNISDataType.KML:
                         self.logger.logMessage(INFO, "kml found")
@@ -1360,7 +1375,12 @@ class CheckSpatialData(ArcpyTool):
 
                     # If this is a vector data set, get list of mismatches in attribute names
                     if emldata['spatialType'] == 'spatialVector':
-                        mismatchedAtts = self.attributeNames(dataDir, emldata["datafilePath"])
+                        mismatchedAtts = self.attributeNames(
+                            dataDir,
+                            emldata["datafilePath"],
+                            packageId=pkgId,
+                            entityName=entityName
+                        )
                         if mismatchedAtts != []:
                             reportText.append({"Fields mismatch": str(mismatchedAtts)})
                             status = "Found mismatch in attribute names"
@@ -1400,7 +1420,10 @@ class CheckSpatialData(ArcpyTool):
                         with cursorContext(self.logger) as cur:
                             cur.execute(stmt, (status[:499], pkgId, entityName))
                     writeWorkingDataToXML(dataDir, emldata, self.logger)
-                    formattedReport = self.getReport(pkgId, reportText)
+                    formattedReport = self.getReport(
+                        pkgId,
+                        reportText
+                    )
                     if formattedReport != '':
                         if pkgId and entityName:
                             with cursorContext(self.logger) as cur:
@@ -1633,7 +1656,7 @@ class LoadRasterTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Prepare storage")
-    def prepareStorage(self, site, datapath, name):
+    def prepareStorage(self, site, datapath, name, **kwargs):
         """ Create the directories necessary for storing the raw data, and return path to location.
             Also create mosaic dataset for site if needed.
             Appends '_main' or '_test' to scope for storage dir and mosaic dataset name (db terms
@@ -1664,7 +1687,7 @@ class LoadRasterTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Copy raster")
-    def copyRaster(self, path, storageLoc):
+    def copyRaster(self, path, storageLoc, **kwargs):
         """Copy raster data to permanent home. Path must lead to raster dataset of some type."""
         self.logger.logMessage(INFO,"Copying %s to %s" % (path, storageLoc))
         data = storageLoc + os.sep + os.path.basename(path)
@@ -1675,7 +1698,7 @@ class LoadRasterTypes(ArcpyTool):
         return data
 
     @errHandledWorkflowTask(taskName="Load raster")
-    def loadRaster(self, siteMosDS, path, pId):
+    def loadRaster(self, siteMosDS, path, pId, **kwargs):
         """Load raster to mosaic dataset. Path must lead to raster dataset in permanent home."""
         self.logger.logMessage(INFO,"Loading raster %s to %s" % (path, siteMosDS))
         rastype = "Raster Dataset"
@@ -1704,7 +1727,7 @@ class LoadRasterTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Merge metadata")
-    def mergeMetadata(self, workDir, raster):
+    def mergeMetadata(self, workDir, raster, **kwargs):
         if not arcpy.Exists(raster):
             return False
         createSuppXML(workDir)
@@ -1727,7 +1750,7 @@ class LoadRasterTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Update entity table")
-    def updateTable(self, location, pkid, entityName):
+    def updateTable(self, location, pkid, entityName, **kwargs):
         # get last three parts of location:  scope, entity dir, entity name
         parts = location.split(os.sep)
         if len(parts) > 3:
@@ -1915,6 +1938,10 @@ class UpdateMXDs(ArcpyTool):
         if len(insertObj) == 13:
             with cursorContext(self.logger) as cur:
                 cur.execute(insstmt, insertObj)
+
+    @errHandledWorkflowTask(taskName="Build package and entity error reports")
+    def buildErrorReports(self, pkgId):
+        pass
 
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self, pkgId):

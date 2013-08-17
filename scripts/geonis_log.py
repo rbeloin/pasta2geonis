@@ -12,7 +12,9 @@ from functools import wraps
 from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as arcAddWarn
 from arcpy import ExecuteError as gpError, GetMessages as gpMessages
 from geonis_pyconfig import defaultLoggingLevel
-
+from geonis_postgresql import cursorContext
+import pdb
+from pprint import pprint
 
 class EvtLog(object):
     """
@@ -30,7 +32,12 @@ class EvtLog(object):
                 logfile = fileorpath
             fileHandler = logging.FileHandler(logfile)
             #for files, we format with timestamp
-            fileHandler.setFormatter(logging.Formatter(fmt="%(asctime)s %(levelname)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p"))
+            fileHandler.setFormatter(
+                logging.Formatter(
+                    fmt="%(asctime)s %(levelname)s %(message)s",
+                    datefmt="%m/%d/%Y %I:%M:%S %p"
+                )
+            )
             self.evtLogger.addHandler(fileHandler)
         else:
             self.evtLogger.addHandler(logging.StreamHandler())
@@ -38,11 +45,15 @@ class EvtLog(object):
 
 
     @staticmethod
-    def getLogger( name = "geonisWF", fileorpath = None, showMessages = False):
+    def getLogger(name = "geonisWF", fileorpath = None, showMessages = False):
         if not EvtLog.singleinstance:
             EvtLog.singleinstance = EvtLog(name, fileorpath, showMessages)
             if fileorpath:
-                EvtLog.singleinstance.logMessage(logging.WARN,str( datetime.datetime.now()) + " ***** Log started  with path = " + fileorpath + " and verbose = " + str(showMessages) + " ****")
+                EvtLog.singleinstance.logMessage(
+                    logging.WARN,
+                    str(datetime.datetime.now()) + " ***** Log started  with path = " +
+                        fileorpath + " and verbose = " + str(showMessages) + " ****"
+                )
         return EvtLog.singleinstance
 
     def logMessage(self, level, msg):
@@ -66,7 +77,7 @@ class EvtLog(object):
             raise ex
 
 
-def errHandledWorkflowTask(taskName = ""):
+def errHandledWorkflowTask(taskName=""):
     """This is a decorator for task methods of tools. It wraps the task function
        in a try block, makes log entries, and will raise Exception if any exceptions are
        raised in the task function. The taskName parameter will show up in log entries.
@@ -82,6 +93,18 @@ def errHandledWorkflowTask(taskName = ""):
                     raise Exception("errHandleWorkflowTask did not find logger instance.")
                 logger = args[0].logger
                 logger.logMessage(logging.INFO, taskName + ":")
+                if 'packageId' in kwargs.keys():
+                    if 'entityName' in kwargs.keys():
+                        updateReports(
+                            taskFunc.__name__,
+                            kwargs['packageId'],
+                            kwargs['entityName']
+                        )
+                    else:
+                        updateReports(
+                            taskFunc.__name__,
+                            kwargs['packageId']
+                        )
                 return taskFunc(*args, **kwargs)
             except gpError:
                 logger.logMessage(logging.WARN, gpMessages(2))
@@ -94,7 +117,27 @@ def errHandledWorkflowTask(taskName = ""):
     return decorate
 
 
+# Add entry to packagereport/entityreport tables
+def updateReports(colname, pkgId, entity=None):
 
+    # Add entry to the entityreport table
+    if entity is not None:
+        with open(r'C:\pasta2geonis\entityCols.txt', 'a') as f:
+            f.write(pkgId + ': ' + colname + '\n')
 
-
-
+    # Add entry to the packagereport table
+    else:
+        with open(r'C:\pasta2geonis\packageCols.txt', 'a') as f:
+            f.write(pkgId + ': ' + colname + '\n')
+        
+        '''
+        with cursorContext(logger) as cur:
+            sql = "SELECT COUNT(*) FROM package WHERE packageid = %s"
+            cur.execute(sql, (kwargs['packageId'], ))
+            if cur.fetchone()[0] > 0:
+                sql = "UPDATE packagereport SET %s = %%s WHERE packageid = %%s"
+                cur.execute(sql % colname, ("Ok", kwargs['packageid']))
+            else:
+                sql = "INSERT INTO packagereport (packageid, %s) VALUES (%%s, %%s)"
+                cur.execute(sql % colname, (kwargs['packageid'], "Ok"))
+        '''
