@@ -1,5 +1,5 @@
 #!/bin/sh
-sites=( nwt and knz cap bnz pie )
+sites=( nwt and knz cap pie bnz )
 servers=( pasta-s pasta pasta pasta pasta-s pasta-s )
 
 for i in {0..5}

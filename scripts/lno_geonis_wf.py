@@ -1917,21 +1917,17 @@ class UpdateMXDs(ArcpyTool):
                 cur.execute(insstmt, insertObj)
 
     @errHandledWorkflowTask(taskName="Add extra info to error report")
-    def modifyErrorReport(self):
+    def modifyErrorReport(self, pkgId):
         noErrorsFound = "No errors found."
-        
-        # Are the "Report" fields of the package/entity tables already present in multiple copies?
-        # Or, is the error happening in this function??
-        pdb.set_trace()
 
         # First modify the package table reports
         with cursorContext(self.logger) as cur:
             selectReports = (
                 "SELECT packageid, report, scope, identifier, revision, "
                 "downloaded FROM package WHERE spatialcount > 0 "
-                "ORDER BY packageid"
+                "AND packageid = %s"
             )
-            cur.execute(selectReports)
+            cur.execute(selectReports, (pkgId, ))
             if cur.rowcount:
                 results = cur.fetchall()
                 cols = [col.name for col in cur.description]
@@ -1965,10 +1961,10 @@ class UpdateMXDs(ArcpyTool):
                 "RIGHT OUTER JOIN "
                 "entity AS e "
                 "ON p.packageid = e.packageid "
-                "WHERE p.spatialcount > 0 "
+                "WHERE p.spatialcount > 0 AND p.packageid = %s "
                 "ORDER BY e.id"
             )
-            cur.execute(selectReports)
+            cur.execute(selectReports, (pkgId, ))
             if cur.rowcount:
                 results = cur.fetchall()
                 cols = [col.name for col in cur.description]
@@ -2000,6 +1996,7 @@ class UpdateMXDs(ArcpyTool):
                 workingData = readWorkingData(dir, self.logger)
                 if workingData["spatialType"] == "spatialVector":
                     pkgId = workingData["packageId"]
+                    #scopeList.append(pkgId.split('.')[0].split('-')[2])
                     lName, mxdName = self.addVectorData(dir, workingData)
                     with cursorContext(self.logger) as cur:
                         stmt = "UPDATE entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s, status = 'Added to map' \
@@ -2017,6 +2014,8 @@ class UpdateMXDs(ArcpyTool):
                 if workingData:
                     contact = workingData["contact"]
                     pkgId = workingData["packageId"]
+                    #scopeList.append(pkgId.split('.')[0].split('-')[2])
+                    #pkgList.append(pkgId)
                     entityName = workingData["entityName"]
                     with cursorContext(self.logger) as cur:
                         cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, contact, err.message ))
@@ -2026,9 +2025,8 @@ class UpdateMXDs(ArcpyTool):
                     stmt = "UPDATE entity set status = %s WHERE packageid = %s  and entityname = %s;"
                     with cursorContext(self.logger) as cur:
                         cur.execute(stmt, (status[:499], workingData["packageId"], workingData["entityName"]))
-
-        # Add extra info to the error report as needed
-        self.modifyErrorReport()
+                    # Add extra info to the error reports as needed
+                    self.modifyErrorReport(pkgId)
 
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
@@ -2213,12 +2211,12 @@ class RefreshMapService(ArcpyTool):
         # update table, set arcloc field for layers that are newly added
         stmt = "UPDATE geonis_layer set arcloc = %s WHERE scope = %s AND (layerid = -1 OR layerid is null);"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, (arcloc, site) )
+            cur.execute(stmt, (arcloc, site))
         # update table with ids of layers for all layers (not just newly added)
         valObj = tuple(layers)
         stmt = "UPDATE geonis_layer set layerid = %(id)s WHERE scope = %(scope)s AND layername = %(name)s and arcloc = %(arcloc)s;"
         with cursorContext(self.logger) as cur:
-            cur.executemany(stmt, valObj )
+            cur.executemany(stmt, valObj)
 
 
     @errHandledWorkflowTask(taskName="Send email report")
