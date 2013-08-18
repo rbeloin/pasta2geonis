@@ -1464,7 +1464,7 @@ class LoadVectorTypes(ArcpyTool):
         super(LoadVectorTypes, self).updateMessages(parameters)
 
     @errHandledWorkflowTask(taskName="Load shapefile")
-    def loadShapefile(self, scope, name, path):
+    def loadShapefile(self, scope, name, path, **kwargs):
         """call feature class to feature class to copy shapefile to geodatabase"""
         geodatabase = getConfigValue("geodatabase")
         self.logger.logMessage(INFO, "Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
@@ -1495,7 +1495,7 @@ class LoadVectorTypes(ArcpyTool):
         return geodatabase + os.sep + scope + os.sep + name
 
     @errHandledWorkflowTask(taskName="Load KML")
-    def loadKml(self, scope, name, path):
+    def loadKml(self, scope, name, path, **kwargs):
         """call KML to Layer tool to copy kml contents to file gdb, then loop over features
         and load each to geodatabase"""
         geodatabase = getConfigValue("geodatabase")
@@ -1525,7 +1525,7 @@ class LoadVectorTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Merge metadata")
-    def mergeMetadata(self, workDir, loadedFeatureClass):
+    def mergeMetadata(self, workDir, loadedFeatureClass, **kwargs):
         if not loadedFeatureClass:
             return
         createSuppXML(workDir)
@@ -1540,7 +1540,7 @@ class LoadVectorTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Update entity table")
-    def updateTable(self, workDir, loadedFeatureClass, pkid, entityName):
+    def updateTable(self, workDir, loadedFeatureClass, pkid, entityName, **kwargs):
         if not loadedFeatureClass:
             return
         scope_data = os.sep.join(loadedFeatureClass.split(os.sep)[-2:])
@@ -1574,10 +1574,22 @@ class LoadVectorTypes(ArcpyTool):
                     # Since this seems deterministic, just add an extra _d to the end if
                     # loadShapefile() fails as a workaround...
                     try:
-                        loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName, datafilePath)
+                        loadedFeatureClass = self.loadShapefile(
+                            scopeWithSuffix,
+                            fullObjectName,
+                            datafilePath,
+                            packageId=pkgId,
+                            entityName=entityName
+                        )
                     except Exception as err:
                         if err[0].find('ERROR 999999') != -1:
-                            loadedFeatureClass = self.loadShapefile(scopeWithSuffix, fullObjectName + '_d', datafilePath)
+                            loadedFeatureClass = self.loadShapefile(
+                                scopeWithSuffix,
+                                fullObjectName + '_d',
+                                datafilePath,
+                                packageId=pkgId,
+                                entityName=entityName
+                            )
                             self.logger.logMessage(
                                 WARN,
                                 "Added extra _d suffix in geodatabase due to "
@@ -1586,7 +1598,13 @@ class LoadVectorTypes(ArcpyTool):
 
                     status = "Loaded shapefile"
                 elif 'kml' in datatype:
-                    loadedFeatureClass = self.loadKml(scopeWithSuffix, fullObjectName, datafilePath)
+                    loadedFeatureClass = self.loadKml(
+                        scopeWithSuffix,
+                        fullObjectName,
+                        datafilePath,
+                        packageId=pkgId,
+                        entityName=entityName
+                    )
                     status = "Loaded from KML"
                 elif 'geodatabase' in datatype:
                     #TODO: copy vector from file geodatabase, for now, leave dir behind
@@ -1597,9 +1615,21 @@ class LoadVectorTypes(ArcpyTool):
                     self.outputDirs.append(dir)
                     continue
                 # amend metadata
-                self.mergeMetadata(dir, loadedFeatureClass)
+                self.mergeMetadata(
+                    dir,
+                    loadedFeatureClass,
+                    packageId=pkgId,
+                    entityName=entityName
+                )
                 # update table in geonis db
-                self.updateTable(dir, loadedFeatureClass, pkgId, entityName)
+                self.updateTable(
+                    dir,
+                    loadedFeatureClass,
+                    pkgId,
+                    entityName,
+                    packageId=pkgId,
+                    entityName=entityName
+                )
                 # add dir for next tool, in any case except exception
                 self.outputDirs.append(dir)
                 status = "Load with metadata complete"
@@ -1646,7 +1676,7 @@ class LoadRasterTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Check if raster we support")
-    def isSupported(self, datatype):
+    def isSupported(self, datatype, **kwargs):
         """ mostly to distinguish the vector folders that are passing through """
         dtype = datatype.lower()
         for t in self.supportedTypes:
@@ -1786,15 +1816,21 @@ class LoadRasterTypes(ArcpyTool):
                 entityName = emldata["entityName"]
                 objectName = emldata["objectName"]
                 #check for supported type
-                if not self.isSupported(datatype):
+                if not self.isSupported(datatype, packageId=pkgId, entityName=entityName):
                     self.outputDirs.append(dir)
                     continue
                 siteId, n, m = siteFromId(pkgId)
-                rawDataLoc, mosaicDS = self.prepareStorage(siteId, datafilePath, objectName)
+                rawDataLoc, mosaicDS = self.prepareStorage(
+                    siteId,
+                    datafilePath,
+                    objectName,
+                    packageId=pkgId,
+                    entityName=entityName
+                )
                 status = "Storage prepared"
                 os.mkdir(rawDataLoc)
-                raster = self.copyRaster(datafilePath, rawDataLoc)
-                self.updateTable(raster, pkgId, entityName)
+                raster = self.copyRaster(datafilePath, rawDataLoc, packageId=pkgId, entityName=entityName)
+                self.updateTable(raster, pkgId, entityName, packageId=pkgId, entityName=entityName)
 
                 # Add objectName to entity table as "layername" so there is a
                 # record of the raster data folder name
@@ -1808,7 +1844,7 @@ class LoadRasterTypes(ArcpyTool):
                 # amend metadata in place
                 if self.mergeMetadata(dir, raster):
                     status = "Metadata updated"
-                    result = self.loadRaster(mosaicDS, raster, pkgId)
+                    result = self.loadRaster(mosaicDS, raster, pkgId, packageId=pkgId, entityName=entityName)
                     if result != 4:
                         status = "Load raster to mosaic failed"
                         self.logger.logMessage(WARN, "Loading %s did not succeed, with code %d.\n" % (raster, result))
@@ -1855,7 +1891,7 @@ class UpdateMXDs(ArcpyTool):
         super(UpdateMXDs, self).updateMessages(parameters)
 
     @errHandledWorkflowTask(taskName="Add vector data to MXD")
-    def addVectorData(self, workDir, workingData):
+    def addVectorData(self, workDir, workingData, **kwargs):
         """   """
         # see if entry in entity table, and get storage path
         stmt = "SELECT storage, status FROM entity WHERE packageid = %s and entityname = %s;"
@@ -1906,7 +1942,7 @@ class UpdateMXDs(ArcpyTool):
         return (layerName, mxdName)
 
     @errHandledWorkflowTask(taskName="Insert into layer table")
-    def makeLayerRec(self, workDir, pkgId, name):
+    def makeLayerRec(self, workDir, pkgId, name, **kwargs):
         """Insert record into workflow.geonis_layer for this entity  """
         insstmt = "INSERT INTO geonis_layer \
          (id, packageid, scope, entityname, entitydescription, title, abstract, purpose, keywords, sourceloc, layername, arcloc, layerid) VALUES \
@@ -2024,13 +2060,24 @@ class UpdateMXDs(ArcpyTool):
                 if workingData["spatialType"] == "spatialVector":
                     pkgId = workingData["packageId"]
                     #scopeList.append(pkgId.split('.')[0].split('-')[2])
-                    lName, mxdName = self.addVectorData(dir, workingData)
+                    lName, mxdName = self.addVectorData(
+                        dir,
+                        workingData,
+                        packageId=pkgId,
+                        entityName=workingData['entityName']
+                    )
                     with cursorContext(self.logger) as cur:
                         stmt = "UPDATE entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s, status = 'Added to map' \
                          WHERE packageid = %(pkgId)s and entityname = %(entityName)s;"
                         cur.execute(stmt,
                          {'mxd': mxdName, 'layername' : lName, 'now' : datetime.datetime.now(), 'pkgId': pkgId, 'entityName' : workingData["entityName"]})
-                    self.makeLayerRec(dir, pkgId, workingData["entityName"] )
+                    self.makeLayerRec(
+                        dir,
+                        pkgId,
+                        workingData["entityName"],
+                        packageId=pkgId,
+                        entityName=workingData['entityName']
+                    )
                     status = "Ready for map service"
                 else:
                     status = "Carried forward to next tool"
