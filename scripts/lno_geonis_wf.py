@@ -1070,7 +1070,7 @@ class UnpackPackages(ArcpyTool):
                             status='ok'
                         )
                     except Exception as err:
-                        taskReport = "The data in %s will not be processed. %s" %
+                        taskReport = "The data in %s will not be processed. %s" % \
                             (dir, err.message)
                         self.logger.logMessage(WARN, taskReport)
                         with cursorContext(self.logger) as cur:
@@ -1087,7 +1087,7 @@ class UnpackPackages(ArcpyTool):
                             status='error'
                         )
 
-                    # Now go to the url specified in the EML and download the
+                    # Go to the url specified in the EML and download the
                     # entity's data file
                     try:
                         self.readURL(dir, packageId=pkgId, entityName=emldata['entityName'])
@@ -1101,7 +1101,7 @@ class UnpackPackages(ArcpyTool):
                     except Exception as err:
                         taskName = "downloadEntityData"
                         taskDesc = "Download entity data and create database record"
-                        taskReport = "The data in %s will not be processed. %s" %
+                        taskReport = "The data in %s will not be processed. %s" % \
                             (dir, err.message)
                         self.logger.logMessage(WARN, taskReport)
                         updateReports(
@@ -1122,7 +1122,7 @@ class UnpackPackages(ArcpyTool):
                             #cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
                             #cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (packageId,contact))
             except Exception as err:
-                taskReport = "The data in %s will not be processed: %s" %
+                taskReport = "The data in %s will not be processed: %s" % \
                     (pkg, err.message)
                 self.logger.logMessage(WARN, taskReport)
                 emldata = readWorkingData(workdir, self.logger)
