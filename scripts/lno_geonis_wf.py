@@ -119,6 +119,7 @@ class Setup(ArcpyTool):
                 # Drop tables from geodb
                 siteWF = site + getConfigValue('datasetscopesuffix')
                 geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
+                #pdb.set_trace()
                 if arcpy.Exists(geodbTable):
                     #try:
                     arcpy.Delete_management(geodbTable)
@@ -1008,52 +1009,139 @@ class UnpackPackages(ArcpyTool):
         self.logger.logMessage(DEBUG,  "in: %s; out: %s" % (packageDir, outputDir))
         if not os.path.isdir(outputDir):
             os.mkdir(outputDir)
-        #allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.zip']
-        allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.xml']
-        #loop over packages, handling one at a time. an error will drop the current package and go to the next one
+        allpackages = [os.path.join(packageDir,f) for f in os.listdir(packageDir) \
+            if os.path.isfile(os.path.join(packageDir,f)) and f[-4:].lower() == '.xml']
+
+        # loop over packages, handling one at a time.  An error will drop the current 
+        # package and go to the next one
         for pkg in allpackages:
-            self.logger.logMessage(DEBUG, "Starting work on %s" % (pkg, ))
+            self.logger.logMessage(DEBUG, "Starting work on %s" % pkg)
+            taskName = 'unpackPackage'
+            taskDesc = 'Unpack package ' + pkg
             try:
                 xmlFile = pkg.split(os.sep)[-1]
                 pkgId = xmlFile[:-4] if xmlFile.endswith('.xml') else xmlFile
                 workdir = self.unzipPkg(pkg, outputDir, packageId=pkgId)
                 packageId, dataDirs = self.parseEML(workdir, packageId=pkgId)
                 for dir in dataDirs:
-                    #loop over data package dirs, in most cases just one, if error keep trying others
+
+                    # loop over data package dirs, in most cases just one.
+                    # If we encounter an error, keep trying others.
+                    # First, process the EML and make sure we have an entityName tag.
+                    emldata = readWorkingData(dir, self.logger)
+                    if 'entityName' not in emldata.keys():
+                        taskReport = "entityName tag not found in EML, skipping " + dir
+                        self.logger.logMessage(WARN, taskReport)
+                        updateReports(
+                            taskName,
+                            taskDesc,
+                            pkgId,
+                            entity=emldata['entityName'],
+                            report=taskReport,
+                            status='error'
+                        )
+                        continue
+                    taskDesc = "Unpack data package directory " + dir
+                    taskName = 'unpackEntity'
+
+                    # Make sure a spatial tag (spatialRaster or spatialVector) is present
                     try:
                         initWorkingData = readWorkingData(dir, self.logger)
                         if initWorkingData["spatialType"] is None:
-                            self.logger.logMessage(WARN, "No EML spatial node. The data in %s with id %s will not be processed." % (pkg, packageId))
+                            taskReport = ("No EML spatial node. The data in %s with id %s "
+                                "will not be processed.") % (pkg, pkgId)
+                            self.logger.logMessage(WARN, taskReport)
+                            updateReports(
+                                taskName,
+                                taskDesc,
+                                pkgId,
+                                entity=emldata['entityName'],
+                                report=taskReport,
+                                status='error'
+                            )
                             continue
+                        taskReport = "Found EML spatial node in %s" % pkg
+                        updateReports(
+                            taskName,
+                            taskDesc,
+                            pkgId,
+                            entity=emldata['entityName']
+                            report=taskReport,
+                            status='ok'
+                        )
                     except Exception as err:
-                        self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (dir, err.message))
-                        if packageId:
-                            with cursorContext(self.logger) as cur:
-                                cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
+                        taskReport = "The data in %s will not be processed. %s" %
+                            (dir, err.message)
+                        self.logger.logMessage(WARN, taskReport)
+                        with cursorContext(self.logger) as cur:
+                            cur.execute(
+                                "UPDATE package SET report = %s WHERE packageid = %s",
+                                (err.message, pkgId)
+                            )
+                        updateReports(
+                            taskName,
+                            taskDesc,
+                            pkgId,
+                            entity=emldata['entityName'],
+                            report=taskReport,
+                            status='error'
+                        )
+
+                    # Now go to the url specified in the EML and download the
+                    # entity's data file
                     try:
-                        self.readURL(dir, packageId=pkgId)
-                        self.retrieveData(dir, packageId=pkgId)
-                        self.makeEntityRec(dir, packageId=pkgId)
+                        self.readURL(dir, packageId=pkgId, entityName=emldata['entityName'])
+                        self.retrieveData(dir, packageId=pkgId, entityName=emldata['entityName'])
+                        self.makeEntityRec(
+                            dir,
+                            packageId=pkgId,
+                            entityName=emldata['entityName']
+                        )
                         carryForwardList.append(dir)
                     except Exception as err:
-                        self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (dir, err.message))
-                        emldata = readWorkingData(dir, self.logger)
+                        taskName = "downloadEntityData"
+                        taskDesc = "Download entity data and create database record"
+                        taskReport = "The data in %s will not be processed. %s" %
+                            (dir, err.message)
+                        self.logger.logMessage(WARN, taskReport)
+                        updateReports(
+                            taskName,
+                            taskDesc,
+                            pkgId,
+                            entity=emldata['entityName'],
+                            report=taskReport,
+                            status='error'
+                        )
+                        #emldata = readWorkingData(dir, self.logger)
                         contact = emldata["contact"]
-                        if packageId:
-                            with cursorContext(self.logger) as cur:
-                                cur.execute("SELECT addpackageerrorreport(%s,%s,%s);", (packageId, contact, err.message ))
-                                #cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
-                                #cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (packageId,contact))
+                        with cursorContext(self.logger) as cur:
+                            cur.execute(
+                                "SELECT addpackageerrorreport(%s, %s, %s)",
+                                (pkgId, contact, err.message)
+                            )
+                            #cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
+                            #cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (packageId,contact))
             except Exception as err:
-                self.logger.logMessage(WARN, "The data in %s will not be processed. %s" % (pkg, err.message))
+                taskReport = "The data in %s will not be processed: %s" %
+                    (pkg, err.message)
+                self.logger.logMessage(WARN, taskReport)
                 emldata = readWorkingData(workdir, self.logger)
                 pkgId = emldata["packageId"]
+                updateReports(
+                    taskName,
+                    taskDesc,
+                    pkgId,
+                    entity=emldata['entityName'],
+                    report=taskReport,
+                    status='error'
+                )
                 contact = emldata["contact"]
                 if pkgId:
                     with cursorContext(self.logger) as cur:
-                        cur.execute("SELECT addpackageerrorreport(%s,%s,%s);", (pkgId, contact, err.message ))
-                        #cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,pkgId))
-                        #cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (pkgId,contact))
+                        cur.execute(
+                            "SELECT addpackageerrorreport(%s, %s, %s)",
+                            (pkgId, contact, err.message)
+                        )
         arcpy.SetParameterAsText(4, ";".join(carryForwardList))
 
 
@@ -1309,6 +1397,8 @@ class CheckSpatialData(ArcpyTool):
             formattedReport = ''
             for dataDir in self.inputDirs:
                 self.logger.logMessage(INFO, "Working in: " + dataDir)
+                taskName = ''
+                taskDesc = 'Check spatial data in ' + dataDir
                 try:
                     status = "Entering data checks."
                     emldata = readWorkingData(dataDir, self.logger)
@@ -1328,7 +1418,8 @@ class CheckSpatialData(ArcpyTool):
                     if spatialType == GeoNISDataType.NA:
                         emldata["type"] = "NOT FOUND"
                         status = "Data type not found with tentative type %s" % hint
-                        raise Exception("No compatible data found in %s" % dataDir)
+                        taskReport = "No compatible data found in %s" % dataDir
+                        raise Exception(taskReport)
                     emldata["datafilePath"] = foundFile
                     status = "Found acceptable data file."
                     nameMatch = False
@@ -1371,7 +1462,13 @@ class CheckSpatialData(ArcpyTool):
                         emldata["type"] = "raster dataset"
                     if spatialType == GeoNISDataType.SPATIALVECTOR:
                         emldata["type"] = "vector"
-                    status = "File type assigned"
+                    if 'type' in emldata.keys():
+                        status = "File type assigned"
+                        taskReport = "File type assigned: " + emldata['type']
+                        taskStatus = 'ok'
+                    else:
+                        taskReport = "Unable to assign file type"
+                        taskStatus = 'error'
 
                     # If this is a vector data set, get list of mismatches in attribute names
                     if emldata['spatialType'] == 'spatialVector':
@@ -1394,8 +1491,24 @@ class CheckSpatialData(ArcpyTool):
                     self.logger.logMessage(WARN, err.message)
                     reportText.append({"Status": "Failed"})
                     reportText.append({"Error message": err.message})
+                    updateReports(
+                        taskName,
+                        taskDesc,
+                        pkgId,
+                        entity=entityName,
+                        report=status,
+                        status='error'
+                    )
                 else:
                     status = "Passed checks"
+                    updateReports(
+                        taskName,
+                        taskDesc,
+                        pkgId,
+                        entity=entityName,
+                        report=taskReport,
+                        status=taskStatus
+                    )
                     #empty reportText => no issues
                     #reportText.append({"Status":"OK"})
                     self.outputDirs.append(dataDir)
@@ -1414,20 +1527,20 @@ class CheckSpatialData(ArcpyTool):
                                 (pkgId, entityName)
                             )
 
-                    #write status msg to workflow.entity. Need both packagid and entityname to be unique
+                    # Write status msg to workflow.entity. Need both packagid and entityname to be unique
                     if pkgId and entityName:
-                        stmt = "UPDATE entity set status = %s WHERE packageid = %s and entityname = %s;"
+                        stmt = "UPDATE entity set status = %s WHERE packageid = %s and entityname = %s"
                         with cursorContext(self.logger) as cur:
                             cur.execute(stmt, (status[:499], pkgId, entityName))
                     writeWorkingDataToXML(dataDir, emldata, self.logger)
-                    formattedReport = self.getReport(
-                        pkgId,
-                        reportText
-                    )
+                    formattedReport = self.getReport(pkgId, reportText)
                     if formattedReport != '':
                         if pkgId and entityName:
                             with cursorContext(self.logger) as cur:
-                                cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, emldata["contact"], formattedReport))
+                                cur.execute(
+                                    "SELECT addentityerrorreport(%s, %s, %s, %s)",
+                                    (pkgId, entityName, emldata["contact"], formattedReport)
+                                )
                                 #stmt2 = "UPDATE entity set report = %s WHERE packageid = %s and entityname = %s;"
                                 #cur.execute(stmt2, (formattedReport, pkgId, entityName))
                             reportText = []
@@ -1466,6 +1579,7 @@ class LoadVectorTypes(ArcpyTool):
     @errHandledWorkflowTask(taskName="Load shapefile")
     def loadShapefile(self, scope, name, path, **kwargs):
         """call feature class to feature class to copy shapefile to geodatabase"""
+        #pdb.set_trace()
         geodatabase = getConfigValue("geodatabase")
         self.logger.logMessage(INFO, "Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
         #if no dataset, make one
@@ -1540,13 +1654,13 @@ class LoadVectorTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Update entity table")
-    def updateTable(self, workDir, loadedFeatureClass, pkid, entityName, **kwargs):
+    def updateTable(self, workDir, loadedFeatureClass, pkid, entName, **kwargs):
         if not loadedFeatureClass:
             return
         scope_data = os.sep.join(loadedFeatureClass.split(os.sep)[-2:])
         stmt = "UPDATE entity set storage = %s WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, (scope_data, pkid, entityName))
+            cur.execute(stmt, (scope_data, pkid, entName))
 
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
@@ -2067,14 +2181,24 @@ class UpdateMXDs(ArcpyTool):
                         entityName=workingData['entityName']
                     )
                     with cursorContext(self.logger) as cur:
-                        stmt = "UPDATE entity set mxd = %(mxd)s, layername = %(layername)s, completed = %(now)s, status = 'Added to map' \
-                         WHERE packageid = %(pkgId)s and entityname = %(entityName)s;"
-                        cur.execute(stmt,
-                         {'mxd': mxdName, 'layername' : lName, 'now' : datetime.datetime.now(), 'pkgId': pkgId, 'entityName' : workingData["entityName"]})
+                        stmt = (
+                            "UPDATE entity set mxd = %(mxd)s, layername = %(layername)s, "
+                            "completed = %(now)s, status = 'Added to map' "
+                            "WHERE packageid = %(pkgId)s and entityname = %(entityName)s"
+                        )
+                        cur.execute(
+                            stmt, {
+                                'mxd': mxdName,
+                                'layername': lName,
+                                'now': datetime.datetime.now(),
+                                'pkgId': pkgId,
+                                'entityName': workingData['entityName']
+                            }
+                        )
                     self.makeLayerRec(
                         dir,
                         pkgId,
-                        workingData["entityName"],
+                        workingData['entityName'],
                         packageId=pkgId,
                         entityName=workingData['entityName']
                     )
@@ -2092,13 +2216,19 @@ class UpdateMXDs(ArcpyTool):
                     #pkgList.append(pkgId)
                     entityName = workingData["entityName"]
                     with cursorContext(self.logger) as cur:
-                        cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, contact, err.message ))
+                        cur.execute(
+                            "SELECT addentityerrorreport(%s,%s,%s,%s);",
+                            (pkgId, entityName, contact, err.message)
+                        )
             finally:
                 #write status msg to db table
                 if workingData:
-                    stmt = "UPDATE entity set status = %s WHERE packageid = %s  and entityname = %s;"
+                    stmt = "UPDATE entity set status = %s WHERE packageid = %s  and entityname = %s"
                     with cursorContext(self.logger) as cur:
-                        cur.execute(stmt, (status[:499], workingData["packageId"], workingData["entityName"]))
+                        cur.execute(
+                            stmt,
+                            (status[:499], workingData["packageId"], workingData["entityName"])
+                        )
                     # Add extra info to the error reports as needed
                     try:
                         self.modifyErrorReport(pkgId)
@@ -2129,7 +2259,6 @@ class RefreshMapService(ArcpyTool):
     def updateMessages(self, parameters):
         """called after all of the update parameter calls. Call attach messages to parameters, usually warnings."""
         super(RefreshMapService, self).updateMessages(parameters)
-
 
     @errHandledWorkflowTask(taskName="Create service draft")
     def draftSD(self, mxdname):

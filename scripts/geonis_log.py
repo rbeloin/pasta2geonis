@@ -97,12 +97,14 @@ def errHandledWorkflowTask(taskName=""):
                     if 'entityName' in kwargs.keys():
                         updateReports(
                             taskFunc.__name__,
+                            taskName,
                             kwargs['packageId'],
-                            kwargs['entityName']
+                            entity=kwargs['entityName']
                         )
                     else:
                         updateReports(
                             taskFunc.__name__,
+                            taskName,
                             kwargs['packageId']
                         )
                 return taskFunc(*args, **kwargs)
@@ -112,13 +114,32 @@ def errHandledWorkflowTask(taskName=""):
             except Exception as e:
                 logger.logMessage(logging.WARN, "error type: " + str(type(e)))
                 logger.logMessage(logging.WARN, e.message)
-                raise Exception(taskName + " terminated: " + e.message)
+                taskReport = taskName + " terminated: " + e.message
+                if 'packageId' in kwargs.keys():
+                    if 'entityName' in kwargs.keys():
+                        updateReports(
+                            taskFunc.__name__,
+                            taskName,
+                            kwargs['packageId'],
+                            entity=kwargs['entityName'],
+                            report=taskReport,
+                            status='error'
+                        )
+                    else:
+                        updateReports(
+                            taskFunc.__name__,
+                            taskName,
+                            kwargs['packageId'],
+                            report=taskReport,
+                            status='error'
+                        )
+                raise Exception(taskReport)
         return errHandlingWrapper
     return decorate
 
 
 # Add entry to packagereport/entityreport tables
-def updateReports(colname, pkgId, entity=None):
+def updateReports(colname, taskDesc, pkgId, entity=None, report='', status='ok'):
 
     # Add entry to the entityreport table
     if entity is not None:
