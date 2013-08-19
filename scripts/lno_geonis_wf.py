@@ -1065,7 +1065,7 @@ class UnpackPackages(ArcpyTool):
                             taskName,
                             taskDesc,
                             pkgId,
-                            entity=emldata['entityName']
+                            entity=emldata['entityName'],
                             report=taskReport,
                             status='ok'
                         )
