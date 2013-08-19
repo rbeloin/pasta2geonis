@@ -144,12 +144,19 @@ def updateReports(colname, taskDesc, pkgId, entity=None, report='', status='ok')
     # Add entry to the entityreport table
     if entity is not None:
         with open(r'C:\pasta2geonis\entityCols.txt', 'a') as f:
-            f.write(pkgId + ': ' + colname + '\n')
+            f.write(colname + '\n')
+            f.write('\t' + entity + '\n')
+            f.write('\t' + taskDesc + '\n')
+            f.write('\t' + report + '\n')
+            f.write('\t' + status + '\n')
 
     # Add entry to the packagereport table
     else:
         with open(r'C:\pasta2geonis\packageCols.txt', 'a') as f:
-            f.write(pkgId + ': ' + colname + '\n')
+            f.write(colname + '\n')
+            f.write('\t' + taskDesc + '\n')
+            f.write('\t' + report + '\n')
+            f.write('\t' + status + '\n')
         
         '''
         with cursorContext(logger) as cur:

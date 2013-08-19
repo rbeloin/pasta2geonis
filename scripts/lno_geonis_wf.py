@@ -1060,7 +1060,8 @@ class UnpackPackages(ArcpyTool):
                                 status='error'
                             )
                             continue
-                        taskReport = "Found EML spatial node in %s" % pkg
+                        #taskReport = "Found EML spatial node in %s" % pkg
+                        taskReport = ''
                         updateReports(
                             taskName,
                             taskDesc,
