@@ -13,6 +13,7 @@ from arcpy import AddMessage as arcAddMsg, AddError as arcAddErr, AddWarning as 
 from arcpy import ExecuteError as gpError, GetMessages as gpMessages
 from geonis_pyconfig import defaultLoggingLevel
 from geonis_postgresql import cursorContext
+import psycopg2
 import pdb
 from pprint import pprint
 
@@ -99,13 +100,15 @@ def errHandledWorkflowTask(taskName=""):
                             taskFunc.__name__,
                             taskName,
                             kwargs['packageId'],
-                            entity=kwargs['entityName']
+                            entity=kwargs['entityName'],
+                            logger=logger
                         )
                     else:
                         updateReports(
                             taskFunc.__name__,
                             taskName,
-                            kwargs['packageId']
+                            kwargs['packageId'],
+                            logger=logger
                         )
                 return taskFunc(*args, **kwargs)
             except gpError:
@@ -123,7 +126,8 @@ def errHandledWorkflowTask(taskName=""):
                             kwargs['packageId'],
                             entity=kwargs['entityName'],
                             report=taskReport,
-                            status='error'
+                            status='error',
+                            logger=logger
                         )
                     else:
                         updateReports(
@@ -131,7 +135,8 @@ def errHandledWorkflowTask(taskName=""):
                             taskName,
                             kwargs['packageId'],
                             report=taskReport,
-                            status='error'
+                            status='error',
+                            logger=logger
                         )
                 raise Exception(taskReport)
         return errHandlingWrapper
@@ -139,33 +144,110 @@ def errHandledWorkflowTask(taskName=""):
 
 
 # Add entry to packagereport/entityreport tables
-def updateReports(colname, taskDesc, pkgId, entity=None, report='', status='ok'):
+def updateReports(taskName, taskDesc, pkgId, entity=None, report='', status='ok', logger=None):
 
-    # Add entry to the entityreport table
-    if entity is not None:
-        with open(r'C:\pasta2geonis\entityCols.txt', 'a') as f:
-            f.write(colname + '\n')
-            f.write('\t' + entity + '\n')
-            f.write('\t' + taskDesc + '\n')
-            f.write('\t' + report + '\n')
-            f.write('\t' + status + '\n')
+    # Add entries to the report and taskreport tables
+    with cursorContext(logger) as cur:
 
-    # Add entry to the packagereport table
-    else:
-        with open(r'C:\pasta2geonis\packageCols.txt', 'a') as f:
-            f.write(colname + '\n')
-            f.write('\t' + taskDesc + '\n')
-            f.write('\t' + report + '\n')
-            f.write('\t' + status + '\n')
-        
-        '''
-        with cursorContext(logger) as cur:
-            sql = "SELECT COUNT(*) FROM package WHERE packageid = %s"
-            cur.execute(sql, (kwargs['packageId'], ))
-            if cur.fetchone()[0] > 0:
-                sql = "UPDATE packagereport SET %s = %%s WHERE packageid = %%s"
-                cur.execute(sql % colname, ("Ok", kwargs['packageid']))
+        # If we didn't receive an value for the entity parameter, then this is a
+        # package-level report
+        if entity is None:
+            if logger:
+                logger.logMessage(
+                    logging.DEBUG,
+                    "%s: editing package report for %s" % (taskName, pkgId)
+                )
+
+            # If an entry already exists in the report table for thie packageId,
+            # then all we need to do is update the taskreport table
+            sql = (
+                "SELECT reportid FROM report WHERE packageid = %(packageid)s "
+                "AND entityname IS NULL"
+            )
+            parameters = {'packageid': pkgId}
+            cur.execute(sql, parameters)
+            if cur.rowcount:
+                reportId = cur.fetchone()[0]
+                sql = (
+                    "UPDATE taskreport SET taskname = %(taskname)s, description = "
+                    "%(description)s, report = %(report)s, status = %(status)s "
+                    "WHERE reportid = %(reportid)s"
+                )
+            
+            # If this is a package we haven't seen before, then we need to create
+            # new rows in both the report and taskreport tables
             else:
-                sql = "INSERT INTO packagereport (packageid, %s) VALUES (%%s, %%s)"
-                cur.execute(sql % colname, (kwargs['packageid'], "Ok"))
-        '''
+                # Insert a new row into the report table
+                sql = (
+                    "INSERT INTO report (packageid) VALUES "
+                    "(%(packageid)s) RETURNING reportid"
+                )
+                reportId = cur.execute(sql, parameters)
+
+                # Insert a new row into the taskreport table
+                sql = (
+                    "INSERT INTO taskreport "
+                    "(reportid, taskname, description, report, status) VALUES "
+                    "(%(reportid)s, %(taskname)s, %(description)s, %(report)s, %(status)s)"
+                )
+
+        # Otherwise, we need to add a report on a specific entity
+        else:
+            if logger:
+                logger.logMessage(
+                    logging.DEBUG,
+                    "%s: editing entity report for %s (%s)" % (taskName, pkgId, entity)
+                )
+
+            # If an entry already exists in the report table (for this packageId and
+            # entityName combination), then all we need to do is update the taskreport
+            # table
+            sql = (
+                "SELECT reportid FROM report WHERE packageid = %(packageid)s "
+                "AND entityname = %(entityname)s"
+            )
+            parameters = {'packageid': pkgId, 'entityname': entity}
+            cur.execute(sql, parameters)
+            if cur.rowcount:
+                reportId = cur.fetchone()[0]
+                sql = (
+                    "UPDATE taskreport SET taskname = %(taskname)s, description = "
+                    "%(description)s, report = %(report)s, status = %(status)s "
+                    "WHERE reportid = %(reportid)s"
+                )
+
+            # If this is an entity we haven't seen before, then we need to get the
+            # entityId from the entity table and use it to create a new row in the
+            # report and taskreport tables
+            else:
+
+                # Get the entityId from the entity table
+                sql = (
+                    "SELECT id FROM entity WHERE packageid = %(packageid)s "
+                    "AND entityname = %(entityname)s"
+                )
+                cur.execute(sql, parameters)
+
+                # Insert a new row into the report table
+                sql = (
+                    "INSERT INTO report (packageid, entityid, entityname) VALUES "
+                    "(%(packageid)s, %(entityid)s, %(entityname)s) RETURNING reportid"
+                )
+                parameters['entityid'] = cur.fetchone()[0]
+                reportId = cur.execute(sql, parameters)
+
+                # Insert a new row into the taskreport table
+                sql = (
+                    "INSERT INTO taskreport (reportid, taskname, description, report, status) "
+                    "(%(reportid)s, %(taskname)s, %(description)s, %(report)s, %(status)s)"
+                )
+
+        # Finally, execute the insert or update query
+        parameters = {
+            'reportid': reportId,
+            'taskname': taskName,
+            'description': taskDesc,
+            'report': report,
+            'status': True if status == 'ok' else False,
+        }
+        cur.execute(sql, parameters)

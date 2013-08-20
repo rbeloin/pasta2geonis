@@ -1038,7 +1038,8 @@ class UnpackPackages(ArcpyTool):
                             pkgId,
                             entity=emldata['entityName'],
                             report=taskReport,
-                            status='error'
+                            status='error',
+                            logger=self.logger
                         )
                         continue
                     taskDesc = "Unpack data package directory " + dir
@@ -1057,7 +1058,8 @@ class UnpackPackages(ArcpyTool):
                                 pkgId,
                                 entity=emldata['entityName'],
                                 report=taskReport,
-                                status='error'
+                                status='error',
+                                logger=self.logger
                             )
                             continue
                         #taskReport = "Found EML spatial node in %s" % pkg
@@ -1068,7 +1070,8 @@ class UnpackPackages(ArcpyTool):
                             pkgId,
                             entity=emldata['entityName'],
                             report=taskReport,
-                            status='ok'
+                            status='ok',
+                            logger=self.logger
                         )
                     except Exception as err:
                         taskReport = "The data in %s will not be processed. %s" % \
@@ -1085,7 +1088,8 @@ class UnpackPackages(ArcpyTool):
                             pkgId,
                             entity=emldata['entityName'],
                             report=taskReport,
-                            status='error'
+                            status='error',
+                            logger=self.logger
                         )
 
                     # Go to the url specified in the EML and download the
@@ -1111,7 +1115,8 @@ class UnpackPackages(ArcpyTool):
                             pkgId,
                             entity=emldata['entityName'],
                             report=taskReport,
-                            status='error'
+                            status='error',
+                            logger=self.logger
                         )
                         #emldata = readWorkingData(dir, self.logger)
                         contact = emldata["contact"]
@@ -1134,7 +1139,8 @@ class UnpackPackages(ArcpyTool):
                     pkgId,
                     entity=emldata['entityName'],
                     report=taskReport,
-                    status='error'
+                    status='error',
+                    logger=self.logger
                 )
                 contact = emldata["contact"]
                 if pkgId:
@@ -1398,7 +1404,7 @@ class CheckSpatialData(ArcpyTool):
             formattedReport = ''
             for dataDir in self.inputDirs:
                 self.logger.logMessage(INFO, "Working in: " + dataDir)
-                taskName = ''
+                taskName = 'checkSpatialData'
                 taskDesc = 'Check spatial data in ' + dataDir
                 try:
                     status = "Entering data checks."
@@ -1498,7 +1504,8 @@ class CheckSpatialData(ArcpyTool):
                         pkgId,
                         entity=entityName,
                         report=status,
-                        status='error'
+                        status='error',
+                        logger=self.logger
                     )
                 else:
                     status = "Passed checks"
@@ -1508,7 +1515,8 @@ class CheckSpatialData(ArcpyTool):
                         pkgId,
                         entity=entityName,
                         report=taskReport,
-                        status=taskStatus
+                        status=taskStatus,
+                        logger=self.logger
                     )
                     #empty reportText => no issues
                     #reportText.append({"Status":"OK"})

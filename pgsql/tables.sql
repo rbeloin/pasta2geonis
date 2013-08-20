@@ -15,7 +15,7 @@ packageid varchar(50) REFERENCES workflow_d.package(packageid),
 entityname varchar(200),
 israster boolean NOT NULL DEFAULT FALSE,
 isvector boolean NOT NULL DEFAULT FALSE,
-entitydescription varchar(1000),
+entitydescription TEXT,
 completed timestamp,
 storage varchar(200),
 mxd varchar(200),
@@ -27,11 +27,11 @@ CREATE TABLE workflow_d.geonis_layer (
 id integer PRIMARY KEY REFERENCES workflow_d.entity(id),
 packageid varchar(50),
 scope     varchar(50),
-entityname varchar(200),
-entitydescription varchar(2000),
-title varchar(1000),
+entityname VARCHAR(200),
+entitydescription TEXT,
+title TEXT,
 abstract TEXT,
-purpose varchar(2000),
+purpose TEXT,
 keywords varchar(1000),
 sourceloc varchar(2000),
 layername varchar(100),
@@ -39,6 +39,19 @@ arcloc varchar(100),
 layerid integer);
 CREATE TABLE workflow_d.errornotify (packageid varchar(50), contact varchar(200));
 CREATE TABLE workflow_d.limit_identifier (identifier varchar(50));
+CREATE TABLE workflow_d.report (
+    reportid SERIAL PRIMARY KEY,
+    packageid VARCHAR(50) REFERENCES workflow_d.package(packageid),
+    entityid INTEGER REFERENCES workflow_d.entity(id),
+    entityname TEXT
+);
+CREATE TABLE workflow_d.taskreport (
+    reportid INTEGER PRIMARY KEY REFERENCES workflow_d.report(reportid),
+    taskname VARCHAR(200),
+    description TEXT,
+    report TEXT,
+    status BOOLEAN
+);
 
 --dupe tables without defaults, constraints
 CREATE TABLE workflow_d.package_superseded (LIKE workflow_d.package );
@@ -61,7 +74,7 @@ packageid varchar(50) REFERENCES workflow.package(packageid),
 entityname varchar(200),
 israster boolean NOT NULL DEFAULT FALSE,
 isvector boolean NOT NULL DEFAULT FALSE,
-entitydescription varchar(1000),
+entitydescription TEXT,
 completed timestamp,
 storage varchar(200),
 mxd varchar(200),
@@ -73,11 +86,11 @@ CREATE TABLE workflow.geonis_layer (
 id integer PRIMARY KEY REFERENCES workflow.entity(id),
 packageid varchar(50),
 scope     varchar(50),
-entityname varchar(200),
-entitydescription varchar(2000),
-title varchar(1000),
+entityname VARCHAR(200),
+entitydescription TEXT,
+title TEXT,
 abstract TEXT,
-purpose varchar(2000),
+purpose TEXT,
 keywords varchar(1000),
 sourceloc varchar(2000),
 layername varchar(100),
@@ -89,3 +102,17 @@ CREATE TABLE workflow.limit_identifier (identifier varchar(50));
 CREATE TABLE workflow.package_superseded (LIKE workflow.package );
 CREATE TABLE workflow.entity_superseded (LIKE workflow.entity );
 CREATE TABLE workflow.geonis_layer_superseded (LIKE workflow.geonis_layer );
+
+CREATE TABLE workflow.report (
+    reportid SERIAL PRIMARY KEY,
+    packageid VARCHAR(50) REFERENCES workflow.package(packageid),
+    entityid INTEGER REFERENCES workflow.entity(id),
+    entityname TEXT
+);
+CREATE TABLE workflow.taskreport (
+    reportid INTEGER PRIMARY KEY REFERENCES workflow.report(reportid),
+    taskname VARCHAR(200),
+    description TEXT,
+    report TEXT,
+    status BOOLEAN
+);
