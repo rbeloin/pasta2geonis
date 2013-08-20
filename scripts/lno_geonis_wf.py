@@ -1060,12 +1060,12 @@ class UnpackPackages(ArcpyTool):
                     with cursorContext(self.logger) as cur:
                         cur.execute(
                             "SELECT packageid FROM entity WHERE packageid = %s AND entityname = %s",
-                            (pkgId, entityName)
+                            (pkgId, emldata['entityName'])
                         )
                         if not cur.rowcount:
                             cur.execute(
                                 "INSERT INTO entity (packageid, entityname) VALUES (%s, %s)",
-                                (pkgId, entityName)
+                                (pkgId, emldata['entityName'])
                             )
 
                     # Make sure a spatial tag (spatialRaster or spatialVector) is present
