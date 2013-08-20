@@ -1005,7 +1005,7 @@ class UnpackPackages(ArcpyTool):
             "packageid = %(packageid)s AND entityname = %(entityname)s"
         )
         parameters = {
-            'packageid': emldata['packageid'],
+            'packageid': emldata['packageId'],
             'entityname': emldata['entityName'],
             'israster': True if emldata['spatialType'] == 'spatialRaster' else False,
             'isvector': True if emldata['spatialType'] == 'spatialVector' else False,
