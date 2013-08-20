@@ -168,11 +168,27 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
             cur.execute(sql, parameters)
             if cur.rowcount:
                 reportId = cur.fetchone()[0]
+
+                # If this reportId/taskName combination already exists in
+                # taskreport, then update the row; otherwise, insert a new row.
                 sql = (
-                    "UPDATE taskreport SET taskname = %(taskname)s, description = "
-                    "%(description)s, report = %(report)s, status = %(status)s "
-                    "WHERE reportid = %(reportid)s"
+                    "SELECT COUNT(*) FROM taskreport WHERE "
+                    "reportid = %s AND taskname = %s"
                 )
+                cur.execute(sql, (reportId, taskName))
+                if cur.fetchone()[0] > 0:
+                    sql = (
+                        "UPDATE taskreport SET taskname = %(taskname)s, description = "
+                        "%(description)s, report = %(report)s, status = %(status)s "
+                        "WHERE reportid = %(reportid)s"
+                    )
+                else:
+                    sql = (
+                        "INSERT INTO taskreport "
+                        "(reportid, taskname, description, report, status) VALUES "
+                        "(%(reportid)s, %(taskname)s, %(description)s, "
+                        "%(report)s, %(status)s)"
+                    )
             
             # If this is a package we haven't seen before, then we need to create
             # new rows in both the report and taskreport tables
@@ -211,11 +227,27 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
             cur.execute(sql, parameters)
             if cur.rowcount:
                 reportId = cur.fetchone()[0]
+
+                # If this reportId/taskName combination already exists in
+                # taskreport, then update the row; otherwise, insert a new row.
                 sql = (
-                    "UPDATE taskreport SET taskname = %(taskname)s, description = "
-                    "%(description)s, report = %(report)s, status = %(status)s "
-                    "WHERE reportid = %(reportid)s"
+                    "SELECT COUNT(*) FROM taskreport WHERE "
+                    "reportid = %s AND taskname = %s"
                 )
+                cur.execute(sql, (reportId, taskName))
+                if cur.fetchone()[0] > 0:
+                    sql = (
+                        "UPDATE taskreport SET taskname = %(taskname)s, description = "
+                        "%(description)s, report = %(report)s, status = %(status)s "
+                        "WHERE reportid = %(reportid)s"
+                    )
+                else:
+                    sql = (
+                        "INSERT INTO taskreport "
+                        "(reportid, taskname, description, report, status) VALUES "
+                        "(%(reportid)s, %(taskname)s, %(description)s, "
+                        "%(report)s, %(status)s)"
+                    )
 
             # If this is an entity we haven't seen before, then we need to get the
             # entityId from the entity table and use it to create a new row in the
@@ -223,6 +255,7 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
             else:
 
                 # Get the entityId from the entity table
+                pdb.set_trace()
                 sql = (
                     "SELECT id FROM entity WHERE packageid = %(packageid)s "
                     "AND entityname = %(entityname)s"
