@@ -178,9 +178,9 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
                 cur.execute(sql, (reportId, taskName))
                 if cur.fetchone()[0] > 0:
                     sql = (
-                        "UPDATE taskreport SET taskname = %(taskname)s, description = "
-                        "%(description)s, report = %(report)s, status = %(status)s "
-                        "WHERE reportid = %(reportid)s"
+                        "UPDATE taskreport SET description = %(description)s, "
+                        "report = %(report)s, status = %(status)s WHERE "
+                        "reportid = %(reportid)s AND taskname = %(taskname)s"
                     )
                 else:
                     sql = (
@@ -235,11 +235,13 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
                     "reportid = %s AND taskname = %s"
                 )
                 cur.execute(sql, (reportId, taskName))
+                #if taskName == 'addVectorData':
+                #    pdb.set_trace()
                 if cur.fetchone()[0] > 0:
                     sql = (
-                        "UPDATE taskreport SET taskname = %(taskname)s, description = "
-                        "%(description)s, report = %(report)s, status = %(status)s "
-                        "WHERE reportid = %(reportid)s"
+                        "UPDATE taskreport SET description = %(description)s, "
+                        "report = %(report)s, status = %(status)s WHERE "
+                        "reportid = %(reportid)s AND taskname = %(taskname)s"
                     )
                 else:
                     sql = (

@@ -50,7 +50,8 @@ CREATE TABLE workflow_d.taskreport (
     taskname VARCHAR(200),
     description TEXT,
     report TEXT,
-    status BOOLEAN
+    status BOOLEAN,
+    UNIQUE(reportid, taskname)
 );
 
 --dupe tables without defaults, constraints
@@ -114,5 +115,6 @@ CREATE TABLE workflow.taskreport (
     taskname VARCHAR(200),
     description TEXT,
     report TEXT,
-    status BOOLEAN
+    status BOOLEAN,
+    UNIQUE(reportid, taskname)
 );

@@ -119,7 +119,6 @@ class Setup(ArcpyTool):
                 # Drop tables from geodb
                 siteWF = site + getConfigValue('datasetscopesuffix')
                 geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
-                #pdb.set_trace()
                 if arcpy.Exists(geodbTable):
                     #try:
                     arcpy.Delete_management(geodbTable)
@@ -1625,7 +1624,6 @@ class LoadVectorTypes(ArcpyTool):
     @errHandledWorkflowTask(taskName="Load shapefile")
     def loadShapefile(self, scope, name, path, **kwargs):
         """call feature class to feature class to copy shapefile to geodatabase"""
-        #pdb.set_trace()
         geodatabase = getConfigValue("geodatabase")
         self.logger.logMessage(INFO, "Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
         #if no dataset, make one
@@ -2134,10 +2132,6 @@ class UpdateMXDs(ArcpyTool):
         if len(insertObj) == 13:
             with cursorContext(self.logger) as cur:
                 cur.execute(insstmt, insertObj)
-
-    @errHandledWorkflowTask(taskName="Build package and entity error reports")
-    def buildErrorReports(self, pkgId):
-        pass
 
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self, pkgId):
