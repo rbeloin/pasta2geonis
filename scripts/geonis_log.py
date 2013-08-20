@@ -255,7 +255,6 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
             else:
 
                 # Get the entityId from the entity table
-                pdb.set_trace()
                 sql = (
                     "SELECT id FROM entity WHERE packageid = %(packageid)s "
                     "AND entityname = %(entityname)s"

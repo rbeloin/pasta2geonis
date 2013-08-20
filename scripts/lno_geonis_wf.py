@@ -1047,7 +1047,6 @@ class UnpackPackages(ArcpyTool):
                             taskName,
                             taskDesc,
                             pkgId,
-                            entity=emldata['entityName'],
                             report=taskReport,
                             status='error',
                             logger=self.logger
@@ -1055,6 +1054,19 @@ class UnpackPackages(ArcpyTool):
                         continue
                     taskDesc = "Unpack data package directory " + dir
                     taskName = 'unpackEntity'
+
+                    # Create row in entity table if it doesn't already exist for this
+                    # packageid/entityName combination
+                    with cursorContext(self.logger) as cur:
+                        cur.execute(
+                            "SELECT packageid FROM entity WHERE packageid = %s AND entityname = %s",
+                            (pkgId, entityName)
+                        )
+                        if not cur.rowcount:
+                            cur.execute(
+                                "INSERT INTO entity (packageid, entityname) VALUES (%s, %s)",
+                                (pkgId, entityName)
+                            )
 
                     # Make sure a spatial tag (spatialRaster or spatialVector) is present
                     try:
