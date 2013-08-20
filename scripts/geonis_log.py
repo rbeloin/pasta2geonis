@@ -152,11 +152,11 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
         # If we didn't receive an value for the entity parameter, then this is a
         # package-level report
         if entity is None:
-            if logger:
-                logger.logMessage(
-                    logging.DEBUG,
-                    "%s: editing package report for %s" % (taskName, pkgId)
-                )
+            #if logger:
+            #    logger.logMessage(
+            #        logging.DEBUG,
+            #        "%s: editing package report for %s" % (taskName, pkgId)
+            #    )
 
             # If an entry already exists in the report table for thie packageId,
             # then all we need to do is update the taskreport table
@@ -210,11 +210,11 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
 
         # Otherwise, we need to add a report on a specific entity
         else:
-            if logger:
-                logger.logMessage(
-                    logging.DEBUG,
-                    "%s: editing entity report for %s (%s)" % (taskName, pkgId, entity)
-                )
+            #if logger:
+            #    logger.logMessage(
+            #        logging.DEBUG,
+            #        "%s: editing entity report for %s (%s)" % (taskName, pkgId, entity)
+            #    )
 
             # If an entry already exists in the report table (for this packageId and
             # entityName combination), then all we need to do is update the taskreport

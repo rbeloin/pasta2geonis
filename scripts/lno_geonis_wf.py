@@ -266,7 +266,7 @@ class Setup(ArcpyTool):
                     if cur.rowcount:
                         reports = tuple([row[0] for row in cur.fetchall()])
                         for table in ['taskreport', 'report']:
-                            sql = "DELETE FROM %s WHERE reportid IN (%%s)"
+                            sql = "DELETE FROM %s WHERE reportid IN %%s"
                             cur.execute(sql % table, (reports, ))
 
                     if site not in sitesAlreadyChecked:
@@ -998,19 +998,33 @@ class UnpackPackages(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Entity initial entry")
     def makeEntityRec(self, workDir, **kwargs):
-        """Inserts record into entity table """
+        """Updates record in entity table."""
         emldata = readWorkingData(workDir, self.logger)
-        stmt, vals = getEntityInsert()
-        vals["packageid"] = emldata["packageId"]
-        vals["entityname"] = emldata["entityName"]
-        vals["entitydescription"] = emldata["entityDesc"][:999]
-        vals["status"] = "%s node found. Downloaded." % emldata["spatialType"]
-        if emldata["spatialType"] == "spatialVector":
-            vals["isvector"] = True
-        elif emldata["spatialType"] == "spatialRaster":
-            vals["israster"] = True
+        sql = (
+            "UPDATE entity SET israster = %(israster)s, isvector = %(isvector)s, "
+            "entitydescription = %(entitydescription)s, status = %(status)s WHERE "
+            "packageid = %(packageid)s AND entityname = %(entityname)s"
+        )
+        parameters = {
+            'packageid': emldata['packageid'],
+            'entityname': emldata['entityName'],
+            'israster': True if emldata['spatialType'] == 'spatialRaster' else False,
+            'isvector': True if emldata['spatialType'] == 'spatialVector' else False,
+            'entitydescription': emldata['entityDesc'],
+            'status': "%s node found. Downloaded." % emldata['spatialType'],
+        }
+        #stmt, vals = getEntityInsert()
+        #vals["packageid"] = emldata["packageId"]
+        #vals["entityname"] = emldata["entityName"]
+        #vals["entitydescription"] = emldata["entityDesc"][:999]
+        #vals["status"] = "%s node found. Downloaded." % emldata["spatialType"]
+        #if emldata["spatialType"] == "spatialVector":
+        #    vals["isvector"] = True
+        #elif emldata["spatialType"] == "spatialRaster":
+        #    vals["israster"] = True
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, vals)
+            #cur.execute(stmt, vals)
+            cur.execute(sql, parameters)
 
     def execute(self, parameters, messages):
         super(UnpackPackages, self).execute(parameters, messages)

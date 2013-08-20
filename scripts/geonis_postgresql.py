@@ -35,14 +35,30 @@ from logging import WARN
 ##        cur.execute(stmt, (packageId,))
 
 def getEntityInsert():
-    """Returns (statement, valueObject) where valueObject is dict with column names and defaults. Fill in values
-       and execute statement. """
-    stmt = "INSERT INTO entity (packageid, entityname, israster, isvector, entitydescription, status) VALUES(%(packageid)s, %(entityname)s, %(israster)s, %(isvector)s, %(entitydescription)s, %(status)s);"
-    obj = {'packageid':'', 'entityname':'', 'israster':False, 'isvector':False, 'entitydescription':'', 'status':''}
-    return (stmt,obj)
+    """
+    Returns (statement, valueObject) where valueObject is dict 
+    with column names and defaults. Fill in values and execute 
+    statement.
+    """
+    sql = (
+        "INSERT INTO entity "
+        "(packageid, entityname, israster, isvector, entitydescription, status) "
+        "VALUES "
+        "(%(packageid)s, %(entityname)s, %(israster)s, %(isvector)s, "
+        "%(entitydescription)s, %(status)s)"
+    )
+    parameters = {
+        'packageid': '',
+        'entityname': '',
+        'israster': False,
+        'isvector': False,
+        'entitydescription': '',
+        'status': '',
+    }
+    return (sql, parameters)
 
 @contextmanager
-def cursorContext(logger = None):
+def cursorContext(logger=None):
     """ Provides a wrapper to a generator function that yields a db cursor
         ready to execute a statement. Handles connection, commit, rollback,
         error trapping, and closing connection. Will propagate exceptions.
