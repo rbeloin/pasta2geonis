@@ -144,7 +144,7 @@ def errHandledWorkflowTask(taskName=""):
 
 
 # Add entry to packagereport/entityreport tables
-def updateReports(taskName, taskDesc, pkgId, entity=None, report='', status='ok', logger=None):
+def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='ok', logger=None):
 
     # Add entries to the report and taskreport tables
     with cursorContext(logger) as cur:
