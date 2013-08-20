@@ -240,7 +240,8 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
 
                 # Insert a new row into the taskreport table
                 sql = (
-                    "INSERT INTO taskreport (reportid, taskname, description, report, status) "
+                    "INSERT INTO taskreport "
+                    "(reportid, taskname, description, report, status) VALUES "
                     "(%(reportid)s, %(taskname)s, %(description)s, %(report)s, %(status)s)"
                 )
 
