@@ -109,12 +109,21 @@ class Setup(ArcpyTool):
         self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
         arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
 
-        with cursorContext(self.logger) as cur:
-            if type(self.scope) != list:
-                self.scope = [self.scope]
-            for site in self.scope:
-                srch = '%' + site + '%'
-                self.logger.logMessage(WARN, "Flushing data for " + site)
+        if type(self.scope) != list:
+            self.scope = [self.scope]
+        for site in self.scope:
+            srch = '%' + site + '%'
+            self.logger.logMessage(WARN, "Flushing data for " + site)
+            with cursorContext(self.logger) as cur:
+                # Delete entries from the report tables
+                self.logger.logMessage(INFO, "Deleting reports")
+                sql = "SELECT reportid FROM report WHERE packageid LIKE %s"
+                cur.execute(sql, (srch, ))
+                if cur.rowcount:
+                    reports = tuple([row[0] for row in cur.fetchall()])
+                    for table in ['taskreport', 'report']:
+                        sql = "DELETE FROM %s WHERE reportid IN %%s"
+                        cur.execute(sql % table, (reports, ))
 
                 # Drop tables from geodb
                 siteWF = site + getConfigValue('datasetscopesuffix')
