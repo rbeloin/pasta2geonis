@@ -46,7 +46,7 @@ CREATE TABLE workflow_d.report (
     entityname TEXT
 );
 CREATE TABLE workflow_d.taskreport (
-    reportid INTEGER PRIMARY KEY REFERENCES workflow_d.report(reportid),
+    reportid INTEGER REFERENCES workflow_d.report(reportid),
     taskname VARCHAR(200),
     description TEXT,
     report TEXT,
@@ -110,7 +110,7 @@ CREATE TABLE workflow.report (
     entityname TEXT
 );
 CREATE TABLE workflow.taskreport (
-    reportid INTEGER PRIMARY KEY REFERENCES workflow.report(reportid),
+    reportid INTEGER REFERENCES workflow.report(reportid),
     taskname VARCHAR(200),
     description TEXT,
     report TEXT,

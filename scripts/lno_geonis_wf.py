@@ -260,12 +260,9 @@ class Setup(ArcpyTool):
                 for package in allPackages:
 
                     # Delete entries from the report tables
-                    self.logger.logMessage(
-                        INFO,
-                        "Deleting " + package + " rows from report tables"
-                    )
+                    self.logger.logMessage(INFO, "Deleting reports")
                     sql = "SELECT reportid FROM report WHERE packageid = %s"
-                    cur.execute(sql, package)
+                    cur.execute(sql, (package, ))
                     if cur.rowcount:
                         reports = tuple([row[0] for row in cur.fetchall()])
                         for table in ['taskreport', 'report']:
