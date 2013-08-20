@@ -151,6 +151,7 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report='', status='ok'
 
         # If we didn't receive an value for the entity parameter, then this is a
         # package-level report
+        pdb.set_trace()
         if entity is None:
             if logger:
                 logger.logMessage(
@@ -167,7 +168,6 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report='', status='ok'
             parameters = {'packageid': pkgId}
             cur.execute(sql, parameters)
             if cur.rowcount:
-                reportId = cur.fetchone()[0]
                 sql = (
                     "UPDATE taskreport SET taskname = %(taskname)s, description = "
                     "%(description)s, report = %(report)s, status = %(status)s "
@@ -182,7 +182,7 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report='', status='ok'
                     "INSERT INTO report (packageid) VALUES "
                     "(%(packageid)s) RETURNING reportid"
                 )
-                reportId = cur.execute(sql, parameters)
+                cur.execute(sql, parameters)
 
                 # Insert a new row into the taskreport table
                 sql = (
@@ -209,7 +209,6 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report='', status='ok'
             parameters = {'packageid': pkgId, 'entityname': entity}
             cur.execute(sql, parameters)
             if cur.rowcount:
-                reportId = cur.fetchone()[0]
                 sql = (
                     "UPDATE taskreport SET taskname = %(taskname)s, description = "
                     "%(description)s, report = %(report)s, status = %(status)s "
@@ -234,7 +233,7 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report='', status='ok'
                     "(%(packageid)s, %(entityid)s, %(entityname)s) RETURNING reportid"
                 )
                 parameters['entityid'] = cur.fetchone()[0]
-                reportId = cur.execute(sql, parameters)
+                cur.execute(sql, parameters)
 
                 # Insert a new row into the taskreport table
                 sql = (
@@ -244,7 +243,7 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report='', status='ok'
 
         # Finally, execute the insert or update query
         parameters = {
-            'reportid': reportId,
+            'reportid': cur.fetchone()[0],
             'taskname': taskName,
             'description': taskDesc,
             'report': report,
