@@ -151,7 +151,6 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report='', status='ok'
 
         # If we didn't receive an value for the entity parameter, then this is a
         # package-level report
-        pdb.set_trace()
         if entity is None:
             if logger:
                 logger.logMessage(
