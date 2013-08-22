@@ -1002,35 +1002,27 @@ class UnpackPackages(ArcpyTool):
             self.logger.logMessage(WARN, "URL for data source missing.")
             raise Exception("No URL for data in %s" % (workDir,))
 
-
     @errHandledWorkflowTask(taskName="Entity initial entry")
     def makeEntityRec(self, workDir, **kwargs):
         """Updates record in entity table."""
         emldata = readWorkingData(workDir, self.logger)
         sql = (
-            "UPDATE entity SET israster = %(israster)s, isvector = %(isvector)s, "
-            "entitydescription = %(entitydescription)s, status = %(status)s WHERE "
+            "UPDATE entity "
+            "SET israster = %(israster)s, isvector = %(isvector)s, "
+            "sourceloc = %(sourceloc)s, entitydescription = %(entitydescription)s, "
+            "status = %(status)s WHERE "
             "packageid = %(packageid)s AND entityname = %(entityname)s"
         )
         parameters = {
             'packageid': emldata['packageId'],
             'entityname': emldata['entityName'],
+            'sourceloc': emldata['physical/distribution/online/url'],
             'israster': True if emldata['spatialType'] == 'spatialRaster' else False,
             'isvector': True if emldata['spatialType'] == 'spatialVector' else False,
             'entitydescription': emldata['entityDesc'],
             'status': "%s node found. Downloaded." % emldata['spatialType'],
         }
-        #stmt, vals = getEntityInsert()
-        #vals["packageid"] = emldata["packageId"]
-        #vals["entityname"] = emldata["entityName"]
-        #vals["entitydescription"] = emldata["entityDesc"][:999]
-        #vals["status"] = "%s node found. Downloaded." % emldata["spatialType"]
-        #if emldata["spatialType"] == "spatialVector":
-        #    vals["isvector"] = True
-        #elif emldata["spatialType"] == "spatialRaster":
-        #    vals["israster"] = True
         with cursorContext(self.logger) as cur:
-            #cur.execute(stmt, vals)
             cur.execute(sql, parameters)
 
     def execute(self, parameters, messages):

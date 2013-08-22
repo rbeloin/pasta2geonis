@@ -21,6 +21,7 @@ storage varchar(200),
 mxd varchar(200),
 layername varchar(2000),
 status varchar(500),
+sourceloc varchar(2000),
 report text,
 UNIQUE ( packageid, entityname ) );
 CREATE TABLE workflow_d.geonis_layer (
@@ -83,6 +84,7 @@ mxd varchar(200),
 layername varchar(2000),
 status varchar(500),
 report text,
+sourceloc varchar(2000),
 UNIQUE ( packageid, entityname ) );
 CREATE TABLE workflow.geonis_layer (
 id integer PRIMARY KEY REFERENCES workflow.entity(id),
