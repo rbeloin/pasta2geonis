@@ -1382,17 +1382,30 @@ class CheckSpatialData(ArcpyTool):
             return (None, GeoNISDataType.NA)
 
     @errHandledWorkflowTask(taskName="Data name check")
-    def entityNameMatch(self, emlName, dataFilePath, **kwargs):
+    def entityNameMatch(self, emldata, dataFilePath, **kwargs):
         dataFileName = os.path.basename(dataFilePath).lower()
-        if emlName.lower() == dataFileName:
-            return True
+        objectName = emldata['objectName'].lower()
+        entityName = emldata['entityName'].lower()
+        name, ext = os.path.splitext(dataFileName)
+        if objectName in (dataFileName, name):
+            self.logger.logMessage(
+                INFO,
+                "objectName %s matched data name %s" % (emldata['objectName'], dataFileName)
+            )
+            return 'objectName'
         else:
-            name, ext = os.path.splitext(dataFileName)
-            if emlName.lower() == name:
-                self.logger.logMessage(INFO, "emlName %s matched data name %s" % (emlName, dataFileName))
-                return True
+            self.logger.logMessage(
+                WARN,
+                "objectName %s did not match data name %s, trying entityName" % \
+                    (emldata['objectName'], dataFileName)
+            )
+            if entityName in (dataFileName, name):
+                self.logger.logMessage(
+                    INFO,
+                    "entityName %s matched data name %s" % (emldata['entityName'], dataFileName)
+                )
+                return 'entityName'
             else:
-                self.logger.logMessage(WARN, "emlName %s did not match data name %s" % (emlName, dataFileName))
                 return False
 
     @errHandledWorkflowTask(taskName="Attribute name check")
@@ -1479,7 +1492,7 @@ class CheckSpatialData(ArcpyTool):
                     nameMatch = False
                     if emldata['spatialType'] == 'spatialVector':
                         nameMatch = self.entityNameMatch(
-                            objectName,
+                            emldata,
                             foundFile,
                             packageId=pkgId,
                             entityName=entityName
@@ -1488,7 +1501,7 @@ class CheckSpatialData(ArcpyTool):
                     else:
                         emldata["datafileMatchesEntity"] = True
                     #force objectName to have data file path, and use objectName for layer and database
-                    if not nameMatch:
+                    if not nameMatch or nameMatch == 'entityName':
                         datafilename = os.path.splitext(os.path.basename(foundFile))[0]
                         if len(datafilename) > 0:
                             datafilename = stringToValidName(datafilename, max=31)
@@ -2151,7 +2164,7 @@ class UpdateMXDs(ArcpyTool):
     def createViewreport(self):
         sql = (
             "CREATE TABLE viewreport AS "
-            "SELECT rt.*, e.israster, e.isvector, e.sourceloc, e.description AS entitydescription FROM "
+            "SELECT rt.*, e.israster, e.isvector, e.sourceloc, e.entitydescription FROM "
             "(SELECT t.taskreportid, r.packageid, r.entityid, r.entityname, t.taskname, t.description AS taskdescription, t.report, t.status "
             "FROM workflow.report AS r "
             "FULL JOIN workflow.taskreport AS t "

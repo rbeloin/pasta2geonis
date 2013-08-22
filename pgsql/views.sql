@@ -33,7 +33,7 @@ CREATE OR REPLACE VIEW workflow_d.vw_publist AS
 CREATE OR REPLACE VIEW workflow_d.vw_rasterentities AS
  SELECT id, packageid, entityname, layername FROM entity WHERE israster = 't' AND layername IS NOT NULL;
 
-CREATE OR REPLACE VIEW workflow_d.vw_report AS
+/*CREATE OR REPLACE VIEW workflow_d.vw_report AS
 SELECT rt.*, e.israster, e.isvector, e.sourceloc FROM
 (SELECT t.taskreportid, r.packageid, r.entityid, r.entityname, t.taskname, t.description, t.report, t.status
 FROM workflow_d.report AS r
@@ -41,7 +41,7 @@ FULL OUTER JOIN workflow_d.taskreport AS t
 ON r.reportid = t.reportid) AS rt
 LEFT OUTER JOIN workflow_d.entity AS e
 ON rt.entityid = e.id
-ORDER BY rt.packageid;
+ORDER BY rt.packageid;*/
 
 --WORKFLOW
 set search_path to workflow;
@@ -84,7 +84,7 @@ SELECT  ent.id, ent.packageid, pack.scope, ent.entityname, ent.entitydescription
  WHERE lyr.id is null AND ent.status = 'OK' AND ent.isvector AND ent.mxd is not null;
 */
 
-CREATE OR REPLACE VIEW workflow.vw_report AS
+/*CREATE OR REPLACE VIEW workflow.vw_report AS
 SELECT rt.*, e.israster, e.isvector, e.sourceloc FROM
 (SELECT t.taskreportid, r.packageid, r.entityid, r.entityname, t.taskname, t.description, t.report, t.status
 FROM workflow.report AS r
@@ -92,4 +92,4 @@ FULL OUTER JOIN workflow.taskreport AS t
 ON r.reportid = t.reportid) AS rt
 LEFT OUTER JOIN workflow.entity AS e
 ON rt.entityid = e.id
-ORDER BY rt.packageid;
+ORDER BY rt.packageid;*/
