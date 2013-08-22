@@ -1019,7 +1019,7 @@ class UnpackPackages(ArcpyTool):
         emldata = readWorkingData(workDir, self.logger)
         sql = (
             "UPDATE entity "
-            "SET israster = %(israster)s, isvector = %(isvector)s, title = %(title)s, "
+            "SET israster = %(israster)s, isvector = %(isvector)s, "
             "sourceloc = %(sourceloc)s, entitydescription = %(entitydescription)s, "
             "status = %(status)s WHERE "
             "packageid = %(packageid)s AND entityname = %(entityname)s"
