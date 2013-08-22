@@ -115,6 +115,11 @@ class Setup(ArcpyTool):
             srch = '%' + site + '%'
             self.logger.logMessage(WARN, "Flushing data for " + site)
             with cursorContext(self.logger) as cur:
+
+                # Drop denormalized report table
+                self.logger.logMessage(INFO, "Dropping viewtable")
+                cur.execute("DROP TABLE IF EXISTS viewtable")
+
                 # Delete entries from the report tables
                 self.logger.logMessage(INFO, "Deleting reports")
                 sql = "SELECT reportid FROM report WHERE packageid LIKE %s"
@@ -246,6 +251,11 @@ class Setup(ArcpyTool):
         #    sdeMaps
 
         with cursorContext(self.logger) as cur:
+
+            # Drop denormalized report table
+            self.logger.logMessage(INFO, "Dropping viewtable")
+            cur.execute("DROP TABLE IF EXISTS viewtable")
+
             for pkgset in pkgArray:
                 if not pkgset['inc']:
                     continue
@@ -1009,7 +1019,7 @@ class UnpackPackages(ArcpyTool):
         emldata = readWorkingData(workDir, self.logger)
         sql = (
             "UPDATE entity "
-            "SET israster = %(israster)s, isvector = %(isvector)s, "
+            "SET israster = %(israster)s, isvector = %(isvector)s, title = %(title)s, "
             "sourceloc = %(sourceloc)s, entitydescription = %(entitydescription)s, "
             "status = %(status)s WHERE "
             "packageid = %(packageid)s AND entityname = %(entityname)s"
@@ -2091,7 +2101,7 @@ class UpdateMXDs(ArcpyTool):
         for layer in arcpy.mapping.ListLayers(mxd, '', layersFrame):
             if layer.name == layerName:
                 layer.description = workingData['entityDesc']
-                layer.name += ": " + insertObj['title']
+                layer.name += ": " + insertObj['title'] # change to entity-level description??
                 layerName = layer.name
         mxd.save()
         workingData["layerName"] = layerName
@@ -2117,6 +2127,9 @@ class UpdateMXDs(ArcpyTool):
         if status != "Added to map":
             self.logger.logMessage(DEBUG, "Status of entity is %s" % (status,))
         insertObj = createDictFromEmlSubset(workDir)
+        with cursorContext(self.logger) as cur:
+            sql = "UPDATE package SET title = %s WHERE packageid = %s"
+            cur.execute(sql, (insertObj['title'], pkgId))
         insertObj['id'] = recId
         insertObj['pid'] = pkgId
         insertObj['name'] = name
@@ -2133,6 +2146,24 @@ class UpdateMXDs(ArcpyTool):
         if len(insertObj) == 13:
             with cursorContext(self.logger) as cur:
                 cur.execute(insstmt, insertObj)
+
+    @errHandledWorkflowTask(taskName="Create and index a denormalized report table for web service queries")
+    def createViewreport(self):
+        sql = (
+            "CREATE TABLE viewreport AS "
+            "SELECT rt.*, e.israster, e.isvector, e.sourceloc, e.description AS entitydescription FROM "
+            "(SELECT t.taskreportid, r.packageid, r.entityid, r.entityname, t.taskname, t.description AS taskdescription, t.report, t.status "
+            "FROM workflow.report AS r "
+            "FULL JOIN workflow.taskreport AS t "
+            "ON r.reportid = t.reportid) AS rt "
+            "LEFT JOIN workflow.entity AS e "
+            "ON rt.entityid = e.id"
+        )
+        with cursorContext(self.logger) as cur:
+            cur.execute(sql)
+            cur.execute("CREATE INDEX packageid_idx ON viewreport (packageid)")
+            cur.execute("CREATE INDEX entityid_idx ON viewreport (entityid)")
+            cur.execute("CREATE UNIQUE INDEX entityname_taskname_idx ON viewreport (entityname, taskname)")
 
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self, pkgId):
@@ -2276,6 +2307,8 @@ class UpdateMXDs(ArcpyTool):
                     except:
                         self.logger.logMessage(WARN, "Could not add JSON-format string to report")
                         pass
+
+        self.createViewreport()
 
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))

@@ -289,7 +289,7 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
                 'status': True if status == 'ok' else False,
             }
             cur.execute(sql, parameters)
-            
+
     except Exception as e:
         if logger:
             logger.logMessage(logging.WARN, "Report not created: " + e.message)

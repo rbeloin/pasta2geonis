@@ -210,14 +210,14 @@ var GEONIS = (function () {
             window.packageReports = [];
             window.vectorReports = [];
             window.rasterReports = [];
-            window.vectorIds = [];
-            window.rasterIds = [];
 
             // Fetch detailed reports from vw_report using viewreport query layer
             var viewReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
                 "viewreport/MapServer/1/query?where=packageid+%3D+%27" + pid +
                 "%27&returnGeometry=true&outFields=*&f=pjson&callback=?";
             $.getJSON(viewReportUrl, function (response) {
+                var vectorIds = [];
+                var rasterIds = [];
                 $.each(response.features, function() {
                     if (this.attributes.entityid === null) {
                         packageReports.push(this.attributes);

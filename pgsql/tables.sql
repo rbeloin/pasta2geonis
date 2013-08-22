@@ -8,11 +8,12 @@ identifier integer,
 revision integer,
 spatialcount smallint NOT NULL DEFAULT -1,
 downloaded timestamp,
+title TEXT,
 report text );
 CREATE TABLE workflow_d.entity (
 id serial PRIMARY KEY,
 packageid varchar(50) REFERENCES workflow_d.package(packageid),
-entityname varchar(200),
+entityname varchar(2000),
 israster boolean NOT NULL DEFAULT FALSE,
 isvector boolean NOT NULL DEFAULT FALSE,
 entitydescription TEXT,
@@ -28,7 +29,7 @@ CREATE TABLE workflow_d.geonis_layer (
 id integer PRIMARY KEY REFERENCES workflow_d.entity(id),
 packageid varchar(50),
 scope     varchar(50),
-entityname VARCHAR(200),
+entityname VARCHAR(2000),
 entitydescription TEXT,
 title TEXT,
 abstract TEXT,
@@ -55,6 +56,23 @@ CREATE TABLE workflow_d.taskreport (
     status BOOLEAN,
     UNIQUE(reportid, taskname)
 );
+-- this is a denormalized table which will be accessed via query layer
+CREATE TABLE workflow_d.viewreport (
+    taskreportid INTEGER PRIMARY KEY REFERENCES workflow_d.taskreport(taskreportid),
+    reportid INTEGER REFERENCES workflow_d.report(reportid),
+    packageid VARCHAR(50) REFERENCES workflow_d.package(packageid),
+    entityid INTEGER REFERENCES workflow_d.entity(id),
+    entityname VARCHAR(2000),
+    entitydescription TEXT,
+    taskname VARCHAR(200),
+    taskdescription TEXT,
+    report TEXT,
+    status BOOLEAN,
+    israster BOOLEAN,
+    isvector BOOLEAN,
+    sourceloc VARCHAR(2000),
+    UNIQUE(reportid, taskname)
+);
 
 --dupe tables without defaults, constraints
 CREATE TABLE workflow_d.package_superseded (LIKE workflow_d.package );
@@ -70,29 +88,30 @@ identifier integer,
 revision integer,
 spatialcount smallint NOT NULL DEFAULT -1,
 downloaded timestamp,
+title TEXT,
 report text );
 CREATE TABLE workflow.entity (
 id serial PRIMARY KEY,
 packageid varchar(50) REFERENCES workflow.package(packageid),
-entityname varchar(200),
+entityname varchar(2000),
 israster boolean NOT NULL DEFAULT FALSE,
 isvector boolean NOT NULL DEFAULT FALSE,
 entitydescription TEXT,
+title TEXT,
 completed timestamp,
 storage varchar(200),
 mxd varchar(200),
 layername varchar(2000),
 status varchar(500),
-report text,
 sourceloc varchar(2000),
+report text,
 UNIQUE ( packageid, entityname ) );
 CREATE TABLE workflow.geonis_layer (
 id integer PRIMARY KEY REFERENCES workflow.entity(id),
 packageid varchar(50),
 scope     varchar(50),
-entityname VARCHAR(200),
+entityname VARCHAR(2000),
 entitydescription TEXT,
-title TEXT,
 abstract TEXT,
 purpose TEXT,
 keywords varchar(1000),
@@ -120,5 +139,21 @@ CREATE TABLE workflow.taskreport (
     description TEXT,
     report TEXT,
     status BOOLEAN,
+    UNIQUE(reportid, taskname)
+);
+CREATE TABLE workflow.viewreport (
+    taskreportid INTEGER PRIMARY KEY REFERENCES workflow.taskreport(taskreportid),
+    reportid INTEGER REFERENCES workflow.report(reportid),
+    packageid VARCHAR(50) REFERENCES workflow.package(packageid),
+    entityid INTEGER REFERENCES workflow.entity(id),
+    entityname VARCHAR(2000),
+    entitydescription TEXT,
+    taskname VARCHAR(200),
+    taskdescription TEXT,
+    report TEXT,
+    status BOOLEAN,
+    israster BOOLEAN,
+    isvector BOOLEAN,
+    sourceloc VARCHAR(2000),
     UNIQUE(reportid, taskname)
 );
