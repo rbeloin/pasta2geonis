@@ -2159,28 +2159,28 @@ class UpdateMXDs(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Create report table for web service")
     def createViewreport(self):
-        pdb.set_trace()
+        #pdb.set_trace()
         sql = (
-            "CREATE TABLE geonis.workflow_d.viewreport AS "
+            "CREATE TABLE viewreport AS "
             "SELECT rt.*, e.israster, e.isvector, e.sourceloc, e.entitydescription FROM "
             "(SELECT t.taskreportid, r.packageid, r.entityid, r.entityname, t.taskname, t.description AS taskdescription, t.report, t.status "
-            "FROM geonis.workflow_d.report AS r "
-            "FULL JOIN geonis.workflow_d.taskreport AS t "
+            "FROM report AS r "
+            "FULL JOIN taskreport AS t "
             "ON r.reportid = t.reportid) AS rt "
-            "LEFT JOIN geonis.workflow_d.entity AS e "
+            "LEFT JOIN entity AS e "
             "ON rt.entityid = e.id"
         )
         with cursorContext(self.logger) as cur:
 
             # Drop denormalized report table (if it exists)
-            cur.execute("DROP TABLE IF EXISTS geonis.workflow_d.viewreport")
+            cur.execute("DROP TABLE IF EXISTS viewreport")
 
         with cursorContext(self.logger) as cur:
             # Now replace and index it
             cur.execute(sql)
-            cur.execute("CREATE INDEX packageid_idx ON geonis.workflow_d.viewreport (packageid)")
-            cur.execute("CREATE INDEX entityid_idx ON geonis.workflow_d.viewreport (entityid)")
-            cur.execute("CREATE UNIQUE INDEX entityname_taskname_idx ON geonis.workflow_d.viewreport (entityname, taskname)")
+            cur.execute("CREATE INDEX packageid_idx ON viewreport (packageid)")
+            cur.execute("CREATE INDEX entityid_idx ON viewreport (entityid)")
+            cur.execute("CREATE UNIQUE INDEX entityname_taskname_idx ON viewreport (entityname, taskname)")
 
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self, pkgId):
@@ -2417,8 +2417,9 @@ class RefreshMapService(ArcpyTool):
         # which in ArcCatalog is reported as "the base table definition string is invalid"
         # May be caused when map layers do not correspond to db entries.
         # Workaround: drop all non-base layers from the map if this error is encountered.
-        try:
-            arcpy.StageService_server(sdDraft)
+        #try:
+        arcpy.StageService_server(sdDraft)
+        """
         except Exception as err:
             if err[0].find('ERROR 001272') != -1 and err[0].find('codes = 3') != -1:
                 self.logger.logMessage(WARN, "Encountered ERROR 001272, attempting workaround")
@@ -2463,9 +2464,10 @@ class RefreshMapService(ArcpyTool):
                         INFO,
                         str(cur.rowcount) + " rows deleted from entity"
                     )
+            """
 
             # Try to stage the service again
-            arcpy.StageService_server(sdDraft)
+            # arcpy.StageService_server(sdDraft)
 
         # by default, writes SD file to same loc as draft, then DELETES DRAFT
         if os.path.exists(sdFile):
