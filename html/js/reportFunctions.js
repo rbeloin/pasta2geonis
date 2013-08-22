@@ -142,8 +142,8 @@ function appendServerInfo(serverInfo, biography) {
 // Fetch a list of other packages from the same site containing spatial data
 function fetchSitePackages(siteCode) {
     siteReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-        "Search/MapServer/2/query?where=packageid+like+%27" + siteCode +
-        "%%27&returnGeometry=true&f=pjson&callback=?";
+        "queryPackage/MapServer/1/query?where=scope+%3D+%27" +
+        siteCode.split('-')[2] + "%27&returnGeometry=true&f=pjson&callback=?";
     $.getJSON(siteReportUrl, function (response) {
         var i, sitePackages, packageTitleLink;
         var sitePackageArray = [];
@@ -151,10 +151,9 @@ function fetchSitePackages(siteCode) {
             sitePackageArray.push(response.features[i].attributes.packageid);
         }
         sitePackageArray = sitePackageArray.getUnique().sortNumeric();
-        //var packagePlural = (sitePackageArray.length === 1) ? "Package " : "Packages ";
         packageTitleLink = $('<a />')
             .attr('href', '#')
-            .text("Packages (" + sitePackageArray.length + ")")
+            .text("Packages (" + sitePackageArray.length + ")");
         if (sitePackageArray.length) {
             packageTitleLink.click(function () {
                 $('#site-report').slideToggle('fast');
