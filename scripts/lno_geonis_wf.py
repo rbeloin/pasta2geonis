@@ -266,18 +266,19 @@ class Setup(ArcpyTool):
                 allPackages = [row[0] for row in cur.fetchall()]
 
                 for package in allPackages:
+
+                    # Delete entries from the report tables
+                    self.logger.logMessage(INFO, "Deleting reports for " + package)
+                    sql = "SELECT reportid FROM report WHERE packageid = %s"
+                    cur.execute(sql, (package, ))
+                    if cur.rowcount:
+                        reports = tuple([row[0] for row in cur.fetchall()])
+                        for table in ['taskreport', 'report']:
+                            sql = "DELETE FROM %s WHERE reportid IN %%s"
+                            cur.execute(sql % table, (reports, ))
+
                     if site not in sitesAlreadyChecked:
                         sitesAlreadyChecked.append(site)
-
-                        # Delete entries from the report tables
-                        self.logger.logMessage(INFO, "Deleting reports")
-                        sql = "SELECT reportid FROM report WHERE packageid = %s"
-                        cur.execute(sql, (package, ))
-                        if cur.rowcount:
-                            reports = tuple([row[0] for row in cur.fetchall()])
-                            for table in ['taskreport', 'report']:
-                                sql = "DELETE FROM %s WHERE reportid IN %%s"
-                                cur.execute(sql % table, (reports, ))
 
                         # Verify that the map service exists
                         self.logger.logMessage(INFO, "Checking for " + site + " map service")

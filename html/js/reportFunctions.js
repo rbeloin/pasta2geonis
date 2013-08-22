@@ -150,7 +150,7 @@ function fetchSitePackages(siteCode) {
         for (i = 0; i < response.features.length; i++) {
             sitePackageArray.push(response.features[i].attributes.packageid);
         }
-        sitePackageArray = sitePackageArray.getUnique().sortNumeric();
+        sitePackageArray = sitePackageArray.sortNumeric();
         packageTitleLink = $('<a />')
             .attr('href', '#')
             .text("Packages (" + sitePackageArray.length + ")");
@@ -170,18 +170,6 @@ function fetchSitePackages(siteCode) {
         }
     });
 }
-
-Array.prototype.getUnique = function () {
-    var u = {}, a = [];
-    for(var i = 0, l = this.length; i < l; ++i){
-        if(u.hasOwnProperty(this[i])) {
-            continue;
-        }
-        a.push(this[i]);
-        u[this[i]] = 1;
-    }
-    return a;
-};
 
 Array.prototype.sortNumeric = function () {
     var tempArr = [], n;
@@ -209,6 +197,18 @@ Array.prototype.sortNumeric = function () {
         this[i] = tempArr[i].join('');
     }
     return this;
+};
+
+Array.prototype.getUnique = function () {
+    var u = {}, a = [];
+    for(var i = 0, l = this.length; i < l; ++i){
+        if(u.hasOwnProperty(this[i])) {
+            continue;
+        }
+        a.push(this[i]);
+        u[this[i]] = 1;
+    }
+    return a;
 };
 
 function pluralize(str, count) {

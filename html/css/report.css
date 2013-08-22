@@ -280,6 +280,17 @@ hr {
     margin-left: 25px;
     margin-right: 25px;   
 }
+.report-table table {
+    margin-left: 25px;
+    margin-right: 25px;    
+}
+.report-table td, th {
+    padding: 10px;
+}
+.report-table th {
+    font-size: 110%;
+    border-bottom: 1px solid #ccc;
+}
 
 /* push */
 .wrapper {

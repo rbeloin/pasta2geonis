@@ -206,7 +206,12 @@ var GEONIS = (function () {
         else {
             generateBanner(pid);
             $('#site-report').show();
-            entities = [];
+            //entities = [];
+            window.packageReports = [];
+            window.vectorReports = [];
+            window.rasterReports = [];
+            window.vectorIds = [];
+            window.rasterIds = [];
 
             // Fetch detailed reports from vw_report using viewreport query layer
             var viewReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
@@ -214,10 +219,109 @@ var GEONIS = (function () {
                 "%27&returnGeometry=true&outFields=*&f=pjson&callback=?";
             $.getJSON(viewReportUrl, function (response) {
                 $.each(response.features, function() {
-                    console.log(this.attributes.toString());
-
+                    if (this.attributes.entityid === null) {
+                        packageReports.push(this.attributes);
+                    }
+                    else if (this.attributes.isvector) {
+                        vectorReports.push(this.attributes);
+                        vectorIds.push(this.attributes.entityid);
+                    }
+                    else if (this.attributes.israster) {
+                        rasterReports.push(this.attributes);
+                        rasterIds.push(this.attributes.entityid);
+                    }
                 });
+                if (packageReports.length) {
+                    $('#package-report').append($('<table />')
+                        .attr('id', 'package-report-table')
+                        .attr('class', 'report-table')
+                        .append($('<tr />')
+                            .append($('<th />').text("description"))
+                            .append($('<th />').text("report"))
+                            .append($('<th />').text("status"))
+                        )
+                    );
+                    $.each(packageReports, function () {
+                        var reportText = this.report || '';
+                        var statusText = (this.status) ? 'Complete' : 'Error';
+                        $('#package-report-table').append($('<tr />')
+                            .append($('<td />').text(this.description))
+                            .append($('<td />').text(reportText))
+                            .append($('<td />').text(statusText))
+                        );
+                    });
+                }
+                if (vectorReports.length) {
+                    vectorIds = vectorIds.getUnique();
+                    $('#vector-banner').show();
+                    $('#vector-report-header').append($('<h3 />')
+                        .text(vectorIds.length + ' vector ' + pluralize('dataset', vectorIds.length))
+                    ).show();
+                    /*var entityname = (biography['entityname'] === 'None') ?
+                        'Untitled ' + spatialType + ' data set' : biography['entityname'];
+                    report = "<span class='entity-name'>" + entityname + "</span> " + report;*/
+                    $('#vector-report').append($('<table />')
+                        .attr('id', 'vector-report-table')
+                        .attr('class', 'report-table')
+                        .append($('<tr />')
+                            .append($('<th />').text("entityname"))
+                            .append($('<th />').text("description"))
+                            .append($('<th />').text("report"))
+                            .append($('<th />').text("status"))
+                        )
+                    );
+                    $.each(vectorReports, function () {
+                        var reportText = this.report || '';
+                        var statusText = (this.status) ? 'Complete' : 'Error';
+                        $('#vector-report-table').append($('<tr />')
+                            .append($('<td />').text(this.entityname))
+                            .append($('<td />').text(this.description))
+                            .append($('<td />').text(reportText))
+                            .append($('<td />').text(statusText))
+                        );
+                    });
+                }
+                if (rasterReports.length) {
+                    rasterIds = rasterIds.getUnique();
+                    $('#raster-banner').show();
+                    $('#raster-report-header').append($('<h3 />')
+                        .text(rasterIds.length + ' raster ' + pluralize('dataset', rasterIds.length))
+                    ).show();
+                    $('#raster-report').append($('<table />')
+                        .attr('id', 'raster-report-table')
+                        .attr('class', 'report-table')
+                        .append($('<tr />')
+                            .append($('<th />').text("entityname"))
+                            .append($('<th />').text("description"))
+                            .append($('<th />').text("report"))
+                            .append($('<th />').text("status"))
+                        )
+                    );
+                    $.each(rasterReports, function () {
+                        var reportText = this.report || '';
+                        var statusText = (this.status) ? 'Complete' : 'Error';
+                        $('#raster-report-table').append($('<tr />')
+                            .append($('<td />').text(this.entityname))
+                            .append($('<td />').text(this.description))
+                            .append($('<td />').text(reportText))
+                            .append($('<td />').text(statusText))
+                        );
+                    });
+                }
             });
+
+
+            /*"taskreportid": 226,
+            "packageid": "knb-lter-knz.230.2",
+            "entityid": null,
+            "entityname": null,
+            "taskname": "parseEML",
+            "description": "Parse EML",
+            "report": null,
+            "status": 1,
+            "israster": null,
+            "isvector": null,
+            "sourceloc": null*/
             /*testdata={
                 "taskreportid": 180,
                 "packageid": "knb-lter-knz.200.3",
@@ -232,7 +336,7 @@ var GEONIS = (function () {
             // Fetch report from database using the Search service, then parse
             // the report, extract information about the report from the
             // stringified-JSON structure, then write output to document.
-            reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+            /*reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
                 "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
                 "%27&returnGeometry=true&outFields=report&f=pjson&callback=?";
             $.getJSON(reportUrl, function (response) {
@@ -280,7 +384,7 @@ var GEONIS = (function () {
                 $('#package-report').html(
                     "<p style='text-align: center; padding-top: 5px;'>Data set not found.</p>"
                 );
-            }
+            }*/
         }
 
         // Other data sets from the same site
