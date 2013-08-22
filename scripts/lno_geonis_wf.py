@@ -268,7 +268,7 @@ class Setup(ArcpyTool):
                 for package in allPackages:
                     if site not in sitesAlreadyChecked:
                         sitesAlreadyChecked.append(site)
-                        
+
                         # Delete entries from the report tables
                         self.logger.logMessage(INFO, "Deleting reports")
                         sql = "SELECT reportid FROM report WHERE packageid = %s"
@@ -2281,6 +2281,7 @@ class UpdateMXDs(ArcpyTool):
                     try:
                         self.modifyErrorReport(pkgId)
                     except:
+                        self.logger.logMessage(WARN, "Could not add JSON-format string to report")
                         pass
 
         #pass the list on

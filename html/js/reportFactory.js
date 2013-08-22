@@ -208,6 +208,27 @@ var GEONIS = (function () {
             $('#site-report').show();
             entities = [];
 
+            // Fetch detailed reports from vw_report using viewreport query layer
+            var viewReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+                "viewreport/MapServer/1/query?where=packageid+%3D+%27" + pid +
+                "%27&returnGeometry=true&outFields=*&f=pjson&callback=?";
+            $.getJSON(viewReportUrl, function (response) {
+                $.each(response.features, function() {
+                    console.log(this.attributes.toString());
+
+                });
+            });
+            /*testdata={
+                "taskreportid": 180,
+                "packageid": "knb-lter-knz.200.3",
+                "entityid": null,
+                "entityname": null,
+                "taskname": "parseEML",
+                "description": "Parse EML",
+                "report": null,
+                "status": 1
+            };*/
+
             // Fetch report from database using the Search service, then parse
             // the report, extract information about the report from the
             // stringified-JSON structure, then write output to document.
