@@ -116,10 +116,6 @@ class Setup(ArcpyTool):
             self.logger.logMessage(WARN, "Flushing data for " + site)
             with cursorContext(self.logger) as cur:
 
-                # Drop denormalized report table
-                self.logger.logMessage(INFO, "Dropping viewtable")
-                cur.execute("DROP TABLE IF EXISTS viewtable")
-
                 # Delete entries from the report tables
                 self.logger.logMessage(INFO, "Deleting reports")
                 sql = "SELECT reportid FROM report WHERE packageid LIKE %s"
@@ -1648,6 +1644,7 @@ class LoadVectorTypes(ArcpyTool):
     @errHandledWorkflowTask(taskName="Load shapefile")
     def loadShapefile(self, scope, name, path, **kwargs):
         """call feature class to feature class to copy shapefile to geodatabase"""
+        #pdb.set_trace()
         geodatabase = getConfigValue("geodatabase")
         self.logger.logMessage(INFO, "Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
         #if no dataset, make one
@@ -2160,23 +2157,30 @@ class UpdateMXDs(ArcpyTool):
             with cursorContext(self.logger) as cur:
                 cur.execute(insstmt, insertObj)
 
-    @errHandledWorkflowTask(taskName="Create and index a denormalized report table for web service queries")
+    @errHandledWorkflowTask(taskName="Create report table for web service")
     def createViewreport(self):
+        pdb.set_trace()
         sql = (
-            "CREATE TABLE viewreport AS "
+            "CREATE TABLE geonis.workflow_d.viewreport AS "
             "SELECT rt.*, e.israster, e.isvector, e.sourceloc, e.entitydescription FROM "
             "(SELECT t.taskreportid, r.packageid, r.entityid, r.entityname, t.taskname, t.description AS taskdescription, t.report, t.status "
-            "FROM workflow.report AS r "
-            "FULL JOIN workflow.taskreport AS t "
+            "FROM geonis.workflow_d.report AS r "
+            "FULL JOIN geonis.workflow_d.taskreport AS t "
             "ON r.reportid = t.reportid) AS rt "
-            "LEFT JOIN workflow.entity AS e "
+            "LEFT JOIN geonis.workflow_d.entity AS e "
             "ON rt.entityid = e.id"
         )
         with cursorContext(self.logger) as cur:
+
+            # Drop denormalized report table (if it exists)
+            cur.execute("DROP TABLE IF EXISTS geonis.workflow_d.viewreport")
+
+        with cursorContext(self.logger) as cur:
+            # Now replace and index it
             cur.execute(sql)
-            cur.execute("CREATE INDEX packageid_idx ON viewreport (packageid)")
-            cur.execute("CREATE INDEX entityid_idx ON viewreport (entityid)")
-            cur.execute("CREATE UNIQUE INDEX entityname_taskname_idx ON viewreport (entityname, taskname)")
+            cur.execute("CREATE INDEX packageid_idx ON geonis.workflow_d.viewreport (packageid)")
+            cur.execute("CREATE INDEX entityid_idx ON geonis.workflow_d.viewreport (entityid)")
+            cur.execute("CREATE UNIQUE INDEX entityname_taskname_idx ON geonis.workflow_d.viewreport (entityname, taskname)")
 
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self, pkgId):
