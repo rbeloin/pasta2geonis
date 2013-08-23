@@ -109,6 +109,12 @@ class Setup(ArcpyTool):
         self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
         arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
 
+        # Drop denormalized report table (if it exists)
+        #schema = "geonis." + getConfigValue('schema') + "."
+        #with cursorContext(self.logger) as cur:
+        #    self.logger.logMessage(WARN, "Dropping " + schema + "viewreport table")
+        #    cur.execute("DROP TABLE IF EXISTS " + schema + "viewreport")
+
         if type(self.scope) != list:
             self.scope = [self.scope]
         for site in self.scope:
@@ -247,11 +253,6 @@ class Setup(ArcpyTool):
         #    sdeMaps
 
         with cursorContext(self.logger) as cur:
-
-            # Drop denormalized report table
-            self.logger.logMessage(INFO, "Dropping viewtable")
-            cur.execute("DROP TABLE IF EXISTS viewtable")
-
             for pkgset in pkgArray:
                 if not pkgset['inc']:
                     continue
@@ -2157,11 +2158,13 @@ class UpdateMXDs(ArcpyTool):
             with cursorContext(self.logger) as cur:
                 cur.execute(insstmt, insertObj)
 
-    @errHandledWorkflowTask(taskName="Create report table for web service")
+    @errHandledWorkflowTask(taskName="Set up report table for web service")
     def createViewreport(self):
-        #pdb.set_trace()
+        schema = 'geonis.' + getConfigValue('schema') + '.'
         sql = (
-            "CREATE TABLE viewreport AS "
+            "CREATE TABLE " + schema + "viewreport AS "
+            #"INSERT INTO " + schema + "viewreport "
+            #"(taskreportid, reportid, packageid)"
             "SELECT rt.*, e.israster, e.isvector, e.sourceloc, e.entitydescription FROM "
             "(SELECT t.taskreportid, r.packageid, r.entityid, r.entityname, t.taskname, t.description AS taskdescription, t.report, t.status "
             "FROM report AS r "
@@ -2170,17 +2173,21 @@ class UpdateMXDs(ArcpyTool):
             "LEFT JOIN entity AS e "
             "ON rt.entityid = e.id"
         )
-        with cursorContext(self.logger) as cur:
 
-            # Drop denormalized report table (if it exists)
-            cur.execute("DROP TABLE IF EXISTS viewreport")
-
+        # Drop denormalized report table (if it exists)
         with cursorContext(self.logger) as cur:
-            # Now replace and index it
+            self.logger.logMessage(WARN, "Dropping " + schema + "viewreport table")
+            cur.execute("DROP TABLE IF EXISTS " + schema + "viewreport")
+
+        # Now replace and index it
+        with cursorContext(self.logger) as cur:    
             cur.execute(sql)
-            cur.execute("CREATE INDEX packageid_idx ON viewreport (packageid)")
-            cur.execute("CREATE INDEX entityid_idx ON viewreport (entityid)")
-            cur.execute("CREATE UNIQUE INDEX entityname_taskname_idx ON viewreport (entityname, taskname)")
+            cur.execute("CREATE INDEX packageid_idx ON " + schema + "viewreport (packageid)")
+            cur.execute("CREATE INDEX entityid_idx ON " + schema + "viewreport (entityid)")
+            cur.execute(
+                "CREATE UNIQUE INDEX entityname_taskname_idx ON " + schema +
+                "viewreport (entityname, taskname)"
+            )
 
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self, pkgId):

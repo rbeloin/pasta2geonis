@@ -58,10 +58,10 @@ CREATE TABLE workflow_d.taskreport (
 );
 -- this is a denormalized table which will be accessed via query layer
 CREATE TABLE workflow_d.viewreport (
-    taskreportid INTEGER PRIMARY KEY REFERENCES workflow_d.taskreport(taskreportid),
-    reportid INTEGER REFERENCES workflow_d.report(reportid),
-    packageid VARCHAR(50) REFERENCES workflow_d.package(packageid),
-    entityid INTEGER REFERENCES workflow_d.entity(id),
+    taskreportid INTEGER PRIMARY KEY,
+    reportid INTEGER,
+    packageid VARCHAR(50),
+    entityid INTEGER,
     entityname VARCHAR(2000),
     entitydescription TEXT,
     taskname VARCHAR(200),
@@ -143,10 +143,10 @@ CREATE TABLE workflow.taskreport (
     UNIQUE(reportid, taskname)
 );
 CREATE TABLE workflow.viewreport (
-    taskreportid INTEGER PRIMARY KEY REFERENCES workflow.taskreport(taskreportid),
-    reportid INTEGER REFERENCES workflow.report(reportid),
-    packageid VARCHAR(50) REFERENCES workflow.package(packageid),
-    entityid INTEGER REFERENCES workflow.entity(id),
+    taskreportid INTEGER PRIMARY KEY,
+    reportid INTEGER,
+    packageid VARCHAR(50),
+    entityid INTEGER,
     entityname VARCHAR(2000),
     entitydescription TEXT,
     taskname VARCHAR(200),
