@@ -406,12 +406,12 @@ var GEONIS = (function () {
                 if (parsed && parsed.biography) {
                     appendServerInfo(serverInfo, parsed.biography);
                 }
-            });*/
+            });
             if (pid.split('.')[1]) {
                 $('#package-report').html(
                     "<p style='text-align: center; padding-top: 5px;'>Data set not found.</p>"
                 );
-            }
+            }*/
         }
 
         // Other data sets from the same site
