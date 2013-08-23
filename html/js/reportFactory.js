@@ -208,27 +208,34 @@ var GEONIS = (function () {
             $('#site-report').show();
             //entities = [];
             window.packageReports = [];
-            window.vectorReports = [];
-            window.rasterReports = [];
+            window.vectorReports = {};
+            window.rasterReports = {};
 
-            // Fetch detailed reports from vw_report using viewreport query layer
+            // Fetch detailed reports from viewreport using viewreport query layer
             var viewReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
                 "viewreport/MapServer/1/query?where=packageid+%3D+%27" + pid +
                 "%27&returnGeometry=true&outFields=*&f=pjson&callback=?";
             $.getJSON(viewReportUrl, function (response) {
-                var vectorIds = [];
-                var rasterIds = [];
                 $.each(response.features, function() {
                     if (this.attributes.entityid === null) {
                         packageReports.push(this.attributes);
                     }
                     else if (this.attributes.isvector) {
-                        vectorReports.push(this.attributes);
-                        vectorIds.push(this.attributes.entityid);
+                        if (vectorReports[this.attributes.entityid]) {
+                            vectorReports[this.attributes.entityid].push(this.attributes);
+                        }
+                        else {
+                            vectorReports[this.attributes.entityid] = [this.attributes];
+                        }
                     }
                     else if (this.attributes.israster) {
-                        rasterReports.push(this.attributes);
-                        rasterIds.push(this.attributes.entityid);
+                        if (rasterReports[this.attributes.entityid]) {
+                            rasterReports[this.attributes.entityid].push(this.attributes);
+                        }
+                        else {
+                            rasterReports[this.attributes.entityid] = [this.attributes];
+                        }
+
                     }
                 });
                 if (packageReports.length) {
@@ -236,102 +243,122 @@ var GEONIS = (function () {
                         .attr('id', 'package-report-table')
                         .attr('class', 'report-table')
                         .append($('<tr />')
-                            .append($('<th />').text("description"))
-                            .append($('<th />').text("report"))
-                            .append($('<th />').text("status"))
+                            .append($('<th />').text("Task description"))
+                            .append($('<th />').text("Report"))
+                            .append($('<th />').text("Status"))
                         )
                     );
                     $.each(packageReports, function () {
                         var reportText = this.report || '';
                         var statusText = (this.status) ? 'Complete' : 'Error';
                         $('#package-report-table').append($('<tr />')
-                            .append($('<td />').text(this.description))
+                            .append($('<td />').text(this.taskdescription))
                             .append($('<td />').text(reportText))
                             .append($('<td />').text(statusText))
                         );
                     });
                 }
-                if (vectorReports.length) {
-                    vectorIds = vectorIds.getUnique();
+                if (!$.isEmptyObject(vectorReports)) {
+                    var numVectors = Object.keys(vectorReports).length;
                     $('#vector-banner').show();
                     $('#vector-report-header').append($('<h3 />')
-                        .text(vectorIds.length + ' vector ' + pluralize('dataset', vectorIds.length))
+                        .text(numVectors + ' vector ' + pluralize('dataset', numVectors))
                     ).show();
-                    /*var entityname = (biography['entityname'] === 'None') ?
-                        'Untitled ' + spatialType + ' data set' : biography['entityname'];
-                    report = "<span class='entity-name'>" + entityname + "</span> " + report;*/
-                    $('#vector-report').append($('<table />')
-                        .attr('id', 'vector-report-table')
-                        .attr('class', 'report-table')
-                        .append($('<tr />')
-                            .append($('<th />').text("entityname"))
-                            .append($('<th />').text("description"))
-                            .append($('<th />').text("report"))
-                            .append($('<th />').text("status"))
-                        )
-                    );
+                    $('#vector-report').append($('<ul />').attr('id', 'vector-entities'));
                     $.each(vectorReports, function () {
-                        var reportText = this.report || '';
-                        var statusText = (this.status) ? 'Complete' : 'Error';
-                        $('#vector-report-table').append($('<tr />')
-                            .append($('<td />').text(this.entityname))
-                            .append($('<td />').text(this.description))
-                            .append($('<td />').text(reportText))
-                            .append($('<td />').text(statusText))
+                        $('#vector-entities').prepend($('<li />')
+                            .addClass('entity-name')
+                            .attr('id', 'entity-' + this[0].entityid)
+                            .text(this[0].entityname)
+                            .css('cursor', 'pointer')
+                            .click(function (event) {
+                                var isSelected = $(event.target).hasClass('selected');
+                                $('.report-wrapper').hide();
+                                $(event.target).parent().children().removeClass('selected');
+                                if (!isSelected) {
+                                    $('#report-wrapper-' + this.id.split('-')[1]).slideDown('fast');
+                                    $(event.target).addClass('selected');
+                                }
+                            })
                         );
+                        $('#vector-entities').append($('<li />')
+                            .append($('<div />')
+                                .hide()
+                                .addClass('report-wrapper')
+                                .attr('id', 'report-wrapper-' + this[0].entityid)
+                                .append($('<table />')
+                                    .attr('id', 'report-' + this[0].entityid)
+                                    .attr('class', 'report-table')
+                                    .append($('<tr />')
+                                        .append($('<th />').text("Task description"))
+                                        .append($('<th />').text("Report"))
+                                        .append($('<th />').text("Status"))
+                                    )
+                                )
+                            )
+                        );
+                        $.each(this, function () {
+                            var reportText = this.report || '';
+                            var statusText = (this.status) ? 'Complete' : 'Error';
+                            $('#report-' + this.entityid).append($('<tr />')
+                                .append($('<td />').text(this.taskdescription))
+                                .append($('<td />').text(reportText))
+                                .append($('<td />').text(statusText))
+                            );
+                        });
                     });
                 }
-                if (rasterReports.length) {
-                    rasterIds = rasterIds.getUnique();
+                if (!$.isEmptyObject(rasterReports)) {
+                    var numRasters = Object.keys(rasterReports).length;
                     $('#raster-banner').show();
                     $('#raster-report-header').append($('<h3 />')
-                        .text(rasterIds.length + ' raster ' + pluralize('dataset', rasterIds.length))
+                        .text(numRasters + ' raster ' + pluralize('dataset', numRasters))
                     ).show();
-                    $('#raster-report').append($('<table />')
-                        .attr('id', 'raster-report-table')
-                        .attr('class', 'report-table')
-                        .append($('<tr />')
-                            .append($('<th />').text("entityname"))
-                            .append($('<th />').text("description"))
-                            .append($('<th />').text("report"))
-                            .append($('<th />').text("status"))
-                        )
-                    );
-                    $.each(rasterReports, function () {
-                        var reportText = this.report || '';
-                        var statusText = (this.status) ? 'Complete' : 'Error';
-                        $('#raster-report-table').append($('<tr />')
-                            .append($('<td />').text(this.entityname))
-                            .append($('<td />').text(this.description))
-                            .append($('<td />').text(reportText))
-                            .append($('<td />').text(statusText))
+                    $('#raster-report').append($('<ul />').attr('id', 'raster-entities'));
+                    $.each(vectorReports, function () {
+                        $('#raster-entities').prepend($('<li />')
+                            .addClass('entity-name')
+                            .attr('id', 'entity-' + this[0].entityid)
+                            .text(this[0].entityname)
+                            .css('cursor', 'pointer')
+                            .click(function (event) {
+                                var isSelected = $(event.target).hasClass('selected');
+                                $('.report-wrapper').hide();
+                                $(event.target).parent().children().removeClass('selected');
+                                if (!isSelected) {
+                                    $('#report-wrapper-' + this.id.split('-')[1]).slideDown('fast');
+                                    $(event.target).addClass('selected');
+                                }
+                            })
                         );
+                        $('#raster-entities').append($('<li />')
+                            .append($('<div />')
+                                .hide()
+                                .addClass('report-wrapper')
+                                .attr('id', 'report-wrapper-' + this[0].entityid)
+                                .append($('<table />')
+                                    .attr('id', 'report-' + this[0].entityid)
+                                    .attr('class', 'report-table')
+                                    .append($('<tr />')
+                                        .append($('<th />').text("Task description"))
+                                        .append($('<th />').text("Report"))
+                                        .append($('<th />').text("Status"))
+                                    )
+                                )
+                            )
+                        );
+                        $.each(this, function () {
+                            var reportText = this.report || '';
+                            var statusText = (this.status) ? 'Complete' : 'Error';
+                            $('#report-' + this.entityid).append($('<tr />')
+                                .append($('<td />').text(this.taskdescription))
+                                .append($('<td />').text(reportText))
+                                .append($('<td />').text(statusText))
+                            );
+                        });
                     });
                 }
             });
-
-
-            /*"taskreportid": 226,
-            "packageid": "knb-lter-knz.230.2",
-            "entityid": null,
-            "entityname": null,
-            "taskname": "parseEML",
-            "description": "Parse EML",
-            "report": null,
-            "status": 1,
-            "israster": null,
-            "isvector": null,
-            "sourceloc": null*/
-            /*testdata={
-                "taskreportid": 180,
-                "packageid": "knb-lter-knz.200.3",
-                "entityid": null,
-                "entityname": null,
-                "taskname": "parseEML",
-                "description": "Parse EML",
-                "report": null,
-                "status": 1
-            };*/
 
             // Fetch report from database using the Search service, then parse
             // the report, extract information about the report from the
@@ -379,12 +406,12 @@ var GEONIS = (function () {
                 if (parsed && parsed.biography) {
                     appendServerInfo(serverInfo, parsed.biography);
                 }
-            });
+            });*/
             if (pid.split('.')[1]) {
                 $('#package-report').html(
                     "<p style='text-align: center; padding-top: 5px;'>Data set not found.</p>"
                 );
-            }*/
+            }
         }
 
         // Other data sets from the same site

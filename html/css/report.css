@@ -172,7 +172,7 @@ h1 {
 	margin-right: 25px;
 }
 .banner ul li {
-    margin-left: 50px;
+    margin-left: 25px;
     margin-right: 25px;
 }
 .banner a {
@@ -190,6 +190,10 @@ h1 {
 }
 .entity-name {
     font-size: 115%;
+    color: #0B2161;
+}
+.entity-name:hover {
+    background-color: #CEECF5;
 }
 hr {
     border: 0;
@@ -278,7 +282,7 @@ hr {
 }
 #package-report ul li {
     margin-left: 25px;
-    margin-right: 25px;   
+    margin-right: 25px;
 }
 .report-table table {
     margin-left: 25px;
@@ -286,10 +290,14 @@ hr {
 }
 .report-table td, th {
     padding: 10px;
+    text-align: left;
 }
 .report-table th {
     font-size: 110%;
     border-bottom: 1px solid #ccc;
+}
+.report-table td {
+    font-size: 100%;
 }
 
 /* push */
@@ -471,6 +479,9 @@ hr {
 }
 #lter-links li.selected {
 	background-color: #CEECF5;
+}
+.selected {
+    background-color: #CEECF5;
 }
 
 .leftbar-menu {

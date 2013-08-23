@@ -2184,10 +2184,10 @@ class UpdateMXDs(ArcpyTool):
             cur.execute(sql)
             cur.execute("CREATE INDEX packageid_idx ON " + schema + "viewreport (packageid)")
             cur.execute("CREATE INDEX entityid_idx ON " + schema + "viewreport (entityid)")
-            cur.execute(
-                "CREATE UNIQUE INDEX entityname_taskname_idx ON " + schema +
-                "viewreport (entityname, taskname)"
-            )
+            #cur.execute(
+            #    "CREATE UNIQUE INDEX entityname_taskname_idx ON " + schema +
+            #    "viewreport (entityname, taskname)"
+            #)
 
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self, pkgId):
