@@ -386,9 +386,17 @@ class Setup(ArcpyTool):
                     self.logger.logMessage(
                         WARN,
                         ("Could not get exclusive schema lock on %s, geodatabase table "
-                        "%s has not been cleared.") % (getConfigValue('geodatabase'), siteWF)
+                        "%s has not been cleared; disconnecting all users from the "
+                        "database and retrying") % (getConfigValue('geodatabase'), siteWF)
                     )
-                raise(Exception)
+                    arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")                
+                    arcpy.Delete_management(geodbTable)
+                    self.logger.logMessage(
+                        INFO,
+                        "Dropped " + geodbTable + " from geodatabase"
+                    )
+                else:
+                    raise(Exception)
 
         # Delete rows from the package table
         cur.execute("DELETE FROM package WHERE packageid = %s", (package, ))
