@@ -1673,7 +1673,6 @@ class LoadVectorTypes(ArcpyTool):
     @errHandledWorkflowTask(taskName="Load shapefile")
     def loadShapefile(self, scope, name, path, **kwargs):
         """call feature class to feature class to copy shapefile to geodatabase"""
-        #pdb.set_trace()
         geodatabase = getConfigValue("geodatabase")
         self.logger.logMessage(INFO, "Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
         #if no dataset, make one
@@ -1688,6 +1687,7 @@ class LoadVectorTypes(ArcpyTool):
                 out_name=name
             )
         except Exception as err:
+            pdb.set_trace()
             # Looking for ERROR 000361: The name starts with an invalid character
             # This is usually because the shapefile starts with a number,
             # so workaround by prefixing 's' to the shapefile name
