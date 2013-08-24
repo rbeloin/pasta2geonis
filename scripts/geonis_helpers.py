@@ -8,13 +8,11 @@ Created on Jan 28, 2013
 @see https://nis.lternet.edu/NIS/
 '''
 import os
-from geonis_pyconfig import GeoNISDataType, smtpfile, AllRasterTypes
-from geonis_postgresql import getConfigValue
+from geonis_pyconfig import GeoNISDataType, smtpfile#, AllRasterTypes
 from functools import partial
 import httplib, urllib, json
 import smtplib
 from email.mime.text import MIMEText
-from logging import WARN
 import pdb
 
 def fileExtensionMatch(extensions, pathToFile):
@@ -23,7 +21,7 @@ def fileExtensionMatch(extensions, pathToFile):
 
 '''
 File extension enough to identify a spatial data file
-'''
+
 
 isShapefile = partial(fileExtensionMatch, GeoNISDataType.SHAPEFILE)
 isKML = partial(fileExtensionMatch, GeoNISDataType.KML)
@@ -34,21 +32,11 @@ isJpegWorld = partial(fileExtensionMatch, GeoNISDataType.JPGW)
 isEsriE00 = partial(fileExtensionMatch, GeoNISDataType.ESRIE00)
 isProjection = partial(fileExtensionMatch, GeoNISDataType.PRJ)
 isIdrisiRaster = partial(fileExtensionMatch, GeoNISDataType.RST)
-
-# Set up allowed raster extensions as a dictionary
-# Should all the extensions be set up this way...?
-checkFileTypes = {}
-for fileType in AllRasterTypes.__dict__.items():
-    if not fileType[0].startswith('__'):
-        checkFileTypes[fileType[0]] = partial(fileExtensionMatch, fileType[1])
-
 '''
-Bit more work needed for some
-'''
+
 def isFileGDB(path):
     '''Returns True if directory ending with ".gdb" '''
     return (os.path.isdir(path) and path[-4:] == '.gdb')
-
 
 def isASCIIRaster(pathToFile):
     ''' Checks for ascii file extension, peeks at first two lines comparing
@@ -71,6 +59,18 @@ def isRasterDS(path):
             return True
     return False
 
+# Set up allowed extensions as a dictionary
+checkFileTypes = {}
+for fileType in GeoNISDataType.__dict__.items():
+    if fileType[0] == 'FILEGEODB':
+        checkFileTypes[fileType[0]] = isFileGDB
+    elif fileType[0] == 'ASCIIRASTER':
+        checkFileTypes[fileType[0]] = isASCIIRaster
+    elif fileType[0] == 'SPATIALRASTER':
+        checkFileTypes[fileType[0]] = isRasterDS
+    else:
+        if not fileType[0].startswith('__'):
+            checkFileTypes[fileType[0]] = partial(fileExtensionMatch, fileType[1])
 
 def siteFromId(packageId):
     """ returns  tuple, (site, id, rev) of the package id """

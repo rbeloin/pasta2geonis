@@ -315,7 +315,7 @@ var GEONIS = (function () {
                         .text(numRasters + ' raster ' + pluralize('dataset', numRasters))
                     ).show();
                     $('#raster-report').append($('<ul />').attr('id', 'raster-entities'));
-                    $.each(vectorReports, function () {
+                    $.each(rasterReports, function () {
                         $('#raster-entities').prepend($('<li />')
                             .addClass('entity-name')
                             .attr('id', 'entity-' + this[0].entityid)

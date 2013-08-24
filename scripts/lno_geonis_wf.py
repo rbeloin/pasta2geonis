@@ -1272,7 +1272,8 @@ class CheckSpatialData(ArcpyTool):
         #array of tuples, one of which we will return
         allPotentialFiles = []
         #special handling - if we have interchange file, E00, then import it, reset the hint, and continue
-        interchangeF = [f for f in contents if isEsriE00(f)]
+        #interchangeF = [f for f in contents if isEsriE00(f)]
+        interchangeF = [f for f in contents if checkFileTypes['ESRIE00'](f)]
         if len(interchangeF):
             #reset the hint
             if hint == GeoNISDataType.ESRIE00:
@@ -1286,6 +1287,7 @@ class CheckSpatialData(ArcpyTool):
             contents = [os.path.join(apackageDir,item) for item in os.listdir(apackageDir)]
         #gather up all files and folders that fit some description of spatial data
         for afile in (f for f in contents if os.path.isfile(f)):
+            '''
             if isShapefile(afile):
                 allPotentialFiles.append((afile,GeoNISDataType.SHAPEFILE))
             elif isKML(afile):
@@ -1305,9 +1307,17 @@ class CheckSpatialData(ArcpyTool):
             elif isIdrisiRaster(afile):
                 allPotentialFiles.append((afile, GeoNISDataType.RST))
             else:
+            '''
+            if isASCIIRaster(afile):
+                allPotentialFiles.append((afile, GeoNISDataType.ASCIIRASTER))
+            else:
                 for fileType, isFileType in checkFileTypes.items():
+                    if fileType == 'NA':
+                        continue
                     if isFileType(afile):
-                        allPotentialFiles.append((afile, fileType))
+                        allPotentialFiles.append(
+                            (afile, getattr(GeoNISDataType, fileType))
+                        )
                         
         for afolder in (f for f in contents if os.path.isdir(f)):
             if isFileGDB(afolder):
@@ -2104,7 +2114,7 @@ class UpdateMXDs(ArcpyTool):
         geodatabase = getConfigValue("geodatabase")
         feature = geodatabase + os.sep + store
         scratchFld = arcpy.env.scratchFolder
-        arcpy.MakeFeatureLayer_management(in_features = feature, out_layer = layerName)
+        arcpy.MakeFeatureLayer_management(in_features=feature, out_layer=layerName)
         lyrFile = scratchFld + os.sep + layerName + ".lyr"
         arcpy.SaveToLayerFile_management(layerName, lyrFile)
         arcpy.mapping.AddLayer(layersFrame, arcpy.mapping.Layer(lyrFile))
@@ -2112,7 +2122,9 @@ class UpdateMXDs(ArcpyTool):
         for layer in arcpy.mapping.ListLayers(mxd, '', layersFrame):
             if layer.name == layerName:
                 layer.description = workingData['entityDesc']
-                layer.name += ": " + insertObj['title'] # change to entity-level description??
+                layer.name += ": " + \
+                    workingData['entityDesc'][:100].replace("'", '"').replace('"', '&quot;')
+                #insertObj['title'] # change to entity-level description??
                 layerName = layer.name
         mxd.save()
         workingData["layerName"] = layerName
