@@ -44,9 +44,8 @@ class EvtLog(object):
             self.evtLogger.addHandler(logging.StreamHandler())
         self.evtLogger.setLevel(defaultLoggingLevel)
 
-
     @staticmethod
-    def getLogger(name = "geonisWF", fileorpath = None, showMessages = False):
+    def getLogger(name="geonisWF", fileorpath=None, showMessages=False):
         if not EvtLog.singleinstance:
             EvtLog.singleinstance = EvtLog(name, fileorpath, showMessages)
             if fileorpath:
@@ -145,19 +144,16 @@ def errHandledWorkflowTask(taskName=""):
 
 # Add entry to packagereport/entityreport tables
 def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='ok', logger=None):
-
-    # Add entries to the report and taskreport tables
+    """
+    Add entry to report and taskreport tables, for presentation via
+    the GeoNIS web service.
+    """
     try:
         with cursorContext(logger) as cur:
 
             # If we didn't receive an value for the entity parameter, then this is a
             # package-level report
             if entity is None:
-                #if logger:
-                #    logger.logMessage(
-                #        logging.DEBUG,
-                #        "%s: editing package report for %s" % (taskName, pkgId)
-                #    )
 
                 # If an entry already exists in the report table for thie packageId,
                 # then all we need to do is update the taskreport table
@@ -211,11 +207,6 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
 
             # Otherwise, we need to add a report on a specific entity
             else:
-                #if logger:
-                #    logger.logMessage(
-                #        logging.DEBUG,
-                #        "%s: editing entity report for %s (%s)" % (taskName, pkgId, entity)
-                #    )
 
                 # If an entry already exists in the report table (for this packageId and
                 # entityName combination), then all we need to do is update the taskreport
@@ -236,8 +227,6 @@ def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='o
                         "reportid = %s AND taskname = %s"
                     )
                     cur.execute(sql, (reportId, taskName))
-                    #if taskName == 'addVectorData':
-                    #    pdb.set_trace()
                     if cur.fetchone()[0] > 0:
                         sql = (
                             "UPDATE taskreport SET description = %(description)s, "
