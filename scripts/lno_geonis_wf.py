@@ -1073,7 +1073,7 @@ class UnpackPackages(ArcpyTool):
                             logger=self.logger
                         )
                         continue
-                    taskDesc = "Unpack data package directory " + dir
+                    taskDesc = "Unpack data package directory"
                     taskName = 'unpackEntity'
 
                     # Create row in entity table if it doesn't already exist for this
@@ -1480,7 +1480,7 @@ class CheckSpatialData(ArcpyTool):
             for dataDir in self.inputDirs:
                 self.logger.logMessage(INFO, "Working in: " + dataDir)
                 taskName = 'checkSpatialData'
-                taskDesc = 'Check spatial data in ' + dataDir
+                taskDesc = 'Check spatial data'
                 try:
                     status = "Entering data checks."
                     emldata = readWorkingData(dataDir, self.logger)
