@@ -1695,7 +1695,10 @@ class LoadVectorTypes(ArcpyTool):
     def loadShapefile(self, scope, name, path, **kwargs):
         """call feature class to feature class to copy shapefile to geodatabase"""
         geodatabase = getConfigValue("geodatabase")
-        self.logger.logMessage(INFO, "Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
+        self.logger.logMessage(
+            INFO,
+            "Loading %s to %s/%s as %s" % (path, geodatabase, scope, name)
+        )
         #if no dataset, make one
         if not arcpy.Exists(os.path.join(geodatabase,scope)):
             arcpy.CreateFeatureDataset_management(out_dataset_path=geodatabase,
@@ -1708,19 +1711,43 @@ class LoadVectorTypes(ArcpyTool):
                 out_name=name
             )
         except Exception as err:
-            pdb.set_trace()
+
+            # ERROR 999999: Failed to execute FeatureClassToFeatureClass usually
+            # means that, for some mysterious reason, Arc doesn't like the name
+            # we've assigned to the dataset.  Pick a new one, and try again...
+            if err[0].find('ERROR 999999') != -1:
+                self.logger.logMessage(
+                    WARN,
+                    ("Encountered error 999999, which usually means that Arc "
+                    "doesn't like our proposed feature class name %s, "
+                    "attempting to work around by adding a _RENAME "
+                    "suffix") % name
+                )
+                name += '_RENAME'
+
             # Looking for ERROR 000361: The name starts with an invalid character
             # This is usually because the shapefile starts with a number,
             # so workaround by prefixing 's' to the shapefile name
             if err[0].find('ERROR 000361') != -1:
-                self.logger.logMessage(WARN, "Encountered ERROR 000361, attempting workaround")
+                self.logger.logMessage(
+                    WARN,
+                    ("Encountered error 000361, usually indicates that the name "
+                    "starts with a number (which is not allowed), attempting "
+                    "to work around by prefixing 's' to the shapefile name")
+                )
                 name = 's' + name
-            self.logger.logMessage(INFO, "Loading %s to %s/%s as %s\n" % (path, geodatabase, scope, name))
+
+            # Retry FeatureClassToFeatureClass conversion...
+            self.logger.logMessage(
+                INFO,
+                "Loading %s to %s/%s as %s" % (path, geodatabase, scope, name)
+            )
             arcpy.FeatureClassToFeatureClass_conversion(
                 in_features=path,
                 out_path=os.path.join(geodatabase, scope),
                 out_name=name
             )
+
         return geodatabase + os.sep + scope + os.sep + name
 
     @errHandledWorkflowTask(taskName="Load KML")
