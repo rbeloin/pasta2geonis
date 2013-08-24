@@ -1687,7 +1687,7 @@ class LoadVectorTypes(ArcpyTool):
                 out_name=name
             )
         except Exception as err:
-            pdb.set_trace()
+            #pdb.set_trace()
             # Looking for ERROR 000361: The name starts with an invalid character
             # This is usually because the shapefile starts with a number,
             # so workaround by prefixing 's' to the shapefile name
@@ -1757,7 +1757,6 @@ class LoadVectorTypes(ArcpyTool):
             loadedFeatureClass
         )
 
-
     @errHandledWorkflowTask(taskName="Update entity table")
     def updateTable(self, workDir, loadedFeatureClass, **kwargs):
         if not loadedFeatureClass:
@@ -1765,7 +1764,7 @@ class LoadVectorTypes(ArcpyTool):
         scope_data = os.sep.join(loadedFeatureClass.split(os.sep)[-2:])
         stmt = "UPDATE entity SET storage = %s WHERE packageid = %s AND entityname = %s"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, (scope_data, kwargs['pkgId'], kwargs['entityName']))
+            cur.execute(stmt, (scope_data, kwargs['packageId'], kwargs['entityName']))
 
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
@@ -1785,7 +1784,7 @@ class LoadVectorTypes(ArcpyTool):
                 if getConfigValue("schema").endswith("_d"):
                     fullObjectName = fullObjectName + "_d"
                 scopeWithSuffix = siteId + getConfigValue("datasetscopesuffix")
-                if 'shapefile' in datatype:
+                if 'SHAPEFILE' in datatype:
 
                     # arcpy.FeatureClassToFeatureClass_conversion returns an ERROR 999999 if
                     # it receives a fullObjectName that it doesn't like (e.g. GIS300_knz_d
@@ -1816,7 +1815,7 @@ class LoadVectorTypes(ArcpyTool):
                             )
 
                     status = "Loaded shapefile"
-                elif 'kml' in datatype:
+                elif 'KML' in datatype:
                     loadedFeatureClass = self.loadKml(
                         scopeWithSuffix,
                         fullObjectName,
@@ -1825,7 +1824,7 @@ class LoadVectorTypes(ArcpyTool):
                         entityName=entityName
                     )
                     status = "Loaded from KML"
-                elif 'geodatabase' in datatype:
+                elif 'FILEGEODB' in datatype:
                     #TODO: copy vector from file geodatabase, for now, leave dir behind
                     status = "Loaded from file geodatabase"
                     continue
@@ -2024,11 +2023,13 @@ class LoadRasterTypes(ArcpyTool):
 
                 # If there's a 'type' tag in the EML, then use that as a description of the data;
                 # otherwise, just make sure it's raster data
-                if 'type' in emldata.keys():
-                    datatype = emldata['type']
-                elif 'spatialType' in emldata.keys() and emldata['spatialType'] == 'spatialRaster':
-                    datatype = "raster dataset"
-                else:
+                #if 'type' in emldata.keys():
+                datatype = emldata['type']
+                #elif 'spatialType' in emldata.keys() and emldata['spatialType'] == 'spatialRaster':
+                #    datatype = "raster dataset"
+                #else:
+                if datatype in ['SHAPEFILE', 'FILEGEODB', 'KML']:
+                    self.logger.logMessage(INFO, "Skipping " + datatype + " vector dataset")
                     self.outputDirs.append(dir)
                     continue
                 entityName = emldata["entityName"]
@@ -2150,8 +2151,11 @@ class UpdateMXDs(ArcpyTool):
         for layer in arcpy.mapping.ListLayers(mxd, '', layersFrame):
             if layer.name == layerName:
                 layer.description = workingData['entityDesc']
+                shortEntityDesc = workingData['entityDesc'] \
+                    if len(workingData['entityDesc']) < 100 \
+                    else workingData['entityDesc'][:100] + '...'
                 layer.name += ": " + \
-                    workingData['entityDesc'][:100].replace("'", '"').replace('"', '&quot;')
+                    shortEntityDesc.replace("'", '"').replace('"', '&quot;')
                 #insertObj['title'] # change to entity-level description??
                 layerName = layer.name
         mxd.save()
