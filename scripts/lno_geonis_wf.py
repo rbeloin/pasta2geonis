@@ -1826,9 +1826,8 @@ class LoadVectorTypes(ArcpyTool):
                 if 'SHAPEFILE' in datatype:
 
                     # arcpy.FeatureClassToFeatureClass_conversion returns an ERROR 999999 if
-                    # it receives a fullObjectName that it doesn't like (e.g. GIS300_knz_d
-                    # from the knb-lter-knz.230.2 data set).
-                    # Add an extra _RENAME to the end as a workaround...
+                    # it receives a fullObjectName that it doesn't like --
+                    # try adding an extra _RENAME to the end as a workaround.
                     try:
                         loadedFeatureClass = self.loadShapefile(
                             scopeWithSuffix,
