@@ -154,19 +154,16 @@ class Setup(ArcpyTool):
                     for aTable in arcpy.mapping.ListTableViews(mxd):
                         arcpy.SelectLayerByAttribute_management(aTable, 'CLEAR_SELECTION')
 
-                    # Only drop layers listed in entity table so we don't remove the boundary layer
+                    # Drop everything from the map except the boundary layer
                     cur.execute(
                         "SELECT layername FROM entity WHERE packageid LIKE %s",
                         (srch, )
                     )
                     entityLayerList = [row[0] for row in cur.fetchall() if row[0] is not None]
-
-                    # First drop all layers from the MXD file and save it
                     layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
                     mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
                     mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
                     for layer in mapLayerList:
-                        #if layer in entityLayerList:
                         if layer != 'LTER site boundary':
                             self.logger.logMessage(INFO, "Removing layer " + layer)
                             layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
@@ -484,9 +481,9 @@ class Setup(ArcpyTool):
         for p in pkgArray:
             self.logger.logMessage(DEBUG, "Found package " + p.values()[0])
         self.sitesAlreadyChecked = []
-        allMapServices = [j.split('_')[0] for j in \
-            os.listdir(getConfigValue('pathtomapdoc') + os.sep + 'servicedefs') \
-            if j.endswith('.sd')]
+        #allMapServices = [j.split('_')[0] for j in \
+        #    os.listdir(getConfigValue('pathtomapdoc') + os.sep + 'servicedefs') \
+        #    if j.endswith('.sd')]
         for i in xrange(2):
             try:
                 for pkgset in pkgArray:
@@ -2514,37 +2511,41 @@ class RefreshMapService(ArcpyTool):
             if err[0].find('ERROR 001272') != -1 and err[0].find('codes = 3') != -1:
                 self.logger.logMessage(WARN, "Encountered ERROR 001272, attempting workaround")
 
-                # Only drop layers listed in entity table so we don't remove the base layer
+                # Kill all ArcSDE connections
+                self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
+                arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
+
+                # Drop everything from the map except the boundary layer
+                srch = '%' + mxdname.split('.')[0] + '%'
                 with cursorContext(self.logger) as cur:
                     cur.execute(
                         "SELECT layername FROM entity WHERE packageid LIKE %s",
-                        ('%' + mxdname.split('.')[0] + '%', )
+                        (srch, )
                     )
                     entityLayerList = [row[0] for row in cur.fetchall() if row[0] is not None]
+                    layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                    mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                    mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                    for layer in mapLayerList:
+                        if layer != 'LTER site boundary':
+                            self.logger.logMessage(INFO, "Removing layer " + layer)
+                            layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                            arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                        else:
+                            self.logger.logMessage(INFO, "Skipping layer " + layer)
+                    mxd.save()
+                    del layersFrame
 
-                # First drop all layers from the MXD file and save it
-                layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
-                mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
-                mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-                for layer in mapLayerList:
-                    if layer in entityLayerList:
-                        self.logger.logMessage(INFO, "Removing layer " + layer)
-                        layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
-                        arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-                    else:
-                        self.logger.logMessage(INFO, "Skipping layer " + layer)
-                mxd.save()
-                del layersFrame
-
-                # Now clear the layers out of the entity and geonis_layer tables so they match
+                # Now clear the layers out of the entity and geonis_layer tables
                 with cursorContext(self.logger) as cur:
                     cur.execute(
                         "SELECT reportid FROM report WHERE packageid LIKE %s",
-                        ('%' + mxdname.split('.')[0] + '%', )
+                        (srch, )
                     )
                     reportIds = tuple([row[0] for row in cur.fetchall()])
                     cur.execute(
-                        "DELETE FROM taskreport WHERE reportid IN %s", (reportIds, )
+                        "DELETE FROM taskreport WHERE reportid IN %s",
+                        (reportIds, )
                     )
                     self.logger.logMessage(
                         INFO,
@@ -2552,7 +2553,7 @@ class RefreshMapService(ArcpyTool):
                     )
                     cur.execute(
                         "DELETE FROM report WHERE packageid LIKE %s",
-                        ('%' + mxdname.split('.')[0] + '%', )
+                        (srch, )
                     )
                     self.logger.logMessage(
                         INFO,
@@ -2560,7 +2561,7 @@ class RefreshMapService(ArcpyTool):
                     )
                     cur.execute(
                         "DELETE FROM geonis_layer WHERE packageid LIKE %s",
-                        ('%' + mxdname.split('.')[0] + '%', )
+                        (srch, )
                     )
                     self.logger.logMessage(
                         INFO,
@@ -2568,15 +2569,17 @@ class RefreshMapService(ArcpyTool):
                     )
                     cur.execute(
                         "DELETE FROM entity WHERE packageid LIKE %s",
-                        ('%' + mxdname.split('.')[0] + '%', )
+                        (srch, )
                     )
                     self.logger.logMessage(
                         INFO,
                         str(cur.rowcount) + " rows deleted from entity"
                     )
 
-            # Try to stage the service again
-            arcpy.StageService_server(sdDraft)
+                # Try to stage the service again
+                arcpy.StageService_server(sdDraft)
+            else:
+                raise(Exception)
 
         # by default, writes SD file to same loc as draft, then DELETES DRAFT
         if os.path.exists(sdFile):
