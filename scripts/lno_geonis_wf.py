@@ -109,12 +109,6 @@ class Setup(ArcpyTool):
         self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
         arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
 
-        # Drop denormalized report table (if it exists)
-        #schema = "geonis." + getConfigValue('schema') + "."
-        #with cursorContext(self.logger) as cur:
-        #    self.logger.logMessage(WARN, "Dropping " + schema + "viewreport table")
-        #    cur.execute("DROP TABLE IF EXISTS " + schema + "viewreport")
-
         if type(self.scope) != list:
             self.scope = [self.scope]
         for site in self.scope:
@@ -530,14 +524,13 @@ class Setup(ArcpyTool):
             cur.execute(stmt2)
             if stmt3 is not None:
                 cur.execute(stmt3)
-
         if hasattr(self, 'flush') and self.flush:
             self.flushData()
             return
-
         limitsParam = self.getParamAsText(parameters,4)
         if limitsParam and limitsParam != '' and limitsParam != '#':
             valsArr = []
+
             # Insert scope and ID values manually for testing
             if hasattr(self, 'setScopeIdManually') and self.setScopeIdManually:
 
@@ -578,7 +571,6 @@ class Setup(ArcpyTool):
                     # Otherwise, only look up a single id
                     else:
                         valsArr.append({'inc': 'knb-lter-' + s + '.' + str(self.id)})
-
             else:
                 limitStrings = limitsParam.split(';')
                 limits = [lim.split(' ') for lim in limitStrings]
@@ -603,14 +595,12 @@ class Setup(ArcpyTool):
                             idlist.append(ids)
                     for idn in idlist:
                         valsArr.append({'inc': '%s.%s' % (scope, idn)})
-
             valsTuple = tuple(valsArr)
             with cursorContext() as cur:
                 stmt3 = "insert into limit_identifier values(%(inc)s);"
                 cur.executemany(stmt3, valsTuple)
             if parameters[5].value:
                 self.cleanUp(valsArr)
-
 
 
 ## *****************************************************************************
@@ -1838,8 +1828,7 @@ class LoadVectorTypes(ArcpyTool):
                     # arcpy.FeatureClassToFeatureClass_conversion returns an ERROR 999999 if
                     # it receives a fullObjectName that it doesn't like (e.g. GIS300_knz_d
                     # from the knb-lter-knz.230.2 data set).
-                    # Since this seems deterministic, just add an extra _d to the end if
-                    # loadShapefile() fails as a workaround...
+                    # Add an extra _RENAME to the end as a workaround...
                     try:
                         loadedFeatureClass = self.loadShapefile(
                             scopeWithSuffix,
@@ -1852,17 +1841,16 @@ class LoadVectorTypes(ArcpyTool):
                         if err[0].find('ERROR 999999') != -1:
                             loadedFeatureClass = self.loadShapefile(
                                 scopeWithSuffix,
-                                fullObjectName + '_d',
+                                fullObjectName + '_RENAME',
                                 datafilePath,
                                 packageId=pkgId,
                                 entityName=entityName
                             )
                             self.logger.logMessage(
                                 WARN,
-                                "Added extra _d suffix in geodatabase due to "
+                                "Added _RENAME suffix in geodatabase due to "
                                 + fullObjectName + " returning an error."
                             )
-
                     status = "Loaded shapefile"
                 elif 'KML' in datatype:
                     loadedFeatureClass = self.loadKml(
@@ -2503,14 +2491,46 @@ class RefreshMapService(ArcpyTool):
 
         # Check for ERROR 001272: Analyzer errors were encountered (codes = 3, 3, 3, ...),
         # which in ArcCatalog is reported as "the base table definition string is invalid"
-        # May be caused when map layers do not correspond to db entries.
-        # Workaround: drop all non-base layers from the map if this error is encountered.
         try:
             arcpy.StageService_server(sdDraft)
         except Exception as err:
             if err[0].find('ERROR 001272') != -1 and err[0].find('codes = 3') != -1:
-                self.logger.logMessage(WARN, "Encountered ERROR 001272, attempting workaround")
+                self.logger.logMessage(WARN, "Encountered ERROR 001272, flushing data")
+                srch = '%' + mxdname.split('.')[0] + '%'
+                with cursorContext(self.logger) as cur:
+                    layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
+                    mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
+                    mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
+                    for layer in mapLayerList:
+                        if layer != 'LTER site boundary':
+                            self.logger.logMessage(INFO, "Removing layer " + layer)
+                            layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
+                            arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
+                        else:
+                            self.logger.logMessage(INFO, "Skipping layer " + layer)
+                    mxd.save()
+                    del layersFrame
+                if os.path.exists(sdFile):
+                    rmtree(sdFile)
+                arcpy.StageService_server(self.draftSD(mxdname))
+                '''
+                setup = Setup()
+                setup._isRunningAsTool = False
+                setup.setScopeIdManually = True
+                setup.scope = mxdname.split('.')[0]
+                setup.id = 'all'
+                setup.flush = True
+                params = setup.getParameterInfo()
+                params[0].value = True
+                params[1].value = None
+                params[2].value = True if getConfigValue('schema') == '_test' else False
+                params[3].value = True if getConfigValue('pastaurl') == 'https://pasta-s.lternet.edu' else False
+                params[4].value = None
+                params[5].value = True
+                setup.execute(params, [])
+                sys.exit("Completed refresh via flush, exiting.")
 
+                
                 # Kill all ArcSDE connections
                 self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
                 arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
@@ -2575,9 +2595,9 @@ class RefreshMapService(ArcpyTool):
                         INFO,
                         str(cur.rowcount) + " rows deleted from entity"
                     )
-
                 # Try to stage the service again
                 arcpy.StageService_server(sdDraft)
+                '''
             else:
                 raise(Exception)
 
