@@ -141,7 +141,7 @@ class GeoNISDataType:
     BT = ('.bt',)
     BMP = ('.bmp',)
     BSB = ('.bsb', '.cap', '.kap')
-    RAW = ('.raw')
+    RAW = ('.raw',)
     DTED = ('.dt0', '.dt1', '.dt2')
     ELAS = ('.elas',)
     ECW = ('.ecw',)

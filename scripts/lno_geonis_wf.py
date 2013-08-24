@@ -1233,7 +1233,11 @@ class CheckSpatialData(ArcpyTool):
             self.logger.logMessage(INFO, "Found spatialRaster tag")
             retval = GeoNISDataType.SPATIALRASTER
         else:
-            self.logger.logMessage(WARN,"EML spatial type is %s, should be either 'spatialVector' or 'spatialRaster'." % (spatialTypeItem,))
+            self.logger.logMessage(
+                WARN,
+                ("EML spatial type is %s, should be either 'spatialVector' "
+                "or 'spatialRaster'.") % (spatialTypeItem, )
+            )
             raise Exception("EML spatialType not found.")
         # now see if can find out more specifically
         entDescStr = emldata["entityDesc"]
@@ -1243,7 +1247,8 @@ class CheckSpatialData(ArcpyTool):
             GeoNISDataType.FILEGEODB,
         ]
         acceptedRasterTypes = [getattr(GeoNISDataType, j) \
-            for j in checkFileTypes.keys() if j not in acceptedVectorTypes]
+            for j in checkFileTypes.keys() \
+            if j not in acceptedVectorTypes and j != 'NA']
         if retval == GeoNISDataType.SPATIALVECTOR:
             for fileext in acceptedVectorTypes:
                 for ext in fileext:
@@ -1521,6 +1526,7 @@ class CheckSpatialData(ArcpyTool):
                         if len(datafilename) > 0:
                             datafilename = stringToValidName(datafilename, max=31)
                             emldata["objectName"] = datafilename
+                    '''
                     if spatialType == GeoNISDataType.KML:
                         self.logger.logMessage(INFO, "kml found")
                         emldata["type"] = "kml"
@@ -1544,11 +1550,15 @@ class CheckSpatialData(ArcpyTool):
                         emldata["type"] = "raster dataset"
                     if spatialType == GeoNISDataType.SPATIALVECTOR:
                         emldata["type"] = "vector"
-                    if 'type' in emldata.keys():
+                    '''
+                    if spatialType == GeoNISDataType.ESRIE00:
+                        self.logger.logMessage(WARN, "arcinfo e00 reported. Should have been unpacked.")
+                    try:
+                        emldata['type'] = allDataTypes.keys()[allDataTypes.values().index(spatialType)]
                         status = "File type assigned"
                         taskReport = "File type assigned: " + emldata['type']
                         taskStatus = 'ok'
-                    else:
+                    except:
                         taskReport = "Unable to assign file type"
                         taskStatus = 'error'
 
@@ -1709,7 +1719,11 @@ class LoadVectorTypes(ArcpyTool):
         # load resulting feature classes out of fgdb just created
         fgdb = os.path.join(os.path.dirname(path), name + '.gdb')
         arcpy.env.workspace = fgdb
-        fclasses = arcpy.ListFeatureClasses(wild_card = '*', feature_type = '', feature_dataset = "Placemarks")
+        fclasses = arcpy.ListFeatureClasses(
+            wild_card='*',
+            feature_type='',
+            feature_dataset="Placemarks"
+        )
         if fclasses:
             feature = fclasses[0]
             fcpath = fgdb + os.sep + "Placemarks" + os.sep + feature
@@ -1720,7 +1734,6 @@ class LoadVectorTypes(ArcpyTool):
                                                         out_name = outF)
             return outDS + os.sep + outF
         return None
-
 
     @errHandledWorkflowTask(taskName="Merge metadata")
     def mergeMetadata(self, workDir, loadedFeatureClass, **kwargs):
@@ -1733,18 +1746,26 @@ class LoadVectorTypes(ArcpyTool):
             return
         arcpy.env.workspace = workDir
         pathToStylesheets = getConfigValue("pathtostylesheets")
-        result = arcpy.XSLTransform_conversion(loadedFeatureClass, pathToStylesheets + os.sep + "metadataMerge.xsl", "merged_metadata.xml", xmlSuppFile)
-        result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", loadedFeatureClass)
+        result = arcpy.XSLTransform_conversion(
+            loadedFeatureClass,
+            pathToStylesheets + os.sep + "metadataMerge.xsl",
+            "merged_metadata.xml",
+            xmlSuppFile
+        )
+        result2 = arcpy.MetadataImporter_conversion(
+            "merged_metadata.xml",
+            loadedFeatureClass
+        )
 
 
     @errHandledWorkflowTask(taskName="Update entity table")
-    def updateTable(self, workDir, loadedFeatureClass, pkid, entName, **kwargs):
+    def updateTable(self, workDir, loadedFeatureClass, **kwargs):
         if not loadedFeatureClass:
             return
         scope_data = os.sep.join(loadedFeatureClass.split(os.sep)[-2:])
-        stmt = "UPDATE entity set storage = %s WHERE packageid = %s and entityname = %s;"
+        stmt = "UPDATE entity SET storage = %s WHERE packageid = %s AND entityname = %s"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, (scope_data, pkid, entName))
+            cur.execute(stmt, (scope_data, kwargs['pkgId'], kwargs['entityName']))
 
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
@@ -1823,8 +1844,6 @@ class LoadVectorTypes(ArcpyTool):
                 self.updateTable(
                     dir,
                     loadedFeatureClass,
-                    pkgId,
-                    entName=entityName,
                     packageId=pkgId,
                     entityName=entityName
                 )
@@ -1993,7 +2012,7 @@ class LoadRasterTypes(ArcpyTool):
     def execute(self, parameters, messages):
         super(LoadRasterTypes, self).execute(parameters, messages)
         #TODO: add file gdb to list, and handle. Could be mosaic ds in file gdb, e.g.
-        self.supportedTypes = ("tif", "ascii raster", "coverage", "jpg", "raster dataset")
+        #self.supportedTypes = ("tif", "ascii raster", "coverage", "jpg", "raster dataset")
         for dir in self.inputDirs:
             datafilePath, pkgId, datatype, entityName = ("" for i in range(4))
             loadedRaster = None
@@ -2010,13 +2029,14 @@ class LoadRasterTypes(ArcpyTool):
                 elif 'spatialType' in emldata.keys() and emldata['spatialType'] == 'spatialRaster':
                     datatype = "raster dataset"
                 else:
-                    datatype = "vector"
+                    self.outputDirs.append(dir)
+                    continue
                 entityName = emldata["entityName"]
                 objectName = emldata["objectName"]
                 #check for supported type
-                if not self.isSupported(datatype, packageId=pkgId, entityName=entityName):
-                    self.outputDirs.append(dir)
-                    continue
+                #if not self.isSupported(datatype, packageId=pkgId, entityName=entityName):
+                #    self.outputDirs.append(dir)
+                #    continue
                 siteId, n, m = siteFromId(pkgId)
                 rawDataLoc, mosaicDS = self.prepareStorage(
                     siteId,
@@ -2444,9 +2464,8 @@ class RefreshMapService(ArcpyTool):
         # which in ArcCatalog is reported as "the base table definition string is invalid"
         # May be caused when map layers do not correspond to db entries.
         # Workaround: drop all non-base layers from the map if this error is encountered.
-        #try:
-        arcpy.StageService_server(sdDraft)
-        """
+        try:
+            arcpy.StageService_server(sdDraft)
         except Exception as err:
             if err[0].find('ERROR 001272') != -1 and err[0].find('codes = 3') != -1:
                 self.logger.logMessage(WARN, "Encountered ERROR 001272, attempting workaround")
@@ -2476,6 +2495,26 @@ class RefreshMapService(ArcpyTool):
                 # Now clear the layers out of the entity and geonis_layer tables so they match
                 with cursorContext(self.logger) as cur:
                     cur.execute(
+                        "SELECT reportid FROM report WHERE packageid LIKE %s",
+                        ('%' + mxdname.split('.')[0] + '%', )
+                    )
+                    reportIds = tuple([row[0] for row in cur.fetchall()])
+                    cur.execute(
+                        "DELETE FROM taskreport WHERE reportid IN %s", (reportIds, )
+                    )
+                    self.logger.logMessage(
+                        INFO,
+                        str(cur.rowcount) + " rows deleted from taskreport"
+                    )
+                    cur.execute(
+                        "DELETE FROM report WHERE packageid LIKE %s",
+                        ('%' + mxdname.split('.')[0] + '%', )
+                    )
+                    self.logger.logMessage(
+                        INFO,
+                        str(cur.rowcount) + " rows deleted from report"
+                    )
+                    cur.execute(
                         "DELETE FROM geonis_layer WHERE packageid LIKE %s",
                         ('%' + mxdname.split('.')[0] + '%', )
                     )
@@ -2491,10 +2530,10 @@ class RefreshMapService(ArcpyTool):
                         INFO,
                         str(cur.rowcount) + " rows deleted from entity"
                     )
-            """
+            
 
             # Try to stage the service again
-            # arcpy.StageService_server(sdDraft)
+            arcpy.StageService_server(sdDraft)
 
         # by default, writes SD file to same loc as draft, then DELETES DRAFT
         if os.path.exists(sdFile):

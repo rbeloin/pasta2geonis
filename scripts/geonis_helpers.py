@@ -61,7 +61,8 @@ def isRasterDS(path):
 
 # Set up allowed extensions as a dictionary
 checkFileTypes = {}
-for fileType in GeoNISDataType.__dict__.items():
+allDataTypes = GeoNISDataType.__dict__
+for fileType in allDataTypes.items():
     if fileType[0] == 'FILEGEODB':
         checkFileTypes[fileType[0]] = isFileGDB
     elif fileType[0] == 'ASCIIRASTER':
