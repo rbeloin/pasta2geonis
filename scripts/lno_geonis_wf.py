@@ -2062,8 +2062,6 @@ class LoadRasterTypes(ArcpyTool):
 
     def execute(self, parameters, messages):
         super(LoadRasterTypes, self).execute(parameters, messages)
-        #TODO: add file gdb to list, and handle. Could be mosaic ds in file gdb, e.g.
-        #self.supportedTypes = ("tif", "ascii raster", "coverage", "jpg", "raster dataset")
         for dir in self.inputDirs:
             datafilePath, pkgId, datatype, entityName = ("" for i in range(4))
             loadedRaster = None
@@ -2073,22 +2071,13 @@ class LoadRasterTypes(ArcpyTool):
                 pkgId = emldata["packageId"]
                 datafilePath = emldata["datafilePath"]
 
-                # If there's a 'type' tag in the EML, then use that as a description of the data;
-                # otherwise, just make sure it's raster data
-                #if 'type' in emldata.keys():
+                # Make sure it's raster data!
                 datatype = emldata['type']
-                #elif 'spatialType' in emldata.keys() and emldata['spatialType'] == 'spatialRaster':
-                #    datatype = "raster dataset"
-                #else:
                 if datatype in ['SHAPEFILE', 'FILEGEODB', 'KML']:
                     self.outputDirs.append(dir)
                     continue
                 entityName = emldata["entityName"]
                 objectName = emldata["objectName"]
-                #check for supported type
-                #if not self.isSupported(datatype, packageId=pkgId, entityName=entityName):
-                #    self.outputDirs.append(dir)
-                #    continue
                 siteId, n, m = siteFromId(pkgId)
                 rawDataLoc, mosaicDS = self.prepareStorage(
                     siteId,
