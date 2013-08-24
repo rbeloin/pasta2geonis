@@ -2583,7 +2583,11 @@ class RefreshMapService(ArcpyTool):
 
         # by default, writes SD file to same loc as draft, then DELETES DRAFT
         if os.path.exists(sdFile):
-            arcpy.UploadServiceDefinition_server(in_sd_file = sdFile, in_server = pubConnection, in_startupType = 'STARTED')
+            arcpy.UploadServiceDefinition_server(
+                in_sd_file=sdFile,
+                in_server=pubConnection,
+                in_startupType='STARTED'
+            )
         else:
             raise Exception("Staging failed to create %s" % (sdFile,))
 
