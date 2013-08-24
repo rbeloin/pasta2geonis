@@ -3,7 +3,7 @@ Created on Jan 21, 2013
 
 @change: https://github.com/rbeloin/pasta2geonis
 
-@author: ron beloin
+@author: Ron Beloin & Jack Peterson
 @copyright: 2013 LTER Network Office, University of New Mexico
 @see https://nis.lternet.edu/NIS/
 '''

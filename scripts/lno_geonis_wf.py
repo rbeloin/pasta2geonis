@@ -4,7 +4,7 @@ Created on Jan 14, 2013
 
 @change: https://github.com/rbeloin/pasta2geonis
 
-@author: ron beloin
+@author: Ron Beloin & Jack Peterson
 @copyright: 2013 LTER Network Office, University of New Mexico
 @see https://nis.lternet.edu/NIS/
 '''
@@ -1997,7 +1997,7 @@ class LoadRasterTypes(ArcpyTool):
 
 
     @errHandledWorkflowTask(taskName="Update entity table")
-    def updateTable(self, location, pkid, entityName, **kwargs):
+    def updateTable(self, location, **kwargs):
         # get last three parts of location:  scope, entity dir, entity name
         parts = location.split(os.sep)
         if len(parts) > 3:
@@ -2006,7 +2006,7 @@ class LoadRasterTypes(ArcpyTool):
             loc = location[-50:]
         stmt = "UPDATE entity set storage = %s WHERE packageid = %s and entityname = %s;"
         with cursorContext(self.logger) as cur:
-            cur.execute(stmt, (loc, pkid, entityName))
+            cur.execute(stmt, (loc, kwargs['packageId'], kwargs['entityName']))
 
 
     def execute(self, parameters, messages):
@@ -2048,7 +2048,7 @@ class LoadRasterTypes(ArcpyTool):
                 status = "Storage prepared"
                 os.mkdir(rawDataLoc)
                 raster = self.copyRaster(datafilePath, rawDataLoc, packageId=pkgId, entityName=entityName)
-                self.updateTable(raster, pkgId, entityName, packageId=pkgId, entityName=entityName)
+                self.updateTable(raster, packageId=pkgId, entityName=entityName)
 
                 # Add objectName to entity table as "layername" so there is a
                 # record of the raster data folder name
