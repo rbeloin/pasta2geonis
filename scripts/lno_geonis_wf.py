@@ -2081,7 +2081,6 @@ class LoadRasterTypes(ArcpyTool):
                 #    datatype = "raster dataset"
                 #else:
                 if datatype in ['SHAPEFILE', 'FILEGEODB', 'KML']:
-                    self.logger.logMessage(INFO, "Skipping " + datatype + " vector dataset")
                     self.outputDirs.append(dir)
                     continue
                 entityName = emldata["entityName"]
