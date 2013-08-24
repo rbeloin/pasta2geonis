@@ -1237,15 +1237,23 @@ class CheckSpatialData(ArcpyTool):
             raise Exception("EML spatialType not found.")
         # now see if can find out more specifically
         entDescStr = emldata["entityDesc"]
+        acceptedVectorTypes = [
+            GeoNISDataType.SHAPEFILE,
+            GeoNISDataType.KML,
+            GeoNISDataType.FILEGEODB,
+        ]
+        acceptedRasterTypes = [getattr(GeoNISDataType, j) \
+            for j in checkFileTypes.keys() if j not in acceptedVectorTypes]
         if retval == GeoNISDataType.SPATIALVECTOR:
-            for fileext in [GeoNISDataType.SHAPEFILE, GeoNISDataType.KML, GeoNISDataType.FILEGEODB]:
+            for fileext in acceptedVectorTypes:
                 for ext in fileext:
                     pat = r"\b%s\b" % (ext[1:],)
                     if re.search(pat, entDescStr) is not None:
                         retval = fileext
                         return retval
         else:
-            for fileext in [GeoNISDataType.TIF, GeoNISDataType.ESRIE00, GeoNISDataType.JPEG, GeoNISDataType.ASCIIRASTER, GeoNISDataType.FILEGEODB]:
+            #acceptedRasterTypes = [GeoNISDataType.TIF, GeoNISDataType.ESRIE00, GeoNISDataType.JPEG, GeoNISDataType.ASCIIRASTER, GeoNISDataType.FILEGEODB]
+            for fileext in acceptedRasterTypes:
                 for ext in fileext:
                     pat = r"\b%s\b" % (ext[1:],)
                     if re.search(pat, entDescStr) is not None:
