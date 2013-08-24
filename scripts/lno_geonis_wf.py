@@ -224,9 +224,7 @@ class Setup(ArcpyTool):
             paramsRMS[1].value = self.logfile
             RMS.execute(paramsRMS, [])
             del RMS
-
         self.flush = True
-        return
 
     def cleanReportTables(self, cur, package):
         """Delete entries from the report tables."""
@@ -332,7 +330,10 @@ class Setup(ArcpyTool):
         layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
         mapLayerObjectList = arcpy.mapping.ListLayers(mxd, '', layersFrame)
         mapLayerList = [layer.name.split('.')[-1] for layer in mapLayerObjectList]
-        cur.execute(selectFromGeonisLayer, (package, ))
+        cur.execute(
+            "SELECT layername FROM geonis_layer WHERE packageid = %s",
+            (package, )
+        )
         if cur.rowcount:
             dbMapLayerList = [row[0] for row in cur.fetchall()]
 
@@ -342,7 +343,6 @@ class Setup(ArcpyTool):
                     self.logger.logMessage(INFO, "Removing layer: " + layer)
                     layerToRemove = mapLayerObjectList[mapLayerList.index(layer)]
                     arcpy.mapping.RemoveLayer(layersFrame, layerToRemove)
-
             mxd.save()
 
             # Set layerid to -1 in geonis_layer to force mxd to appear in
@@ -360,16 +360,17 @@ class Setup(ArcpyTool):
         geodatabase, if they exist.
         """
         # Delete from geonis_layer table
-        cur.execute(deleteFromGeonisLayer, (package, ))
+        cur.execute("DELETE FROM geonis_layer WHERE packageid = %s", (package, ))
 
         # Check entity table for package
-        cur.execute(selectFromEntity, (package, ))
+        sql = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
+        cur.execute(sql, (package, ))
         layersInEntity = None
         if cur.rowcount:
             result = cur.fetchall()
             layersInEntity = [row[0] for row in result if row[0] is not None]
             layersInEntity.extend([row[1] for row in result if row[1] is not None])
-            cur.execute(deleteFromEntity, (package, ))
+            cur.execute("DELETE FROM entity WHERE packageid = %s", (package, ))
 
         # Drop tables from geodb
         geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
@@ -390,11 +391,11 @@ class Setup(ArcpyTool):
                 raise(Exception)
 
         # Delete rows from the package table
-        cur.execute(deleteFromPackage, (package, ))
+        cur.execute("DELETE FROM package WHERE packageid = %s", (package, ))
 
         return layersInEntity
 
-    def cleanUpRasters():
+    def cleanUpRasters(self, cur, siteWF, layersInEntity):
         """Delete raster data folders and mosaic datasets, if any."""
         # Delete folders in the raster data folder
         rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
@@ -464,7 +465,10 @@ class Setup(ArcpyTool):
         else:
             srch = pkg + '%'
         with cursorContext(self.logger) as cur:
-            cur.execute(selectFromPackage, (srch, ))
+            cur.execute(
+                "SELECT packageid FROM package WHERE packageid LIKE %s",
+                (srch, )
+            )
             allPackages = [row[0] for row in cur.fetchall()]
             for package in allPackages:
                 self.cleanUpPackage(cur, package, srch, site, siteWF)
@@ -472,14 +476,10 @@ class Setup(ArcpyTool):
     def cleanUp(self, pkgArray):
         for p in pkgArray:
             self.logger.logMessage(DEBUG, "Found package " + p.values()[0])
-        selectFromPackage = "SELECT packageid FROM package WHERE packageid LIKE %s"
-        deleteFromPackage = "DELETE FROM package WHERE packageid = %s"
-        selectFromGeonisLayer = "SELECT layername FROM geonis_layer WHERE packageid = %s"
-        deleteFromGeonisLayer = "DELETE FROM geonis_layer WHERE packageid = %s"
-        selectFromEntity = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
-        deleteFromEntity = "DELETE FROM entity WHERE packageid = %s"
         self.sitesAlreadyChecked = []
-        allMapServices = [j.split('_')[0] for j in os.listdir(getConfigValue('pathtomapdoc') + os.sep + 'servicedefs') if j.endswith('.sd')]
+        allMapServices = [j.split('_')[0] for j in \
+            os.listdir(getConfigValue('pathtomapdoc') + os.sep + 'servicedefs') \
+            if j.endswith('.sd')]
         for i in xrange(2):
             try:
                 for pkgset in pkgArray:
@@ -496,7 +496,7 @@ class Setup(ArcpyTool):
         else:
             self.logger.logMessage(INFO, "Completed clean-up")
 
-        # Now that we're done making changes, refresh map services to reflect changes
+        # Finally, refresh map services to reflect changes
         RMS = RefreshMapService()
         RMS._isRunningAsTool = False
         paramsRMS = RMS.getParameterInfo()
