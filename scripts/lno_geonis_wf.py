@@ -460,8 +460,7 @@ class Setup(ArcpyTool):
         # Clean up raster folders and mosaics
         self.cleanUpRasters(cur, siteWF, layersInEntity)
 
-    def cleanUpPackageSet(self, pkgset):
-        pkg = pkgset['inc']
+    def cleanUpPackageSet(self, pkg):
         site = pkg.split('-')[2].split('.')[0]
         siteWF = site + getConfigValue('datasetscopesuffix')
         
@@ -491,8 +490,8 @@ class Setup(ArcpyTool):
         for i in xrange(2):
             try:
                 for pkgset in pkgArray:
-                    if pkgset['inc']:
-                        self.cleanUpPackageSet(pkgset)
+                    #if pkgset['inc']:
+                    self.cleanUpPackageSet(pkgset['inc'])
             except Exception as err:
                 self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
                 arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
@@ -501,8 +500,6 @@ class Setup(ArcpyTool):
             break
         if err:
             raise(Exception)
-        else:
-            self.logger.logMessage(INFO, "Completed clean-up")
 
         # Finally, refresh map services to reflect changes
         RMS = RefreshMapService()
