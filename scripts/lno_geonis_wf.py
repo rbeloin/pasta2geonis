@@ -2231,10 +2231,11 @@ class UpdateMXDs(ArcpyTool):
         schema = 'geonis.' + getConfigValue('schema') + '.'
         sql = (
             "CREATE TABLE " + schema + "viewreport AS "
-            #"INSERT INTO " + schema + "viewreport "
-            #"(taskreportid, reportid, packageid)"
-            "SELECT rt.*, e.israster, e.isvector, e.sourceloc, e.entitydescription FROM "
-            "(SELECT t.taskreportid, r.packageid, r.entityid, r.entityname, t.taskname, t.description AS taskdescription, t.report, t.status "
+            "SELECT "
+            "rt.*, e.israster, e.isvector, e.sourceloc, e.entitydescription "
+            "FROM "
+            "(SELECT t.taskreportid, r.packageid, r.entityid, r.entityname, "
+            "t.taskname, t.description AS taskdescription, t.report, t.status "
             "FROM report AS r "
             "FULL JOIN taskreport AS t "
             "ON r.reportid = t.reportid) AS rt "
@@ -2244,13 +2245,15 @@ class UpdateMXDs(ArcpyTool):
 
         # Drop denormalized report table (if it exists)
         with cursorContext(self.logger) as cur:
-            self.logger.logMessage(WARN, "Dropping " + schema + "viewreport table")
+            self.logger.logMessage(INFO, "Replace " + schema + "viewreport table")
             cur.execute("DROP TABLE IF EXISTS " + schema + "viewreport")
 
         # Now replace and index it
         with cursorContext(self.logger) as cur:    
             cur.execute(sql)
+            self.logger.logMessage(INFO, "Create packageid index")
             cur.execute("CREATE INDEX packageid_idx ON " + schema + "viewreport (packageid)")
+            self.logger.logMessage(INFO, "Create entityid index")
             cur.execute("CREATE INDEX entityid_idx ON " + schema + "viewreport (entityid)")
             #cur.execute(
             #    "CREATE UNIQUE INDEX entityname_taskname_idx ON " + schema +
