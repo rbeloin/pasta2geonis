@@ -452,8 +452,6 @@ class Setup(ArcpyTool):
         self.cleanUpRasters(cur, siteWF, layersInEntity)
 
     def cleanUpPackageSet(self, pkgset):
-        if not pkgset['inc']:
-            continue
         pkg = pkgset['inc']
         site = pkg.split('-')[2].split('.')[0]
         siteWF = site + getConfigValue('datasetscopesuffix')
@@ -485,7 +483,8 @@ class Setup(ArcpyTool):
         for i in xrange(2):
             try:
                 for pkgset in pkgArray:
-                    self.cleanUpPackageSet(pkgset)
+                    if pkgset['inc']:
+                        self.cleanUpPackageSet(pkgset)
             except Exception as err:
                 self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
                 arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")
