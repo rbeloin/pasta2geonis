@@ -366,7 +366,7 @@ class Setup(ArcpyTool):
         # Drop tables from the enterprise geodatabase (geonisOnMaps3.sde)
         # Get feature class names (from the entity table)
         geodb = getConfigValue('geodatabase')
-        if arcpy.Exists(geodb):
+        if arcpy.Exists(geodb + os.sep + siteWF):
             cur.execute("SELECT storage FROM entity WHERE packageid = %s", (package, ))
             featureClasses = [geodb + os.sep + os.sep.join(row[0].split('\\')) \
                 for row in cur.fetchall()]
@@ -377,10 +377,11 @@ class Setup(ArcpyTool):
                         INFO,
                         "Dropped " + featureClass + " from geodatabase (" + geodb + ")"
                     )
-                except Exception as err:
-                    # Error 000464: Cannot get exclusive schema lock, usually caused by
-                    # another user connecting to the geodb; disconnect all users and
-                    # try again...
+
+                # Error 000464: Cannot get exclusive schema lock, usually caused by
+                # another user connecting to the geodb; disconnect all users and
+                # try again...
+                except Exception as err:                    
                     if err[0].find('ERROR 000464') != -1:
                         self.logger.logMessage(
                             WARN,
@@ -2182,12 +2183,13 @@ class UpdateMXDs(ArcpyTool):
         for layer in arcpy.mapping.ListLayers(mxd, '', layersFrame):
             if layer.name == layerName:
                 layer.description = workingData['entityDesc']
-                shortEntityDesc = workingData['entityDesc'] \
-                    if len(workingData['entityDesc']) < 100 \
-                    else workingData['entityDesc'][:100] + '...'
-                layer.name += ": " + \
-                    shortEntityDesc.replace("'", '"').replace('"', '&quot;')
+                #shortEntityDesc = workingData['entityDesc'] \
+                #    if len(workingData['entityDesc']) < 100 \
+                #    else workingData['entityDesc'][:100] + '...'
+                #layer.name += ": " + \
+                #    shortEntityDesc.replace("'", '"').replace('"', '&quot;')
                 #insertObj['title'] # change to entity-level description??
+                layer.name += ': ' + insertObj['title'].replace("'", '"').replace('"', '&quot;')
                 layerName = layer.name
         mxd.save()
         workingData["layerName"] = layerName
