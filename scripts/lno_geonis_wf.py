@@ -157,8 +157,8 @@ class Setup(ArcpyTool):
                     del layersFrame
 
                 # Drop tables from geodb
-                siteWF = site + getConfigValue('datasetscopesuffix')
-                geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
+                siteWorkflow = site + getConfigValue('datasetscopesuffix')
+                geodbTable = getConfigValue('geodatabase') + os.sep + siteWorkflow
                 if arcpy.Exists(geodbTable):
                     #try:
                     arcpy.Delete_management(geodbTable)
@@ -177,7 +177,7 @@ class Setup(ArcpyTool):
                 self.logger.logMessage(INFO, str(cur.rowcount) + " rows deleted from package")
 
                 # Delete folders in the raster data folder
-                rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
+                rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWorkflow
                 if os.path.isdir(rasterFolder):
                     rasterSubfolders = os.listdir(rasterFolder)
                     if rasterSubfolders is not None:
@@ -189,7 +189,7 @@ class Setup(ArcpyTool):
                             )
 
             # Delete the raster mosaic
-            mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWF
+            mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWorkflow
             if arcpy.Exists(mosaicDataset):
                 self.logger.logMessage(INFO, "Deleting raster mosaic " + mosaicDataset)
                 arcpy.DeleteMosaicDataset_management(mosaicDataset)
@@ -344,7 +344,7 @@ class Setup(ArcpyTool):
             )
         del layersFrame, mxd
 
-    def cleanUpTables(self, cur, package, siteWF):
+    def cleanUpTables(self, cur, package, siteWorkflow):
         """
         Delete entries for this package from the geonis_layer, entity, and
         package tables in the postgres DB, and also drop tables from the
@@ -353,8 +353,9 @@ class Setup(ArcpyTool):
         # Drop tables from the enterprise geodatabase (geonisOnMaps3.sde)
         # Get feature class names (from the entity table)
         geodb = getConfigValue('geodatabase')
-        if arcpy.Exists(geodb + os.sep + siteWF):
+        if arcpy.Exists(geodb + os.sep + siteWorkflow):
             cur.execute("SELECT storage FROM entity WHERE packageid = %s", (package, ))
+            pdb.set_trace()
             featureClasses = [geodb + os.sep + os.sep.join(row[0].split('\\')[:2]) \
                 for row in cur.fetchall() if row[0] is not None]
             for featureClass in featureClasses:
@@ -402,10 +403,10 @@ class Setup(ArcpyTool):
         cur.execute("DELETE FROM package WHERE packageid = %s", (package, ))
         return layersInEntity
 
-    def cleanUpRasters(self, cur, siteWF, layersInEntity):
+    def cleanUpRasters(self, cur, siteWorkflow, layersInEntity):
         """Delete raster data folders and mosaic datasets, if any."""
         # Delete folders in the raster data folder
-        rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWF
+        rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWorkflow
         if os.path.isdir(rasterFolder):
             rasterSubfolders = os.listdir(rasterFolder)
             if rasterSubfolders is not None and layersInEntity is not None:
@@ -419,7 +420,7 @@ class Setup(ArcpyTool):
                             )
 
         # Delete entries from raster mosaic datasets
-        mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWF
+        mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWorkflow
         if arcpy.Exists(mosaicDataset) and layersInEntity is not None:
             for layer in layersInEntity:
                 try:
@@ -436,7 +437,7 @@ class Setup(ArcpyTool):
                     # really an error...
                     pass
 
-    def cleanUpPackage(self, cur, package, srch, site, siteWF):
+    def cleanUpPackage(self, cur, package, srch, site, siteWorkflow):
         self.cleanReportTables(cur, package)
 
         # If we haven't checked this site yet, then shut down its map service
@@ -454,14 +455,14 @@ class Setup(ArcpyTool):
                 self.deleteMapLayers(cur, package, site)
 
         # Clean up the database tables
-        layersInEntity = self.cleanUpTables(cur, package, siteWF)
+        layersInEntity = self.cleanUpTables(cur, package, siteWorkflow)
 
         # Clean up raster folders and mosaics
-        self.cleanUpRasters(cur, siteWF, layersInEntity)
+        self.cleanUpRasters(cur, siteWorkflow, layersInEntity)
 
     def cleanUpPackageSet(self, pkg):
         site = pkg.split('-')[2].split('.')[0]
-        siteWF = site + getConfigValue('datasetscopesuffix')
+        siteWorkflow = site + getConfigValue('datasetscopesuffix')
         
         # Handle wildcard, e.g. knb-lter-knz.*
         # Remove *, append %, then select ... where packageid like ...,
@@ -477,7 +478,7 @@ class Setup(ArcpyTool):
             )
             allPackages = [row[0] for row in cur.fetchall()]
             for package in allPackages:
-                self.cleanUpPackage(cur, package, srch, site, siteWF)
+                self.cleanUpPackage(cur, package, srch, site, siteWorkflow)
 
     def cleanUp(self, pkgArray):
         for p in pkgArray:
