@@ -299,7 +299,7 @@ class Setup(ArcpyTool):
         else:
             self.logger.logMessage(WARN, "Error while attempting to get admin token.")
 
-    def deleteMapLayers(self, cur, site):
+    def deleteMapLayers(self, cur, package, site):
         """
         Delete any layers already in the geonis_layer table from both the map and 
         geonis_layer.  Also clears any feature selections (map services will not 
@@ -443,7 +443,7 @@ class Setup(ArcpyTool):
 
             # If this package exists in the map, delete layers and update table
             if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
-                self.deleteMapLayers(cur, site)
+                self.deleteMapLayers(cur, package, site)
 
         # Clean up the database tables
         layersInEntity = self.cleanUpTables(cur, package, siteWF)
