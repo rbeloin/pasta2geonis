@@ -350,26 +350,13 @@ class Setup(ArcpyTool):
         package tables in the postgres DB, and also drop tables from the
         geodatabase, if they exist.
         """
-        # Delete from geonis_layer table
-        cur.execute("DELETE FROM geonis_layer WHERE packageid = %s", (package, ))
-
-        # Check entity table for package
-        sql = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
-        cur.execute(sql, (package, ))
-        layersInEntity = None
-        if cur.rowcount:
-            result = cur.fetchall()
-            layersInEntity = [row[0] for row in result if row[0] is not None]
-            layersInEntity.extend([row[1] for row in result if row[1] is not None])
-            cur.execute("DELETE FROM entity WHERE packageid = %s", (package, ))
-
         # Drop tables from the enterprise geodatabase (geonisOnMaps3.sde)
         # Get feature class names (from the entity table)
         geodb = getConfigValue('geodatabase')
         if arcpy.Exists(geodb + os.sep + siteWF):
             cur.execute("SELECT storage FROM entity WHERE packageid = %s", (package, ))
-            featureClasses = [geodb + os.sep + os.sep.join(row[0].split('\\')) \
-                for row in cur.fetchall()]
+            featureClasses = [geodb + os.sep + os.sep.join(row[0].split('\\')[:2]) \
+                for row in cur.fetchall() if row[0] is not None]
             for featureClass in featureClasses:
                 try:
                     arcpy.Delete_management(featureClass)
@@ -397,6 +384,19 @@ class Setup(ArcpyTool):
                         )
                     else:
                         raise(Exception)
+
+        # Delete from geonis_layer table
+        cur.execute("DELETE FROM geonis_layer WHERE packageid = %s", (package, ))
+
+        # Check entity table for package
+        sql = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
+        cur.execute(sql, (package, ))
+        layersInEntity = None
+        if cur.rowcount:
+            result = cur.fetchall()
+            layersInEntity = [row[0] for row in result if row[0] is not None]
+            layersInEntity.extend([row[1] for row in result if row[1] is not None])
+            cur.execute("DELETE FROM entity WHERE packageid = %s", (package, ))
 
         # Delete rows from the package table
         cur.execute("DELETE FROM package WHERE packageid = %s", (package, ))
