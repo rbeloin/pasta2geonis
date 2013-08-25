@@ -384,9 +384,9 @@ class Setup(ArcpyTool):
                     if err[0].find('ERROR 000464') != -1:
                         self.logger.logMessage(
                             WARN,
-                            ("Could not get exclusive schema lock on %s, geodatabase table "
+                            ("Could not get exclusive schema lock on %s, feature class "
                             "%s has not been cleared; disconnecting all users from the "
-                            "database and retrying") % (getConfigValue('geodatabase'), siteWF)
+                            "database and retrying") % (geodb, featureClass)
                         )
                         arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")                
                         arcpy.Delete_management(featureClass)
