@@ -53,6 +53,9 @@ CREATE TABLE workflow_d.taskreport (
     taskname VARCHAR(200),
     description TEXT,
     report TEXT,
+    warnings TEXT,
+    info TEXT,
+    jsonreport TEXT,
     status BOOLEAN,
     UNIQUE(reportid, taskname)
 );
@@ -67,6 +70,9 @@ CREATE TABLE workflow_d.viewreport (
     taskname VARCHAR(200),
     taskdescription TEXT,
     report TEXT,
+    warnings TEXT,
+    info TEXT,
+    jsonreport TEXT,
     status BOOLEAN,
     israster BOOLEAN,
     isvector BOOLEAN,
@@ -139,6 +145,9 @@ CREATE TABLE workflow.taskreport (
     taskname VARCHAR(200),
     description TEXT,
     report TEXT,
+    warnings TEXT,
+    info TEXT,
+    jsonreport TEXT,
     status BOOLEAN,
     UNIQUE(reportid, taskname)
 );
@@ -152,6 +161,9 @@ CREATE TABLE workflow.viewreport (
     taskname VARCHAR(200),
     taskdescription TEXT,
     report TEXT,
+    warnings TEXT,
+    info TEXT,
+    jsonreport TEXT,
     status BOOLEAN,
     israster BOOLEAN,
     isvector BOOLEAN,

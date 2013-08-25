@@ -56,15 +56,50 @@ class EvtLog(object):
                 )
         return EvtLog.singleinstance
 
-    def logMessage(self, level, msg):
-        """ Log to log file, and if showMsgs has been set in init log to arcpy also. If no log
-            file has been given, log to std_err """
+    def logMessage(self, level, msg, **kwargs):
+        """
+        Log to log file, and if showMsgs has been set in init 
+        log to arcpy also. If no log file has been given, 
+        log to std_err.
+        """
         try:
             assert self.evtLogger
             self.evtLogger.log(level, msg)
-            # if running not optimized, log everthing, changing level as needed
+            
+            # If running not optimized, log everthing, changing level as needed
             if __debug__ and not self.evtLogger.isEnabledFor(level):
                 self.evtLogger.log(self.evtLogger.getEffectiveLevel(), "<debug mode>" + msg)
+
+            # Pass message on to report so it can be shown via web service
+            if 'packageId' in kwargs.keys() and 'taskName' in kwargs.keys() and 'taskDesc' in kwargs.keys():
+                report, warnings, info = None, None, None
+                if level in (logging.INFO, logging.DEBUG):
+                    info = msg
+                elif level in (logging.WARN, logging.WARNING):
+                    warnings = msg
+                elif level in (logging.ERROR, logging.CRITICAL):
+                    report = msg
+                else:
+                    raise(Exception("Unknown logging level"))
+                if 'entityName' in kwargs.keys():
+                    updateReports(
+                        kwargs['taskName'],
+                        kwargs['taskDesc'],
+                        kwargs['packageId'],
+                        entity=kwargs['entityName'],
+                        report=report,
+                        warnings=warnings,
+                        info=info
+                    )
+                else:
+                    updateReports(
+                        kwargs['taskName'],
+                        kwargs['taskDesc'],
+                        kwargs['packageId'],
+                        report=report,
+                        warnings=warnings,
+                        info=info
+                    )            
             if not self.evtLogger or self.showMsgs:
                 if self.showMsgs and (level == logging.INFO or level == logging.DEBUG):
                     arcAddMsg(msg)
@@ -99,15 +134,13 @@ def errHandledWorkflowTask(taskName=""):
                             taskFunc.__name__,
                             taskName,
                             kwargs['packageId'],
-                            entity=kwargs['entityName'],
-                            logger=logger
+                            entity=kwargs['entityName']
                         )
                     else:
                         updateReports(
                             taskFunc.__name__,
                             taskName,
-                            kwargs['packageId'],
-                            logger=logger
+                            kwargs['packageId']
                         )
                 return taskFunc(*args, **kwargs)
             except gpError:
@@ -125,8 +158,7 @@ def errHandledWorkflowTask(taskName=""):
                             kwargs['packageId'],
                             entity=kwargs['entityName'],
                             report=taskReport,
-                            status='error',
-                            logger=logger
+                            status='error'
                         )
                     else:
                         updateReports(
@@ -134,8 +166,7 @@ def errHandledWorkflowTask(taskName=""):
                             taskName,
                             kwargs['packageId'],
                             report=taskReport,
-                            status='error',
-                            logger=logger
+                            status='error'
                         )
                 raise Exception(taskReport)
         return errHandlingWrapper
@@ -143,7 +174,7 @@ def errHandledWorkflowTask(taskName=""):
 
 
 # Add entry to packagereport/entityreport tables
-def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, status='ok', logger=None):
+def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, warnings=None, info=None, status='ok'):
     """
     Add entry to report and taskreport tables, for presentation via
     the GeoNIS web service.
