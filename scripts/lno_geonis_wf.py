@@ -386,7 +386,7 @@ class Setup(ArcpyTool):
                         self.logger.logMessage(
                             WARN,
                             ("Could not get exclusive schema lock on %s, feature class "
-                            "%s has not been cleared; disconnecting all users from the "
+                            "%s has not been cleared.  Disconnecting all users from the "
                             "database and retrying") % (geodb, featureClass)
                         )
                         arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")                
