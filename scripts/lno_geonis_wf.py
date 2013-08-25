@@ -126,17 +126,6 @@ class Setup(ArcpyTool):
                         sql = "DELETE FROM %s WHERE reportid IN %%s"
                         cur.execute(sql % table, (reports, ))
 
-                # Drop tables from geodb
-                siteWF = site + getConfigValue('datasetscopesuffix')
-                geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
-                if arcpy.Exists(geodbTable):
-                    #try:
-                    arcpy.Delete_management(geodbTable)
-                    self.logger.logMessage(
-                        INFO,
-                        "Dropped " + geodbTable + " from geodatabase"
-                    )
-
                 # Clear the map
                 if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
                     mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
@@ -166,6 +155,17 @@ class Setup(ArcpyTool):
                             self.logger.logMessage(INFO, "Skipping layer " + layer)
                     mxd.save()
                     del layersFrame
+
+                # Drop tables from geodb
+                siteWF = site + getConfigValue('datasetscopesuffix')
+                geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
+                if arcpy.Exists(geodbTable):
+                    #try:
+                    arcpy.Delete_management(geodbTable)
+                    self.logger.logMessage(
+                        INFO,
+                        "Dropped " + geodbTable + " from geodatabase"
+                    )
 
                 # Drop all matching rows from the workflow tables
                 self.logger.logMessage(INFO, "Clearing database tables")
@@ -363,35 +363,42 @@ class Setup(ArcpyTool):
             layersInEntity.extend([row[1] for row in result if row[1] is not None])
             cur.execute("DELETE FROM entity WHERE packageid = %s", (package, ))
 
-        # Drop tables from geodb
-        geodbTable = getConfigValue('geodatabase') + os.sep + siteWF
-        if arcpy.Exists(geodbTable):
-            try:
-                arcpy.Delete_management(geodbTable)
-                self.logger.logMessage(
-                    INFO,
-                    "Dropped " + geodbTable + " from geodatabase"
-                )
-            except Exception as err:
-                if err[0].find('ERROR 000464') != -1:  # ERROR 000464: Cannot get exclusive schema lock.
-                    self.logger.logMessage(
-                        WARN,
-                        ("Could not get exclusive schema lock on %s, geodatabase table "
-                        "%s has not been cleared; disconnecting all users from the "
-                        "database and retrying") % (getConfigValue('geodatabase'), siteWF)
-                    )
-                    arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")                
-                    arcpy.Delete_management(geodbTable)
+        # Drop tables from the enterprise geodatabase (geonisOnMaps3.sde)
+        # Get feature class names (from the entity table)
+        geodb = getConfigValue('geodatabase')
+        if arcpy.Exists(geodb):
+            cur.execute("SELECT storage FROM entity WHERE packageid = %s", (package, ))
+            featureClasses = [geodb + os.sep + os.sep.join(row[0].split('\\')) \
+                for row in cur.fetchall()]
+            for featureClass in featureClasses:
+                try:
+                    arcpy.Delete_management(featureClass)
                     self.logger.logMessage(
                         INFO,
-                        "Dropped " + geodbTable + " from geodatabase"
+                        "Dropped " + featureClass + " from geodatabase (" + geodb + ")"
                     )
-                else:
-                    raise(Exception)
+                except Exception as err:
+                    # Error 000464: Cannot get exclusive schema lock, usually caused by
+                    # another user connecting to the geodb; disconnect all users and
+                    # try again...
+                    if err[0].find('ERROR 000464') != -1:
+                        self.logger.logMessage(
+                            WARN,
+                            ("Could not get exclusive schema lock on %s, geodatabase table "
+                            "%s has not been cleared; disconnecting all users from the "
+                            "database and retrying") % (getConfigValue('geodatabase'), siteWF)
+                        )
+                        arcpy.DisconnectUser("Database Connections/Connection to Maps3.sde", "ALL")                
+                        arcpy.Delete_management(featureClass)
+                        self.logger.logMessage(
+                            INFO,
+                            "Dropped " + featureClass + " from geodatabase (" + geodb + ")"
+                        )
+                    else:
+                        raise(Exception)
 
         # Delete rows from the package table
         cur.execute("DELETE FROM package WHERE packageid = %s", (package, ))
-
         return layersInEntity
 
     def cleanUpRasters(self, cur, siteWF, layersInEntity):

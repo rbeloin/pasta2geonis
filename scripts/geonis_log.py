@@ -89,7 +89,8 @@ class EvtLog(object):
                         entity=kwargs['entityName'],
                         report=report,
                         warnings=warnings,
-                        info=info
+                        info=info,
+                        logger=self.evtLogger
                     )
                 else:
                     updateReports(
@@ -98,7 +99,8 @@ class EvtLog(object):
                         kwargs['packageId'],
                         report=report,
                         warnings=warnings,
-                        info=info
+                        info=info,
+                        logger=self.evtLogger
                     )            
             if not self.evtLogger or self.showMsgs:
                 if self.showMsgs and (level == logging.INFO or level == logging.DEBUG):
@@ -134,13 +136,15 @@ def errHandledWorkflowTask(taskName=""):
                             taskFunc.__name__,
                             taskName,
                             kwargs['packageId'],
-                            entity=kwargs['entityName']
+                            entity=kwargs['entityName'],
+                            logger=logger
                         )
                     else:
                         updateReports(
                             taskFunc.__name__,
                             taskName,
-                            kwargs['packageId']
+                            kwargs['packageId'],
+                            logger=logger
                         )
                 return taskFunc(*args, **kwargs)
             except gpError:
@@ -158,7 +162,8 @@ def errHandledWorkflowTask(taskName=""):
                             kwargs['packageId'],
                             entity=kwargs['entityName'],
                             report=taskReport,
-                            status='error'
+                            status='error',
+                            logger=logger
                         )
                     else:
                         updateReports(
@@ -166,7 +171,8 @@ def errHandledWorkflowTask(taskName=""):
                             taskName,
                             kwargs['packageId'],
                             report=taskReport,
-                            status='error'
+                            status='error',
+                            logger=logger
                         )
                 raise Exception(taskReport)
         return errHandlingWrapper
@@ -174,7 +180,7 @@ def errHandledWorkflowTask(taskName=""):
 
 
 # Add entry to packagereport/entityreport tables
-def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, warnings=None, info=None, status='ok'):
+def updateReports(taskName, taskDesc, pkgId, entity=None, report=None, warnings=None, info=None, status='ok', logger=None):
     """
     Add entry to report and taskreport tables, for presentation via
     the GeoNIS web service.
