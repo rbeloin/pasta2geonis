@@ -466,6 +466,7 @@ class Setup(ArcpyTool):
         if site not in self.sitesAlreadyChecked:
             self.sitesAlreadyChecked.append(site)
 
+            '''
             # Delete the service draft, if one exists
             draft = getConfigValue('pathtomapdoc') + os.sep + 'servicedefs' + os.sep + site + '_layers.sd'
             if os.path.exists(draft):
@@ -474,6 +475,7 @@ class Setup(ArcpyTool):
             if os.path.exists(draft + 'draft'):
                 os.remove(draft + 'draft')
                 self.logger.logMessage(INFO, "Removed " + draft + 'draft')
+            '''
 
             # Stop map service, if available
             if self.mapServiceAvailable(cur, site):
@@ -2038,7 +2040,6 @@ class LoadRasterTypes(ArcpyTool):
         buildthumb = "NO_THUMBNAILS"
         comments = pId
         forcesr = "#"
-        pdb.set_trace()
         result = arcpy.AddRastersToMosaicDataset_management(
                                             siteMosDS, rastype, path, updatecs,
                                             updatebnd, updateovr, maxlevel, maxcs,
@@ -2498,12 +2499,28 @@ class RefreshMapService(ArcpyTool):
                 self.logger.logMessage(WARN, "Error while attempting to stop service.")
             httpConn.close()
         else:
-             self.logger.logMessage(WARN, "Error while attempting to get admin token.")
+            self.logger.logMessage(WARN, "Error while attempting to get admin token.")
         mxd = arcpy.mapping.MapDocument(pathToMapDoc + os.sep + mxdname)
         sdDraft = pathToServiceDoc + os.sep + self.serverInfo['service_name'] + ".sddraft"
-        self.logger.logMessage(DEBUG,"Draft loc: %s" % (sdDraft,))
-        arcpy.mapping.CreateMapSDDraft(mxd, sdDraft, self.serverInfo['service_name'],
-        "ARCGIS_SERVER", pubConnection, False, self.serverInfo["service_folder"], self.serverInfo['summary'], self.serverInfo['tags'])
+        self.logger.logMessage(DEBUG, "Draft loc: %s" % (sdDraft,))
+        analysis = arcpy.mapping.CreateMapSDDraft(
+            mxd,
+            sdDraft,
+            self.serverInfo['service_name'],
+            "ARCGIS_SERVER",
+            pubConnection,
+            False,
+            self.serverInfo["service_folder"],
+            self.serverInfo['summary'],
+            self.serverInfo['tags']
+        )
+        #sdFile = sdDraft.split('.')[0] + '.sd'
+        #pdb.set_trace()
+        if analysis['errors'] != {}:
+            self.logger.logMessage(
+                WARN,
+                "CreateMapSDDraft analyzer contains errors: " + analysis['errors']
+            )
         del mxd
         #now we need to change one tag in the draft to indicate this is a replacement service
         self.logger.logMessage(DEBUG,"reading back draft to parse xml")
@@ -2518,7 +2535,7 @@ class RefreshMapService(ArcpyTool):
             self.logger.logMessage(DEBUG,"saving backup draft")
             with open(sdDraft + '.bak', 'w') as bakfile:
                 bakfile.write(etree.tostring(draftXml, xml_declaration = False))
-        del typeNode, draftXml
+        del typeNode, draftXml            
         return sdDraft
 
     @errHandledWorkflowTask(taskName="Replace service")
@@ -2529,9 +2546,10 @@ class RefreshMapService(ArcpyTool):
         pathToServiceDoc = arcpy.env.workspace + os.sep + "servicedefs"
         mxd = arcpy.mapping.MapDocument(pathToMapDoc + os.sep + mxdname)
         sdFile = pathToServiceDoc + os.sep + self.serverInfo['service_name'] + ".sd"
-        if os.path.exists(sdFile):
-            os.remove(sdFile)
-        arcpy.StageService_server(sdDraft)
+        try:
+            arcpy.StageService_server(sdDraft, sdFile)
+        except Exception as e:
+            pdb.set_trace()
 
         # by default, writes SD file to same loc as draft, then DELETES DRAFT
         if os.path.exists(sdFile):
@@ -2541,7 +2559,7 @@ class RefreshMapService(ArcpyTool):
                 in_startupType='STARTED'
             )
         else:
-            raise Exception("Staging failed to create %s" % (sdFile,))
+            raise Exception("Staging failed to create %s" % sdFile)
 
     @errHandledWorkflowTask(taskName="Update layers table")
     def updateLayerIds(self, site):
