@@ -355,7 +355,6 @@ class Setup(ArcpyTool):
         geodb = getConfigValue('geodatabase')
         if arcpy.Exists(geodb + os.sep + siteWorkflow):
             cur.execute("SELECT storage FROM entity WHERE packageid = %s", (package, ))
-            pdb.set_trace()
             featureClasses = [geodb + os.sep + os.sep.join(row[0].split('\\')[:2]) \
                 for row in cur.fetchall() if row[0] is not None]
             for featureClass in featureClasses:
@@ -363,7 +362,7 @@ class Setup(ArcpyTool):
                     arcpy.Delete_management(featureClass)
                     self.logger.logMessage(
                         INFO,
-                        "Dropped " + featureClass + " from geodatabase (" + geodb + ")"
+                        "Dropped " + featureClass + " from " + geodb
                     )
 
                 # Error 000464: Cannot get exclusive schema lock, usually caused by
@@ -381,7 +380,7 @@ class Setup(ArcpyTool):
                         arcpy.Delete_management(featureClass)
                         self.logger.logMessage(
                             INFO,
-                            "Dropped " + featureClass + " from geodatabase (" + geodb + ")"
+                            "Dropped " + featureClass + " from " + geodb
                         )
                     else:
                         raise(Exception)
@@ -390,14 +389,15 @@ class Setup(ArcpyTool):
         cur.execute("DELETE FROM geonis_layer WHERE packageid = %s", (package, ))
 
         # Check entity table for package
-        sql = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
+        #sql = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
+        sql = "SELECT layername FROM entity WHERE packageid = %s AND israster = 't'"
         cur.execute(sql, (package, ))
         layersInEntity = None
         if cur.rowcount:
-            result = cur.fetchall()
-            layersInEntity = [row[0] for row in result if row[0] is not None]
-            layersInEntity.extend([row[1] for row in result if row[1] is not None])
-            cur.execute("DELETE FROM entity WHERE packageid = %s", (package, ))
+            #result = cur.fetchall()
+            layersInEntity = [row[0] for row in cur.fetchall() if row[0] is not None]
+            #layersInEntity.extend([row[1] for row in result if row[1] is not None])
+        cur.execute("DELETE FROM entity WHERE packageid = %s", (package, ))
 
         # Delete rows from the package table
         cur.execute("DELETE FROM package WHERE packageid = %s", (package, ))
@@ -405,23 +405,25 @@ class Setup(ArcpyTool):
 
     def cleanUpRasters(self, cur, siteWorkflow, layersInEntity):
         """Delete raster data folders and mosaic datasets, if any."""
+        
         # Delete folders in the raster data folder
         rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWorkflow
         if os.path.isdir(rasterFolder):
             rasterSubfolders = os.listdir(rasterFolder)
-            if rasterSubfolders is not None and layersInEntity is not None:
+            if rasterSubfolders is not None:
                 for layer in layersInEntity:
                     for f in rasterSubfolders:
-                        if f.startswith(layer):
+                        #if f.startswith(layer):
+                        if f == layer:
                             rmtree(rasterFolder + os.sep + f)
                             self.logger.logMessage(
                                 INFO,
                                 "Removed %s" % rasterFolder + os.sep + f
                             )
 
-        # Delete entries from raster mosaic datasets
+        # Delete entries from raster mosaic
         mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWorkflow
-        if arcpy.Exists(mosaicDataset) and layersInEntity is not None:
+        if arcpy.Exists(mosaicDataset):
             for layer in layersInEntity:
                 try:
                     arcpy.RemoveRastersFromMosaicDataset_management(
@@ -433,9 +435,12 @@ class Setup(ArcpyTool):
                         "Removed %s from raster mosaic %s" % (layer, mosaicDataset)
                     )
                 except ExecuteError:
-                    # Just checking if the raster mosaic exists, this isn't
-                    # really an error...
-                    pass
+                    self.logger.logMessage(
+                        WARN,
+                        ("Raster layer %s recorded in entity table, but not present in "
+                        "mosaic %s") % (layer, mosaicDataset)
+                    )
+                    continue
 
     def cleanUpPackage(self, cur, package, srch, site, siteWorkflow):
         self.cleanReportTables(cur, package)
@@ -458,7 +463,8 @@ class Setup(ArcpyTool):
         layersInEntity = self.cleanUpTables(cur, package, siteWorkflow)
 
         # Clean up raster folders and mosaics
-        self.cleanUpRasters(cur, siteWorkflow, layersInEntity)
+        if layersInEntity is not None:
+            self.cleanUpRasters(cur, siteWorkflow, layersInEntity)
 
     def cleanUpPackageSet(self, pkg):
         site = pkg.split('-')[2].split('.')[0]
