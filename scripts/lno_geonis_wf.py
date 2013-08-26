@@ -27,9 +27,7 @@ from arcpy import Parameter
 from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 from lno_geonis_base import ArcpyTool
 from geonis_pyconfig import GeoNISDataType, tempMetadataFilename, dsnfile, pubConnection, arcgiscred, geodatabase
-#from geonis_helpers import isShapefile, isKML, isTif, isTifWorld, isASCIIRaster, isFileGDB, isJpeg, isJpegWorld, isEsriE00, isRasterDS, isProjection, isIdrisiRaster
 from geonis_helpers import *
-#from geonis_helpers import siteFromId, getToken, sendEmail, composeMessage
 from geonis_emlparse import createEmlSubset, createEmlSubsetWithNode, writeWorkingDataToXML, readWorkingData, readFromEmlSubset, createSuppXML, stringToValidName, createDictFromEmlSubset
 from geonis_postgresql import cursorContext, getEntityInsert, getConfigValue
 import pdb
@@ -398,14 +396,11 @@ class Setup(ArcpyTool):
         cur.execute("DELETE FROM geonis_layer WHERE packageid = %s", (package, ))
 
         # Check entity table for package
-        #sql = "SELECT entityname, layername, storage FROM entity WHERE packageid = %s"
         sql = "SELECT layername FROM entity WHERE packageid = %s AND israster = 't'"
         cur.execute(sql, (package, ))
         layersInEntity = None
         if cur.rowcount:
-            #result = cur.fetchall()
             layersInEntity = [row[0] for row in cur.fetchall() if row[0] is not None]
-            #layersInEntity.extend([row[1] for row in result if row[1] is not None])
         cur.execute("DELETE FROM entity WHERE packageid = %s", (package, ))
 
         # Delete rows from the package table
@@ -505,9 +500,6 @@ class Setup(ArcpyTool):
         for p in pkgArray:
             self.logger.logMessage(DEBUG, "Found package " + p.values()[0])
         self.sitesAlreadyChecked = []
-        #allMapServices = [j.split('_')[0] for j in \
-        #    os.listdir(getConfigValue('pathtomapdoc') + os.sep + 'servicedefs') \
-        #    if j.endswith('.sd')]
         for i in xrange(2):
             try:
                 for pkgset in pkgArray:
@@ -2377,7 +2369,6 @@ class UpdateMXDs(ArcpyTool):
                 workingData = readWorkingData(dir, self.logger)
                 if workingData["spatialType"] == "spatialVector":
                     pkgId = workingData["packageId"]
-                    #scopeList.append(pkgId.split('.')[0].split('-')[2])
                     lName, mxdName = self.addVectorData(
                         dir,
                         workingData,
@@ -2416,8 +2407,6 @@ class UpdateMXDs(ArcpyTool):
                 if workingData:
                     contact = workingData["contact"]
                     pkgId = workingData["packageId"]
-                    #scopeList.append(pkgId.split('.')[0].split('-')[2])
-                    #pkgList.append(pkgId)
                     entityName = workingData["entityName"]
                     with cursorContext(self.logger) as cur:
                         cur.execute(
@@ -2509,8 +2498,6 @@ class RefreshMapService(ArcpyTool):
             self.serverInfo['summary'],
             self.serverInfo['tags']
         )
-        #sdFile = sdDraft.split('.')[0] + '.sd'
-        #pdb.set_trace()
         if analysis['errors'] != {}:
             self.logger.logMessage(
                 WARN,
@@ -2547,22 +2534,9 @@ class RefreshMapService(ArcpyTool):
             # Error 001272 (analyzer errors were encountered) shows up when
             # a raster is added to a site which already contains at least both
             # 1 vector and 1 raster data set.  However, adding new VECTOR
-            # services is always fine.
+            # services is always fine...
             self.logger.logMessage(WARN, e.message)
-            pdb.set_trace()
-            '''analysis = arcpy.mapping.CreateMapSDDraft(
-                mxd,
-                sdDraft,
-                self.serverInfo['service_name'],
-                "ARCGIS_SERVER",
-                None,
-                False,
-                self.serverInfo["service_folder"],
-                self.serverInfo['summary'],
-                self.serverInfo['tags']
-            )
-            arcpy.StageService_server(sdDraft, sdFile)'''
-
+            #pdb.set_trace()
 
         # by default, writes SD file to same loc as draft, then DELETES DRAFT
         if os.path.exists(sdFile):
@@ -2662,8 +2636,6 @@ class RefreshMapService(ArcpyTool):
                     cur.execute(stmt)
                     rows = cur.fetchall()
                     mxds = [cols[0] for cols in rows]
-                #if hasattr(self, 'calledFromScript'):
-                #    mxds.extend([s + '.mxd' for s in self.calledFromScript])
                 del rows
 
             if not mxds:
