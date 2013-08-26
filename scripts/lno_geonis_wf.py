@@ -1853,6 +1853,12 @@ class LoadVectorTypes(ArcpyTool):
             try:
                 status = "Entering load vector"
                 emldata = readWorkingData(dir, self.logger)
+                if emldata['spatialType'] == 'spatialRaster':
+                    self.logger.logMessage(
+                        INFO,
+                        "Found spatialRaster tag, skipping " + dir
+                    )
+                    continue
                 pkgId = emldata["packageId"]
                 datafilePath = emldata["datafilePath"]
                 datatype = emldata["type"]
@@ -2549,7 +2555,25 @@ class RefreshMapService(ArcpyTool):
         try:
             arcpy.StageService_server(sdDraft, sdFile)
         except Exception as e:
+            # Error 001272 (analyzer errors were encountered) shows up when
+            # a raster is added to a site which already contains at least both
+            # 1 vector and 1 raster data set.  However, adding new VECTOR
+            # services is always fine.
+            self.logger.logMessage(WARN, e.message)
             pdb.set_trace()
+            '''analysis = arcpy.mapping.CreateMapSDDraft(
+                mxd,
+                sdDraft,
+                self.serverInfo['service_name'],
+                "ARCGIS_SERVER",
+                None,
+                False,
+                self.serverInfo["service_folder"],
+                self.serverInfo['summary'],
+                self.serverInfo['tags']
+            )
+            arcpy.StageService_server(sdDraft, sdFile)'''
+
 
         # by default, writes SD file to same loc as draft, then DELETES DRAFT
         if os.path.exists(sdFile):
