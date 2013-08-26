@@ -406,6 +406,33 @@ class Setup(ArcpyTool):
     def cleanUpRasters(self, cur, siteWorkflow, layersInEntity):
         """Delete raster data folders and mosaic datasets, if any."""
 
+        # Delete entries from raster mosaic
+        mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWorkflow
+        if arcpy.Exists(mosaicDataset):
+            for layer in layersInEntity:
+                try:
+                    arcpy.RemoveRastersFromMosaicDataset_management(
+                        mosaicDataset,
+                        "Name='%s'" % layer,
+                        'UPDATE_BOUNDARY',
+                        'MARK_OVERVIEW_ITEMS',
+                        'DELETE_OVERVIEW_IMAGES',
+                        'DELETE_ITEM_CACHE',
+                        'REMOVE_MOSAICDATASET_ITEMS',
+                        'UPDATE_CELL_SIZES'
+                    )
+                    self.logger.logMessage(
+                        INFO,
+                        "Removed %s from raster mosaic %s" % (layer, mosaicDataset)
+                    )
+                except ExecuteError:
+                    self.logger.logMessage(
+                        WARN,
+                        ("Raster layer %s recorded in entity table, but not present in "
+                        "mosaic %s") % (layer, mosaicDataset)
+                    )
+                    continue
+
         # Delete folders in the raster data folder
         rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWorkflow
         if os.path.isdir(rasterFolder):
@@ -420,27 +447,6 @@ class Setup(ArcpyTool):
                                 INFO,
                                 "Removed %s" % rasterFolder + os.sep + f
                             )
-
-        # Delete entries from raster mosaic
-        mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWorkflow
-        if arcpy.Exists(mosaicDataset):
-            for layer in layersInEntity:
-                try:
-                    arcpy.RemoveRastersFromMosaicDataset_management(
-                        mosaicDataset,
-                        "Name='%s'" % layer
-                    )
-                    self.logger.logMessage(
-                        INFO,
-                        "Removed %s from raster mosaic %s" % (layer, mosaicDataset)
-                    )
-                except ExecuteError:
-                    self.logger.logMessage(
-                        WARN,
-                        ("Raster layer %s recorded in entity table, but not present in "
-                        "mosaic %s") % (layer, mosaicDataset)
-                    )
-                    continue
 
     def cleanUpPackage(self, cur, package, srch, site, siteWorkflow):
         self.cleanReportTables(cur, package)
@@ -2507,15 +2513,16 @@ class RefreshMapService(ArcpyTool):
         if os.path.exists(sdFile):
             os.remove(sdFile)
 
-        # Check for ERROR 001272: Analyzer errors were encountered (codes = 3, 3, 3, ...),
-        # which in ArcCatalog is reported as "the base table definition string is invalid"
-        try:
+            # Check for ERROR 001272: Analyzer errors were encountered (codes = 3, 3, 3, ...),
+            # which in ArcCatalog is reported as "the base table definition string is invalid"
+            #try:
             arcpy.StageService_server(sdDraft)
+        '''
         except Exception as err:
             if err[0].find('ERROR 001272') != -1 and err[0].find('codes = 3') != -1:
                 self.logger.logMessage(WARN, "Encountered error 001272 :(")
                 raise(Exception)
-                '''
+        
                 srch = '%' + mxdname.split('.')[0] + '%'
                 with cursorContext(self.logger) as cur:
                     layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
@@ -2617,9 +2624,10 @@ class RefreshMapService(ArcpyTool):
                     )
                 # Try to stage the service again
                 arcpy.StageService_server(sdDraft)
-                '''
+                
             else:
                 raise(Exception)
+            '''
 
         # by default, writes SD file to same loc as draft, then DELETES DRAFT
         if os.path.exists(sdFile):
