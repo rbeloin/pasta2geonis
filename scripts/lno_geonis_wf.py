@@ -466,17 +466,6 @@ class Setup(ArcpyTool):
         if site not in self.sitesAlreadyChecked:
             self.sitesAlreadyChecked.append(site)
 
-            '''
-            # Delete the service draft, if one exists
-            draft = getConfigValue('pathtomapdoc') + os.sep + 'servicedefs' + os.sep + site + '_layers.sd'
-            if os.path.exists(draft):
-                os.remove(draft)
-                self.logger.logMessage(INFO, "Removed " + draft)
-            if os.path.exists(draft + 'draft'):
-                os.remove(draft + 'draft')
-                self.logger.logMessage(INFO, "Removed " + draft + 'draft')
-            '''
-
             # Stop map service, if available
             if self.mapServiceAvailable(cur, site):
                 self.stopMapService(cur)
@@ -2673,8 +2662,8 @@ class RefreshMapService(ArcpyTool):
                     cur.execute(stmt)
                     rows = cur.fetchall()
                     mxds = [cols[0] for cols in rows]
-                if hasattr(self, 'calledFromScript'):
-                    mxds.extend([s + '.mxd' for s in self.calledFromScript])
+                #if hasattr(self, 'calledFromScript'):
+                #    mxds.extend([s + '.mxd' for s in self.calledFromScript])
                 del rows
 
             if not mxds:
