@@ -205,6 +205,15 @@ class Setup(ArcpyTool):
                 rmtree(tempDir + os.sep + folder)
                 self.logger.logMessage(INFO, "Removed " + tempDir + os.sep + folder)
 
+            # Delete the service draft, if one exists
+            draft = getConfigValue('pathtomapdoc') + os.sep + 'servicedefs' + os.sep + site + '_layers.sd'
+            if os.path.exists(draft):
+                os.remove(draft)
+                self.logger.logMessage(INFO, "Removed " + draft)
+            if os.path.exists(draft + 'draft'):
+                os.remove(draft + 'draft')
+                self.logger.logMessage(INFO, "Removed " + draft + 'draft')
+
             # Now that we're done making changes, refresh the map services
             # if available:
             RMS = RefreshMapService()
@@ -456,6 +465,15 @@ class Setup(ArcpyTool):
         # and modify the geonis_layer table
         if site not in self.sitesAlreadyChecked:
             self.sitesAlreadyChecked.append(site)
+
+            # Delete the service draft, if one exists
+            draft = getConfigValue('pathtomapdoc') + os.sep + 'servicedefs' + os.sep + site + '_layers.sd'
+            if os.path.exists(draft):
+                os.remove(draft)
+                self.logger.logMessage(INFO, "Removed " + draft)
+            if os.path.exists(draft + 'draft'):
+                os.remove(draft + 'draft')
+                self.logger.logMessage(INFO, "Removed " + draft + 'draft')
 
             # Stop map service, if available
             if self.mapServiceAvailable(cur, site):
@@ -2020,6 +2038,7 @@ class LoadRasterTypes(ArcpyTool):
         buildthumb = "NO_THUMBNAILS"
         comments = pId
         forcesr = "#"
+        pdb.set_trace()
         result = arcpy.AddRastersToMosaicDataset_management(
                                             siteMosDS, rastype, path, updatecs,
                                             updatebnd, updateovr, maxlevel, maxcs,
