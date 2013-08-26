@@ -837,8 +837,6 @@ class QueryPasta(ArcpyTool):
                 identArray = []
             try:
                 pids = self.getPackageIds(scope, identArray)
-                #pids = ['knb-lter-knz.2.7', 'knb-lter-knz.3.9', 'knb-lter-knz.4.8', 'knb-lter-knz.5.7', 'knb-lter-knz.6.7', 'knb-lter-knz.7.7', 'knb-lter-knz.9.8', 'knb-lter-knz.10.7', 'knb-lter-knz.11.7', 'knb-lter-knz.12.7', 'knb-lter-knz.13.7', 'knb-lter-knz.14.7', 'knb-lter-knz.16.7', 'knb-lter-knz.17.6', 'knb-lter-knz.18.6', 'knb-lter-knz.19.6', 'knb-lter-knz.23.6', 'knb-lter-knz.24.6', 'knb-lter-knz.25.6', 'knb-lter-knz.26.6', 'knb-lter-knz.27.6', 'knb-lter-knz.28.6', 'knb-lter-knz.29.6', 'knb-lter-knz.30.6', 'knb-lter-knz.32.6', 'knb-lter-knz.33.6', 'knb-lter-knz.34.6', 'knb-lter-knz.37.6', 'knb-lter-knz.38.6', 'knb-lter-knz.46.4', 'knb-lter-knz.47.4', 'knb-lter-knz.49.4', 'knb-lter-knz.50.4', 'knb-lter-knz.51.4', 'knb-lter-knz.55.6', 'knb-lter-knz.57.4', 'knb-lter-knz.58.4', 'knb-lter-knz.59.4', 'knb-lter-knz.60.4', 'knb-lter-knz.61.4', 'knb-lter-knz.63.4', 'knb-lter-knz.64.4', 'knb-lter-knz.66.4', 'knb-lter-knz.68.4', 'knb-lter-knz.70.4', 'knb-lter-knz.76.6', 'knb-lter-knz.77.6', 'knb-lter-knz.95.4', 'knb-lter-knz.200.3', 'knb-lter-knz.201.3', 'knb-lter-knz.202.3', 'knb-lter-knz.205.2', 'knb-lter-knz.210.1', 'knb-lter-knz.211.2', 'knb-lter-knz.222.2', 'knb-lter-knz.230.1', 'knb-lter-knz.240.2', 'knb-lter-knz.245.2']
-                #print len(pids)
                 self.packageTableInsert(pids)
                 self.findSpatialData(scope)
                 self.getEML(scope, packageDir)
@@ -1196,15 +1194,12 @@ class UnpackPackages(ArcpyTool):
                             status='error',
                             logger=self.logger
                         )
-                        #emldata = readWorkingData(dir, self.logger)
                         contact = emldata["contact"]
                         with cursorContext(self.logger) as cur:
                             cur.execute(
                                 "SELECT addpackageerrorreport(%s, %s, %s)",
                                 (pkgId, contact, err.message)
                             )
-                            #cur.execute("UPDATE package set report = %s WHERE packageid = %s;",(err.message,packageId))
-                            #cur.execute("INSERT INTO errornotify VALUES (%s,%s);", (packageId,contact))
             except Exception as err:
                 taskReport = "The data in %s will not be processed: %s" % \
                     (pkg, err.message)
@@ -1291,7 +1286,6 @@ class CheckSpatialData(ArcpyTool):
                         retval = fileext
                         return retval
         else:
-            #acceptedRasterTypes = [GeoNISDataType.TIF, GeoNISDataType.ESRIE00, GeoNISDataType.JPEG, GeoNISDataType.ASCIIRASTER, GeoNISDataType.FILEGEODB]
             for fileext in acceptedRasterTypes:
                 for ext in fileext:
                     pat = r"\b%s\b" % (ext[1:],)
@@ -1319,7 +1313,6 @@ class CheckSpatialData(ArcpyTool):
         #array of tuples, one of which we will return
         allPotentialFiles = []
         #special handling - if we have interchange file, E00, then import it, reset the hint, and continue
-        #interchangeF = [f for f in contents if isEsriE00(f)]
         interchangeF = [f for f in contents if checkFileTypes['ESRIE00'](f)]
         if len(interchangeF):
             #reset the hint
@@ -1334,27 +1327,6 @@ class CheckSpatialData(ArcpyTool):
             contents = [os.path.join(apackageDir,item) for item in os.listdir(apackageDir)]
         #gather up all files and folders that fit some description of spatial data
         for afile in (f for f in contents if os.path.isfile(f)):
-            '''
-            if isShapefile(afile):
-                allPotentialFiles.append((afile,GeoNISDataType.SHAPEFILE))
-            elif isKML(afile):
-                allPotentialFiles.append((afile,GeoNISDataType.KML))
-            elif isTif(afile):
-                allPotentialFiles.append((afile,GeoNISDataType.TIF))
-            elif isTifWorld(afile):
-                allPotentialFiles.append((afile,GeoNISDataType.TFW))
-            elif isJpeg(afile):
-                allPotentialFiles.append((afile,GeoNISDataType.JPEG))
-            elif isJpegWorld(afile):
-                allPotentialFiles.append((afile,GeoNISDataType.JPGW))
-            elif isASCIIRaster(afile):
-                allPotentialFiles.append((afile, GeoNISDataType.ASCIIRASTER))
-            elif isProjection(afile):
-                allPotentialFiles.append((afile, GeoNISDataType.PRJ))
-            elif isIdrisiRaster(afile):
-                allPotentialFiles.append((afile, GeoNISDataType.RST))
-            else:
-            '''
             if isASCIIRaster(afile):
                 allPotentialFiles.append((afile, GeoNISDataType.ASCIIRASTER))
             else:
@@ -1476,7 +1448,10 @@ class CheckSpatialData(ArcpyTool):
         entityAttNames = [str(f.name.upper()) for f in fields]
         diff = list(set(emlAttNames) ^ set(entityAttNames))
         if len(diff) > 0:
-            self.logger.logMessage(WARN,"Attribute names in eml and entity did not match. %s" % str(diff))
+            self.logger.logMessage(
+                WARN,
+                "Attribute names in eml and entity did not match. %s" % str(diff)
+            )
             self.logger.logMessage(WARN, "EML: " + str(emlAttNames))
             self.logger.logMessage(WARN, "Entity: " + str(entityAttNames))
         return diff
@@ -1499,8 +1474,6 @@ class CheckSpatialData(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Format report")
     def getReport(self, pkgId, reportText):
-        """eventually when we know the report format, this could be an XSLT from emlSubset+workingData
-        to the formatted report, perhaps json, xml, or html """
         if pkgId is None or len(reportText) == 0:
             return ""
         retval = "Package ID with issue: " + pkgId + "\n"
@@ -1554,37 +1527,13 @@ class CheckSpatialData(ArcpyTool):
                         emldata["datafileMatchesEntity"] = nameMatch
                     else:
                         emldata["datafileMatchesEntity"] = True
-                    #force objectName to have data file path, and use objectName for layer and database
+                    
+                    # Force objectName to have data file path, and use objectName for layer and database
                     if not nameMatch or nameMatch == 'entityName':
                         datafilename = os.path.splitext(os.path.basename(foundFile))[0]
                         if len(datafilename) > 0:
                             datafilename = stringToValidName(datafilename, max=31)
                             emldata["objectName"] = datafilename
-                    '''
-                    if spatialType == GeoNISDataType.KML:
-                        self.logger.logMessage(INFO, "kml found")
-                        emldata["type"] = "kml"
-                    if spatialType == GeoNISDataType.SHAPEFILE:
-                        self.logger.logMessage(INFO, "shapefile found")
-                        emldata["type"] = "shapefile"
-                    if spatialType == GeoNISDataType.ASCIIRASTER:
-                        self.logger.logMessage(INFO, "ascii raster found")
-                        emldata["type"] = "ascii raster"
-                    if spatialType == GeoNISDataType.FILEGEODB:
-                        self.logger.logMessage(INFO, "file gdb found")
-                        emldata["type"] = "file geodatabase"
-                        #need to examine file gdb to see what is there, or rely on EML?
-                    if spatialType == GeoNISDataType.ESRIE00:
-                        self.logger.logMessage(WARN, "arcinfo e00 reported. Should have been unpacked.")
-                    if spatialType == GeoNISDataType.TIF:
-                        emldata["type"] = "tif"
-                    if spatialType == GeoNISDataType.JPEG:
-                        emldata["type"] = "jpg"
-                    if spatialType == GeoNISDataType.SPATIALRASTER:
-                        emldata["type"] = "raster dataset"
-                    if spatialType == GeoNISDataType.SPATIALVECTOR:
-                        emldata["type"] = "vector"
-                    '''
                     if spatialType == GeoNISDataType.ESRIE00:
                         self.logger.logMessage(WARN, "arcinfo e00 reported. Should have been unpacked.")
                     try:
@@ -1669,8 +1618,6 @@ class CheckSpatialData(ArcpyTool):
                                     "SELECT addentityerrorreport(%s, %s, %s, %s)",
                                     (pkgId, entityName, emldata["contact"], formattedReport)
                                 )
-                                #stmt2 = "UPDATE entity set report = %s WHERE packageid = %s and entityname = %s;"
-                                #cur.execute(stmt2, (formattedReport, pkgId, entityName))
                             reportText = []
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
             arcpy.SetParameterAsText(4, str(formattedReport))
@@ -1919,13 +1866,16 @@ class LoadVectorTypes(ArcpyTool):
                 if emldata and pkgId and entityName:
                     contact = emldata["contact"]
                     with cursorContext(self.logger) as cur:
-                        cur.execute("SELECT addentityerrorreport(%s,%s,%s,%s);", (pkgId, entityName, contact, err.message))
+                        cur.execute(
+                            "SELECT addentityerrorreport(%s, %s, %s, %s)",
+                            (pkgId, entityName, contact, err.message)
+                        )
             finally:
-                #write status msg to db table
+                # Write status msg to db table
                 if pkgId and entityName:
-                    stmt = "UPDATE entity set status = %s WHERE packageid = %s and entityname = %s;"
+                    sql = "UPDATE entity set status = %s WHERE packageid = %s and entityname = %s"
                     with cursorContext(self.logger) as cur:
-                        cur.execute(stmt, (status[:499], pkgId, entityName))
+                        cur.execute(sql, (status[:499], pkgId, entityName))
         #pass the list on
         arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
 
@@ -1964,7 +1914,6 @@ class LoadRasterTypes(ArcpyTool):
                 return True
         return False
 
-
     @errHandledWorkflowTask(taskName="Prepare storage")
     def prepareStorage(self, site, datapath, name, **kwargs):
         """ Create the directories necessary for storing the raw data, and return path to location.
@@ -1985,7 +1934,10 @@ class LoadRasterTypes(ArcpyTool):
         pathToRasterMosaicDatasets = getConfigValue("pathtorastermosaicdatasets")
         siteMosDS = pathToRasterMosaicDatasets + os.sep + dsName
         if not arcpy.Exists(siteMosDS):
-            result = arcpy.Copy_management(pathToRasterMosaicDatasets + os.sep + "Template", siteMosDS)
+            result = arcpy.Copy_management(
+                pathToRasterMosaicDatasets + os.sep + "Template",
+                siteMosDS
+            )
         else:
             #if raster exists, delete it?
             pass
@@ -2047,14 +1999,19 @@ class LoadRasterTypes(ArcpyTool):
             return False
         arcpy.env.workspace = workDir
         pathToStylesheets = getConfigValue("pathtostylesheets")
-        result = arcpy.XSLTransform_conversion(raster, pathToStylesheets + os.sep + "metadataMerge.xsl", "merged_metadata.xml", xmlSuppFile)
+        result = arcpy.XSLTransform_conversion(
+            raster,
+            pathToStylesheets + os.sep + "metadataMerge.xsl",
+            "merged_metadata.xml",
+            xmlSuppFile
+        )
         if result.status == 4:
             result2 = arcpy.MetadataImporter_conversion("merged_metadata.xml", raster)
         else:
-            self.logger.logMessage(WARN, "XSLT failed with status %d" % (result.status,))
+            self.logger.logMessage(WARN, "XSLT failed with status %d" % result.status)
             return False
         if result2.status != 4:
-            self.logger.logMessage(WARN, "Reloading of metadata failed with code %d" % (result2.status,))
+            self.logger.logMessage(WARN, "Reloading of metadata failed with code %d" % result2.status)
             return False
         return True
 
@@ -2100,7 +2057,12 @@ class LoadRasterTypes(ArcpyTool):
                 )
                 status = "Storage prepared"
                 os.mkdir(rawDataLoc)
-                raster = self.copyRaster(datafilePath, rawDataLoc, packageId=pkgId, entityName=entityName)
+                raster = self.copyRaster(
+                    datafilePath,
+                    rawDataLoc,
+                    packageId=pkgId,
+                    entityName=entityName
+                )
                 self.updateTable(raster, packageId=pkgId, entityName=entityName)
 
                 # Add objectName to entity table as "layername" so there is a
@@ -2115,10 +2077,19 @@ class LoadRasterTypes(ArcpyTool):
                 # amend metadata in place
                 if self.mergeMetadata(dir, raster):
                     status = "Metadata updated"
-                    result = self.loadRaster(mosaicDS, raster, pkgId, packageId=pkgId, entityName=entityName)
+                    result = self.loadRaster(
+                        mosaicDS,
+                        raster,
+                        pkgId,
+                        packageId=pkgId,
+                        entityName=entityName
+                    )
                     if result != 4:
                         status = "Load raster to mosaic failed"
-                        self.logger.logMessage(WARN, "Loading %s did not succeed, with code %d.\n" % (raster, result))
+                        self.logger.logMessage(
+                            WARN,
+                            "Loading %s did not succeed, with code %d.\n" % (raster, result)
+                        )
                     else:
                         # add dir for next tool, in any case except exception
                         status = "Load raster completed"
@@ -2284,10 +2255,6 @@ class UpdateMXDs(ArcpyTool):
             cur.execute("CREATE INDEX packageid_idx ON " + schema + "viewreport (packageid)")
             self.logger.logMessage(INFO, "Create entityid index")
             cur.execute("CREATE INDEX entityid_idx ON " + schema + "viewreport (entityid)")
-            #cur.execute(
-            #    "CREATE UNIQUE INDEX entityname_taskname_idx ON " + schema +
-            #    "viewreport (entityname, taskname)"
-            #)
 
     @errHandledWorkflowTask(taskName="Add extra info to error report")
     def modifyErrorReport(self, pkgId):
@@ -2437,8 +2404,11 @@ class UpdateMXDs(ArcpyTool):
 
 ## *****************************************************************************
 class RefreshMapService(ArcpyTool):
-    """Adds new vector data to map, creates service def draft, modifies it to replace, uploads and starts service,
-       waits for service to start, gets list of layers, updates table with layer IDs. """
+    """
+    Adds new vector data to map, creates service def draft, modifies it to
+    replace, uploads and starts service, waits for service to start, gets list 
+    of layers, updates table with layer IDs.
+    """
     def __init__(self):
         ArcpyTool.__init__(self)
         self._description = "Creates service def draft, modifies it to replace, uploads and starts service, waits for service to start, gets list of layers, updates table with layer IDs."
@@ -2486,7 +2456,7 @@ class RefreshMapService(ArcpyTool):
             self.logger.logMessage(WARN, "Error while attempting to get admin token.")
         mxd = arcpy.mapping.MapDocument(pathToMapDoc + os.sep + mxdname)
         sdDraft = pathToServiceDoc + os.sep + self.serverInfo['service_name'] + ".sddraft"
-        self.logger.logMessage(DEBUG, "Draft loc: %s" % (sdDraft,))
+        self.logger.logMessage(DEBUG, "Draft loc: %s" % sdDraft)
         analysis = arcpy.mapping.CreateMapSDDraft(
             mxd,
             sdDraft,
@@ -2504,7 +2474,8 @@ class RefreshMapService(ArcpyTool):
                 "CreateMapSDDraft analyzer contains errors: " + analysis['errors']
             )
         del mxd
-        #now we need to change one tag in the draft to indicate this is a replacement service
+
+        # Now we need to change one tag in the draft to indicate this is a replacement service
         self.logger.logMessage(DEBUG,"reading back draft to parse xml")
         draftXml = etree.parse(sdDraft)
         typeNode = draftXml.xpath("/SVCManifest/Type")
@@ -2568,11 +2539,12 @@ class RefreshMapService(ArcpyTool):
             layerInfo = json.loads(layerInfoJson.readline())
             available = "error" not in layerInfo
         if not available:
-            self.logger.logMessage(WARN, "Could not connect to %s" % (layersUrl,))
+            self.logger.logMessage(WARN, "Could not connect to %s" % layersUrl)
             return
-        self.logger.logMessage(DEBUG, "service conn attempts %d" % (tries,))
+        self.logger.logMessage(DEBUG, "service conn attempts %d" % tries)
         # make list of dict with just name and id of feature layers
-        layers = [{'name':lyr["name"],'id':int(lyr['id'])} for lyr in layerInfo["layers"] if lyr["type"] == "Feature Layer"]
+        layers = [{'name': lyr["name"], 'id': int(lyr['id'])} \
+            for lyr in layerInfo["layers"] if lyr["type"] == "Feature Layer"]
         arcloc = self.serverInfo["service_folder"] + "/" + self.serverInfo["service_name"]
         # shorten names that have db and schema in the name
         for lyr in layers:
@@ -2607,7 +2579,7 @@ class RefreshMapService(ArcpyTool):
                 # Only send to jack@tinybike.net for testing!
                 #toList += group
                 toList = group
-                self.logger.logMessage(INFO,"Mailing %s about %s." % (str(toList),pkgid))
+                self.logger.logMessage(INFO,"Mailing %s about %s." % (str(toList), pkgid))
                 #bypass for testing, ignore contact
                 sendEmail(group, composeMessage(pkgid))
 
@@ -2616,10 +2588,18 @@ class RefreshMapService(ArcpyTool):
         mapServInfoString = getConfigValue("mapservinfo")
         mapServInfoItems = mapServInfoString.split(';')
         if len(mapServInfoItems) != 4:
-            self.logger.logMessage(WARN,"Wrong number of items in map serv info: %s" % (mapServInfoString,))
+            self.logger.logMessage(
+                WARN,
+                "Wrong number of items in map serv info: %s" % mapServInfoString
+            )
             #maybe we have the name and folder
             mapServInfoItems = [mapServInfoItems[0],mapServInfoItems[1],"",""]
-        mapServInfo = {'service_name':mapServInfoItems[0], 'service_folder':mapServInfoItems[1], 'tags':mapServInfoItems[2], 'summary':mapServInfoItems[3]}
+        mapServInfo = {
+            'service_name': mapServInfoItems[0],
+            'service_folder': mapServInfoItems[1],
+            'tags': mapServInfoItems[2],
+            'summary': mapServInfoItems[3]
+        }
         self.serverInfo = copy.copy(mapServInfo)
         try:
 
