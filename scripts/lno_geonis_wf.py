@@ -405,7 +405,7 @@ class Setup(ArcpyTool):
 
     def cleanUpRasters(self, cur, siteWorkflow, layersInEntity):
         """Delete raster data folders and mosaic datasets, if any."""
-        
+
         # Delete folders in the raster data folder
         rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWorkflow
         if os.path.isdir(rasterFolder):
@@ -2513,7 +2513,9 @@ class RefreshMapService(ArcpyTool):
             arcpy.StageService_server(sdDraft)
         except Exception as err:
             if err[0].find('ERROR 001272') != -1 and err[0].find('codes = 3') != -1:
-                self.logger.logMessage(WARN, "Encountered ERROR 001272, flushing data")
+                self.logger.logMessage(WARN, "Encountered error 001272 :(")
+                raise(Exception)
+                '''
                 srch = '%' + mxdname.split('.')[0] + '%'
                 with cursorContext(self.logger) as cur:
                     layersFrame = arcpy.mapping.ListDataFrames(mxd, 'layers')[0]
@@ -2531,7 +2533,7 @@ class RefreshMapService(ArcpyTool):
                 if os.path.exists(sdFile):
                     rmtree(sdFile)
                 arcpy.StageService_server(self.draftSD(mxdname))
-                '''
+                
                 setup = Setup()
                 setup._isRunningAsTool = False
                 setup.setScopeIdManually = True
