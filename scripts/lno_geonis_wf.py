@@ -1469,7 +1469,8 @@ class CheckSpatialData(ArcpyTool):
         passed = True
         fields = arcpy.ListFields(dataFilePath)
         for fld in fields:
-            if fld.type == u'Double' and fld.precision > 15:
+            #if fld.type == u'Double' and fld.precision > 15:
+            if fld.type == u'Double' and fld.precision > 31:
                 passed = False
             elif fld.type == u'Single' and fld.precision > 6:
                 passed = False
@@ -1568,7 +1569,7 @@ class CheckSpatialData(ArcpyTool):
                         else:
                             status = "Matched all attribute names"
 
-                    if not self.checkPrecision(emldata["datafilePath"]):
+                    if not self.checkPrecision(emldata["datafilePath"], packageId=pkgId, entityName=entityName):
                         raise Exception("Precision of field incompatible with geodatabase.")
                 except Exception as err:
                     status = "Failed after %s with %s" % (status, err.message)
