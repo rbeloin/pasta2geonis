@@ -493,11 +493,18 @@ class Setup(ArcpyTool):
             )
             allPackages = [row[0] for row in cur.fetchall()]
             for package in allPackages:
+                cur.execute(
+                    "SELECT COUNT(*) FROM entity WHERE packageid = %s AND isvector = 't'",
+                    (package, )
+                )
+                if cur.fetchone()[0] > 0:
+                    self.vectorsInEntity = True
                 self.cleanUpPackage(cur, package, srch, site, siteWorkflow)
 
     def cleanUp(self, pkgArray):
         for p in pkgArray:
             self.logger.logMessage(DEBUG, "Found package " + p.values()[0])
+        self.vectorsInEntity = False
         self.sitesAlreadyChecked = []
         for i in xrange(2):
             try:
@@ -513,13 +520,14 @@ class Setup(ArcpyTool):
             raise(Exception)
 
         # Finally, refresh map services to reflect changes
-        RMS = RefreshMapService()
-        RMS._isRunningAsTool = False
-        paramsRMS = RMS.getParameterInfo()
-        paramsRMS[0].value = True
-        paramsRMS[1].value = self.logfile
-        RMS.execute(paramsRMS, [])
-        del RMS
+        if self.vectorsInEntity:
+            RMS = RefreshMapService()
+            RMS._isRunningAsTool = False
+            paramsRMS = RMS.getParameterInfo()
+            paramsRMS[0].value = True
+            paramsRMS[1].value = self.logfile
+            RMS.execute(paramsRMS, [])
+            del RMS
 
     def execute(self, parameters, messages):
         """ alters role of geonis to set search_path to point to test tables or production tables.
