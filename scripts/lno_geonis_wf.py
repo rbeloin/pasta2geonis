@@ -409,7 +409,6 @@ class Setup(ArcpyTool):
 
     def cleanUpRasters(self, cur, siteWorkflow, layersInEntity):
         """Delete raster data folders and mosaic datasets, if any."""
-
         # Delete entries from raster mosaic
         mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWorkflow
         if arcpy.Exists(mosaicDataset):
@@ -503,7 +502,6 @@ class Setup(ArcpyTool):
         for i in xrange(2):
             try:
                 for pkgset in pkgArray:
-                    #if pkgset['inc']:
                     self.cleanUpPackageSet(pkgset['inc'])
             except Exception as err:
                 self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
@@ -1672,7 +1670,8 @@ class LoadVectorTypes(ArcpyTool):
             )
         except Exception as err:
 
-            # ERROR 999999: Failed to execute FeatureClassToFeatureClass usually
+            # Error 999999: Failed to execute FeatureClassToFeatureClass can
+            # be caused by a couple different things.  First, often it
             # means that, for some mysterious reason, Arc doesn't like the name
             # we've assigned to the dataset.  Pick a new one, and try again...
             if err[0].find('ERROR 999999') != -1:
@@ -2180,8 +2179,8 @@ class UpdateMXDs(ArcpyTool):
                 #layer.name += ": " + \
                 #    shortEntityDesc.replace("'", '"').replace('"', '&quot;')
                 #insertObj['title'] # change to entity-level description??
-                layer.name += ': ' + insertObj['title'].replace("'", '"').replace('"', '&quot;')
-                layerName = layer.name
+                #layer.name += ': ' + insertObj['title'].replace("'", '"').replace('"', '&quot;')
+                #layerName = layer.name
         mxd.save()
         workingData["layerName"] = layerName
         writeWorkingDataToXML(workDir, workingData)
