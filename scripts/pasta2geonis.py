@@ -125,6 +125,8 @@ def query_pasta(parameters):
     params[1].value = parameters['logfile']
     params[2].value = parameters['package_directory']
     tool.execute(params, [])
+    parameters['package_directory'] = tool.packageDir
+    return parameters
 
 
 def unpack_packages(parameters):
@@ -137,7 +139,8 @@ def unpack_packages(parameters):
     params[2].value = parameters['package_directory']
     params[3].value = parameters['valid_pkg_test']
     tool.execute(params, [])
-    return tool.inputDirList
+    parameters['input_dirs'] = tool.inputDirList
+    return parameters
 
 
 def check_spatial_data(parameters):
@@ -154,6 +157,8 @@ def check_spatial_data(parameters):
     params[1].value = parameters['logfile']
     params[2].value = parameters['input_dirs']
     tool.execute(params, [])
+    parameters['input_dirs'] = tool.inputDirsParameter
+    parameters['output_dirs'] = tool.outputDirsParameter
     return parameters
 
 
@@ -162,9 +167,10 @@ def load_vector_types(parameters):
     tool = lno_geonis_wf.LoadVectorTypes()
     tool._isRunningAsTool = False
     params = tool.getParameterInfo()
-    params[0].value = True
+    params[0].value = parameters['verbose']
     params[1].value = parameters['logfile']
     params[2].value = parameters['input_dirs']
+    params[3].value = parameters['output_dirs']
     tool.execute(params, [])
 
 
@@ -173,7 +179,7 @@ def load_raster_types(parameters):
     tool = lno_geonis_wf.LoadRasterTypes()
     tool._isRunningAsTool = False
     params = tool.getParameterInfo()
-    params[0].value = True
+    params[0].value = parameters['verbose']
     params[1].value = parameters['logfile']
     params[2].value = parameters['input_dirs']
     tool.execute(params, [])
@@ -184,7 +190,7 @@ def update_mxds(parameters):
     tool = lno_geonis_wf.UpdateMXDs()
     tool._isRunningAsTool = False
     params = tool.getParameterInfo()
-    params[0].value = True
+    params[0].value = parameters['verbose']
     params[1].value = parameters['logfile']
     params[2].value = parameters['input_dirs']
     tool.execute(params, [])
@@ -225,8 +231,8 @@ def main(argv):
     # Run the model (if requested)
     run_model = 'Y' if parameters['run_model_arg'] else raw_input("Run model? [Y/n] ")
     if run_model.lower() != 'n':
-        query_pasta(parameters)
-        parameters['input_dirs'] = unpack_packages(parameters)
+        parameters = query_pasta(parameters)
+        parameters = unpack_packages(parameters)
         parameters = check_spatial_data(parameters)
         load_vector_types(parameters)
         load_raster_types(parameters)

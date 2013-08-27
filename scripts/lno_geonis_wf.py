@@ -841,6 +841,7 @@ class QueryPasta(ArcpyTool):
             except Exception as err:
                 self.logger.logMessage(WARN, err.message)
         #pass the package download dir to workflow
+        self.packageDir = packageDir
         arcpy.SetParameterAsText(3, packageDir)
 
 
@@ -1619,6 +1620,8 @@ class CheckSpatialData(ArcpyTool):
                                     (pkgId, entityName, emldata["contact"], formattedReport)
                                 )
                             reportText = []
+            self.outputDirsParameter = self.outputDirs
+            self.inputDirsParameter = self.inputDirs
             arcpy.SetParameterAsText(3, ";".join(self.outputDirs))
             arcpy.SetParameterAsText(4, str(formattedReport))
         except AssertionError:
@@ -1848,12 +1851,13 @@ class LoadVectorTypes(ArcpyTool):
             try:
                 status = "Entering load vector"
                 emldata = readWorkingData(dir, self.logger)
-                #if emldata['spatialType'] == 'spatialRaster':
-                #    self.logger.logMessage(
-                #        INFO,
-                #        "Found spatialRaster tag, skipping " + dir
-                #    )
-                #    continue
+                if emldata['spatialType'] == 'spatialRaster':
+                    self.logger.logMessage(
+                        INFO,
+                        "Found spatialRaster tag, skipping " + dir
+                    )
+                    self.outputDirs.append(dir)
+                    continue
                 pkgId = emldata["packageId"]
                 datafilePath = emldata["datafilePath"]
                 datatype = emldata["type"]
@@ -2685,8 +2689,8 @@ class RefreshMapService(ArcpyTool):
                     rows = cur.fetchall()
                     mxds = [cols[0] for cols in rows]
                 del rows
-                if hasattr(self, 'calledFromScript'):
-                    mxds.append(self.calledFromScript + '.mxd')
+                #if hasattr(self, 'calledFromScript'):
+                #    mxds.append(self.calledFromScript + '.mxd')
 
             if not mxds:
                 self.logger.logMessage(INFO, "No new vector data added to any maps.")
