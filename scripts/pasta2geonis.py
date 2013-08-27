@@ -137,15 +137,16 @@ def unpack_packages(parameters):
     params[2].value = parameters['package_directory']
     params[3].value = parameters['valid_pkg_test']
     tool.execute(params, [])
+    return tool.inputDirList
 
 
 def check_spatial_data(parameters):
     print "************"
-    pkg_subdirs = os.listdir(parameters['valid_pkg_test'])
-    if len(pkg_subdirs) > 1:
-        parameters['input_dirs'] = [parameters['valid_pkg_test'] + os.sep + d for d in os.listdir(parameters['valid_pkg_test'])[1:]]
-    else:
-        parameters['input_dirs'] = [parameters['valid_pkg_test'] + os.sep + d for d in os.listdir(parameters['valid_pkg_test'])]
+    #pkg_subdirs = os.listdir(parameters['valid_pkg_test'])
+    #if len(pkg_subdirs) > 1:
+    #    parameters['input_dirs'] = [parameters['valid_pkg_test'] + os.sep + d for d in os.listdir(parameters['valid_pkg_test'])[1:]]
+    #else:
+    #    parameters['input_dirs'] = [parameters['valid_pkg_test'] + os.sep + d for d in os.listdir(parameters['valid_pkg_test'])]
     tool = lno_geonis_wf.CheckSpatialData()
     tool._isRunningAsTool = False
     params = tool.getParameterInfo()
@@ -225,7 +226,7 @@ def main(argv):
     run_model = 'Y' if parameters['run_model_arg'] else raw_input("Run model? [Y/n] ")
     if run_model.lower() != 'n':
         query_pasta(parameters)
-        unpack_packages(parameters)
+        parameters['input_dirs'] = unpack_packages(parameters)
         parameters = check_spatial_data(parameters)
         load_vector_types(parameters)
         load_raster_types(parameters)

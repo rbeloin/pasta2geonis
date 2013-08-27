@@ -1220,6 +1220,7 @@ class UnpackPackages(ArcpyTool):
                             "SELECT addpackageerrorreport(%s, %s, %s)",
                             (pkgId, contact, err.message)
                         )
+        self.inputDirList = carryForwardList
         arcpy.SetParameterAsText(4, ";".join(carryForwardList))
 
 
