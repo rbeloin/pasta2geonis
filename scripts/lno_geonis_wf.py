@@ -1848,12 +1848,12 @@ class LoadVectorTypes(ArcpyTool):
             try:
                 status = "Entering load vector"
                 emldata = readWorkingData(dir, self.logger)
-                if emldata['spatialType'] == 'spatialRaster':
-                    self.logger.logMessage(
-                        INFO,
-                        "Found spatialRaster tag, skipping " + dir
-                    )
-                    continue
+                #if emldata['spatialType'] == 'spatialRaster':
+                #    self.logger.logMessage(
+                #        INFO,
+                #        "Found spatialRaster tag, skipping " + dir
+                #    )
+                #    continue
                 pkgId = emldata["packageId"]
                 datafilePath = emldata["datafilePath"]
                 datatype = emldata["type"]
@@ -2679,11 +2679,14 @@ class RefreshMapService(ArcpyTool):
             # exists, is OK, has mxd, but not in geonis_layer
             else:
                 stmt = "SELECT * FROM vw_stalemapservices;"
+                mxds = []
                 with cursorContext(self.logger) as cur:
                     cur.execute(stmt)
                     rows = cur.fetchall()
                     mxds = [cols[0] for cols in rows]
                 del rows
+                if hasattr(self, 'calledFromScript'):
+                    mxds.append(self.calledFromScript + '.mxd')
 
             if not mxds:
                 self.logger.logMessage(INFO, "No new vector data added to any maps.")

@@ -80,7 +80,7 @@ def refresh_map_service(parameters):
     params[0].value = True
     params[1].value = parameters['logfile']
     if parameters['site'] not in ('*', 'all'):
-        tool.calledFromScript = [parameters['site']]
+        tool.calledFromScript = parameters['site']
     elif parameters['site'] in ('*', 'all'):
         tool.calledFromScript = [
             s.split('-')[-1] for s in urlopen(
