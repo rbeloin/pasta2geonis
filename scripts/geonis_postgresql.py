@@ -14,6 +14,7 @@ import datetime, time
 from contextlib import contextmanager
 from geonis_pyconfig import dsnfile
 from logging import WARN
+import pdb
 
 # some statements now obsolete
 ##def getPackageInsert():
@@ -70,7 +71,7 @@ def cursorContext(logger=None):
         conn = None
         with open(dsnfile) as dsnf:
             dsnStr = dsnf.readline()
-        conn = psycopg2.connect(dsn = dsnStr)
+        conn = psycopg2.connect(dsn=dsnStr)
         if not conn or conn.closed:
             if conn:
                 del conn
@@ -81,13 +82,14 @@ def cursorContext(logger=None):
                 print "attempt:", attempt
                 time.sleep(0.5)
                 attempt += 1
-                conn = psycopg2.connect(dsn = dsnStr)
+                conn = psycopg2.connect(dsn=dsnStr)
         if not conn or conn.closed:
-            raise Exception("DB connection failed after %d attemps." % (attempt,))
+            raise Exception("DB connection failed after %d attempts." % (attempt,))
         cur = conn.cursor()
         #enter WITH block with value of cur
         yield cur
     except psycopg2.Warning as warn:
+        #pdb.set_trace()
         if conn:
             conn.close()
             del conn
@@ -96,6 +98,7 @@ def cursorContext(logger=None):
         else:
             print warn.message
     except (psycopg2.Error, Exception) as err:
+        #pdb.set_trace()
         #exiting WITH block with errors
         if conn:
             conn.rollback()

@@ -1493,6 +1493,7 @@ class CheckSpatialData(ArcpyTool):
                 taskDesc = 'Check spatial data'
                 try:
                     status = "Entering data checks."
+                    #pdb.set_trace()
                     emldata = readWorkingData(dataDir, self.logger)
                     pkgId = emldata["packageId"]
                     shortPkgId = pkgId[9:]
@@ -1651,61 +1652,126 @@ class LoadVectorTypes(ArcpyTool):
 
     @errHandledWorkflowTask(taskName="Load shapefile")
     def loadShapefile(self, scope, name, path, **kwargs):
-        """call feature class to feature class to copy shapefile to geodatabase"""
+        """
+        Create a feature dataset (if one doesn't already exist), then use
+        the Feature Class to Feature Class tool to copy the shapefile to
+        the geodatabase.
+        """
         geodatabase = getConfigValue("geodatabase")
         self.logger.logMessage(
             INFO,
             "Loading %s to %s/%s as %s" % (path, geodatabase, scope, name)
         )
-        #if no dataset, make one
-        if not arcpy.Exists(os.path.join(geodatabase,scope)):
-            arcpy.CreateFeatureDataset_management(out_dataset_path=geodatabase,
-                                                out_name=scope,
-                                                spatial_reference=self.spatialRef)
+        
+        # This try-except block is to deal with an error that
+        # arises when Arc loses its connection to the database.
+        # I have not been able to isolate WHY the database
+        # connection gets lost, but a workaround is to simply
+        # manually restore the connection using cursorContext().
         try:
-            arcpy.FeatureClassToFeatureClass_conversion(
-                in_features=path,
-                out_path=os.path.join(geodatabase, scope),
-                out_name=name
-            )
-        except Exception as err:
-
-            # Error 999999: Failed to execute FeatureClassToFeatureClass can
-            # be caused by a couple different things.  First, often it
-            # means that, for some mysterious reason, Arc doesn't like the name
-            # we've assigned to the dataset.  Pick a new one, and try again...
-            if err[0].find('ERROR 999999') != -1:
-                self.logger.logMessage(
-                    WARN,
-                    ("Encountered error 999999, which usually means that Arc "
-                    "doesn't like our proposed feature class name %s, "
-                    "attempting to work around by adding a _RENAME "
-                    "suffix") % name
+            # If a feature dataset doesn't already exist, create one
+            if not arcpy.Exists(os.path.join(geodatabase,scope)):
+                arcpy.CreateFeatureDataset_management(
+                    out_dataset_path=geodatabase,
+                    out_name=scope,
+                    spatial_reference=self.spatialRef
                 )
-                name += '_RENAME'
-
-            # Looking for ERROR 000361: The name starts with an invalid character
-            # This is usually because the shapefile starts with a number,
-            # so workaround by prefixing 's' to the shapefile name
-            if err[0].find('ERROR 000361') != -1:
-                self.logger.logMessage(
-                    WARN,
-                    ("Encountered error 000361, usually indicates that the name "
-                    "starts with a number (which is not allowed), attempting "
-                    "to work around by prefixing 's' to the shapefile name")
+            try:
+                arcpy.FeatureClassToFeatureClass_conversion(
+                    in_features=path,
+                    out_path=os.path.join(geodatabase, scope),
+                    out_name=name
                 )
-                name = 's' + name
+            except Exception as err:
 
-            # Retry FeatureClassToFeatureClass conversion...
-            self.logger.logMessage(
-                INFO,
-                "Loading %s to %s/%s as %s" % (path, geodatabase, scope, name)
-            )
-            arcpy.FeatureClassToFeatureClass_conversion(
-                in_features=path,
-                out_path=os.path.join(geodatabase, scope),
-                out_name=name
-            )
+                # Error 999999: Failed to execute FeatureClassToFeatureClass usually
+                # means that, for some mysterious reason, Arc doesn't like the name
+                # we've assigned to the dataset.  Pick a new one, and try again...
+                if err[0].find('ERROR 999999') != -1:
+                    self.logger.logMessage(
+                        WARN,
+                        ("Encountered error 999999, which usually means that Arc "
+                        "doesn't like our proposed feature class name %s, "
+                        "attempting to work around by adding a _RENAME "
+                        "suffix") % name
+                    )
+                    name += '_RENAME'
+
+                # Looking for ERROR 000361: The name starts with an invalid character
+                # This is usually because the shapefile starts with a number,
+                # so workaround by prefixing 's' to the shapefile name
+                if err[0].find('ERROR 000361') != -1:
+                    self.logger.logMessage(
+                        WARN,
+                        ("Encountered error 000361, usually indicates that the name "
+                        "starts with a number (which is not allowed), attempting "
+                        "to work around by prefixing 's' to the shapefile name")
+                    )
+                    name = 's' + name
+
+                # Retry FeatureClassToFeatureClass conversion...
+                self.logger.logMessage(
+                    INFO,
+                    "Loading %s to %s/%s as %s" % (path, geodatabase, scope, name)
+                )
+                arcpy.FeatureClassToFeatureClass_conversion(
+                    in_features=path,
+                    out_path=os.path.join(geodatabase, scope),
+                    out_name=name
+                )
+        except Exception as e:
+            self.logger.logMessage(WARN, e.message)
+            if e.message.find('DBMS error') != -1:
+                with cursorContext(self.logger) as cur:
+                    if not arcpy.Exists(os.path.join(geodatabase,scope)):
+                        arcpy.CreateFeatureDataset_management(
+                            out_dataset_path=geodatabase,
+                            out_name=scope,
+                            spatial_reference=self.spatialRef
+                        )
+                    try:
+                        arcpy.FeatureClassToFeatureClass_conversion(
+                            in_features=path,
+                            out_path=os.path.join(geodatabase, scope),
+                            out_name=name
+                        )
+                    except Exception as err:
+
+                        # Error 999999: Failed to execute FeatureClassToFeatureClass usually
+                        # means that, for some mysterious reason, Arc doesn't like the name
+                        # we've assigned to the dataset.  Pick a new one, and try again...
+                        if err[0].find('ERROR 999999') != -1:
+                            self.logger.logMessage(
+                                WARN,
+                                ("Encountered error 999999, which usually means that Arc "
+                                "doesn't like our proposed feature class name %s, "
+                                "attempting to work around by adding a _RENAME "
+                                "suffix") % name
+                            )
+                            name += '_RENAME'
+
+                        # Looking for ERROR 000361: The name starts with an invalid character
+                        # This is usually because the shapefile starts with a number,
+                        # so workaround by prefixing 's' to the shapefile name
+                        if err[0].find('ERROR 000361') != -1:
+                            self.logger.logMessage(
+                                WARN,
+                                ("Encountered error 000361, usually indicates that the name "
+                                "starts with a number (which is not allowed), attempting "
+                                "to work around by prefixing 's' to the shapefile name")
+                            )
+                            name = 's' + name
+
+                        # Retry FeatureClassToFeatureClass conversion...
+                        self.logger.logMessage(
+                            INFO,
+                            "Loading %s to %s/%s as %s" % (path, geodatabase, scope, name)
+                        )
+                        arcpy.FeatureClassToFeatureClass_conversion(
+                            in_features=path,
+                            out_path=os.path.join(geodatabase, scope),
+                            out_name=name
+                        )
 
         return geodatabase + os.sep + scope + os.sep + name
 
@@ -1775,6 +1841,7 @@ class LoadVectorTypes(ArcpyTool):
 
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
+        #pdb.set_trace()
         for dir in self.inputDirs:
             datafilePath, pkgId, datatype, entityName, objectName = ("" for i in range(5))
             try:
