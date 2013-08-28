@@ -1478,8 +1478,8 @@ class CheckSpatialData(ArcpyTool):
                     "data will be rounded to the maximum double "
                     "precision (15)") % (fld.name, fld.precision)
                 )
-            elif fld.type == u'Double' and fld.precision > 31:
-                passed = False
+            #elif fld.type == u'Double' and fld.precision > 31:
+            #    passed = False
             elif fld.type == u'Single' and fld.precision > 6:
                 passed = False
             elif fld.type == u'Integer' and fld.precision > 10:
@@ -1741,7 +1741,8 @@ class LoadVectorTypes(ArcpyTool):
                 )
         except Exception as e:
             self.logger.logMessage(WARN, e.message)
-            if e.message.find('DBMS error') != -1:
+            #if e.message.find('DBMS error') != -1:
+            if True:
                 #with cursorContext(self.logger) as cur:
                 sde = r'Database Connections\Connection to Maps3.sde'
                 arcpy.workspace.env = sde
