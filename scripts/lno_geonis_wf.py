@@ -370,7 +370,7 @@ class Setup(ArcpyTool):
                         arcpy.Delete_management(featureClass)
                         self.logger.logMessage(
                             INFO,
-                            "Dropped " + featureClass + " from " + geodb
+                            "Dropped " + featureClass + " from geodatabase"
                         )
                     else:
                         self.logger.logMessage(
@@ -394,7 +394,7 @@ class Setup(ArcpyTool):
                         arcpy.Delete_management(featureClass)
                         self.logger.logMessage(
                             INFO,
-                            "Dropped " + featureClass + " from " + geodb
+                            "Dropped " + featureClass + " from geodatabase"
                         )
                     else:
                         raise(Exception(err.message))
@@ -1707,8 +1707,13 @@ class LoadVectorTypes(ArcpyTool):
         sde = r'Database Connections\Connection to Maps3.sde'
         sdeConnect = arcpy.Exists(sde)
         geonisConnect = arcpy.Exists(r'C:\pasta2geonis\geonisOnMaps3.sde')
-        self.logger.logMessage(INFO, "SDE connection: " + str(sdeConnect))
-        self.logger.logMessage(INFO, "GeoNIS connection: " + str(geonisConnect))
+        if sdeConnect and geonisConnect:
+            self.logger.logMessage(INFO, "Database connection(s) ok")
+        else:
+            self.logger.logMessage(WARN, "Database connection(s) lost")
+            self.logger.logMessage(INFO, "SDE connection: " + str(sdeConnect))
+            self.logger.logMessage(INFO, "GeoNIS connection: " + str(geonisConnect))
+            pdb.set_trace()
         
         # This try-except block is to deal with an error that
         # arises when Arc loses its connection to the database.
@@ -1771,13 +1776,11 @@ class LoadVectorTypes(ArcpyTool):
         '''
         except Exception as e:
             self.logger.logMessage(WARN, e.message)
-            pdb.set_trace()
             if e.message.find('DBMS error') != -1:
             #if True:
                 #with cursorContext(self.logger) as cur:
                 sde = r'Database Connections\Connection to Maps3.sde'
                 arcpy.workspace.env = sde
-                pdb.set_trace()
                 #if not arcpy.Exists(os.path.join(geodatabase,scope)):
                 if not arcpy.Exists(scope):
                     arcpy.CreateFeatureDataset_management(
@@ -2197,8 +2200,8 @@ class LoadRasterTypes(ArcpyTool):
                 # record of the raster data folder name
                 with cursorContext(self.logger) as cur:
                     cur.execute(
-                        "UPDATE entity SET layername = %s WHERE entityname = %s", 
-                        (objectName, entityName)
+                        "UPDATE entity SET layername = %s WHERE entityname = %s AND packageid = %s", 
+                        (objectName, entityName, pkgId)
                     )
 
                 status = "Raster copied to permanent storage"
@@ -2264,7 +2267,7 @@ class UpdateMXDs(ArcpyTool):
     def addVectorData(self, workDir, workingData, **kwargs):
         """   """
         # see if entry in entity table, and get storage path
-        stmt = "SELECT storage, status FROM entity WHERE packageid = %s and entityname = %s;"
+        stmt = "SELECT storage, status FROM entity WHERE packageid = %s and entityname = %s"
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (workingData["packageId"], workingData["entityName"]))
             rows = cur.fetchall()
@@ -2285,11 +2288,14 @@ class UpdateMXDs(ArcpyTool):
         layersFrame = arcpy.mapping.ListDataFrames(mxd, "layers")[0]
         for layer in arcpy.mapping.ListLayers(mxd, "", layersFrame):
             itsName = layer.name
-            while itsName.startswith("geonis."):
-                itsName = itsName[7:]
+            #while itsName.startswith("geonis."):
+            #    itsName = itsName[7:]
+            if itsName.find('.'):
+                itsName = itsName.split('.')[-1]
             if itsName == layerName:
                 arcpy.mapping.RemoveLayer(layersFrame, layer)
                 mxd.save()
+        #pdb.set_trace()
         #now add to map
         geodatabase = getConfigValue("geodatabase")
         feature = geodatabase + os.sep + store
@@ -2301,24 +2307,25 @@ class UpdateMXDs(ArcpyTool):
         insertObj = createDictFromEmlSubset(workDir)
         for layer in arcpy.mapping.ListLayers(mxd, '', layersFrame):
             if layer.name == layerName:
-                layer.description = workingData['entityDesc']
-                #shortEntityDesc = workingData['entityDesc'] \
-                #    if len(workingData['entityDesc']) < 100 \
-                #    else workingData['entityDesc'][:100] + '...'
-                #layer.name += ": " + \
-                #    shortEntityDesc.replace("'", '"').replace('"', '&quot;')
-                #insertObj['title'] # change to entity-level description??
-                #layer.name += ': ' + insertObj['title'].replace("'", '"').replace('"', '&quot;')
-                #layerName = layer.name
+                if 'entityDesc' in workingData.keys() and workingData['entityDesc']:
+                    layer.description = workingData['entityDesc']
+                    #shortEntityDesc = workingData['entityDesc'] \
+                    #    if len(workingData['entityDesc']) < 100 \
+                    #    else workingData['entityDesc'][:100] + '...'
+                    #layer.name += ": " + \
+                    #    shortEntityDesc.replace("'", '"').replace('"', '&quot;')
+                    #insertObj['title'] # change to entity-level description??
+                    #layer.name += ': ' + insertObj['title'].replace("'", '"').replace('"', '&quot;')
+                    #layerName = layer.name
         mxd.save()
-        workingData["layerName"] = layerName
+        #workingData["layerName"] = layerName
         writeWorkingDataToXML(workDir, workingData)
         os.remove(lyrFile)
         del layersFrame, mxd
         return (layerName, mxdName)
 
     @errHandledWorkflowTask(taskName="Insert into layer table")
-    def makeLayerRec(self, workDir, pkgId, name, **kwargs):
+    def makeLayerRec(self, workDir, pkgId, name, layername, **kwargs):
         """Insert record into workflow.geonis_layer for this entity  """
         insstmt = "INSERT INTO geonis_layer \
          (id, packageid, scope, entityname, entitydescription, title, abstract, purpose, keywords, sourceloc, layername, arcloc, layerid) VALUES \
@@ -2343,6 +2350,7 @@ class UpdateMXDs(ArcpyTool):
         insertObj['site'] = siteFromId(pkgId)[0]
         insertObj['arcloc'] = None
         insertObj['layerid'] = -1
+        insertObj['layer'] = layername
         #catch some things that might be missing
         if not "layer" in insertObj or insertObj['layer'] is None or insertObj['layer'] == '':
             #there should be a layer name if it was added to a map
@@ -2489,6 +2497,7 @@ class UpdateMXDs(ArcpyTool):
                         dir,
                         pkgId,
                         workingData['entityName'],
+                        lName,
                         packageId=pkgId,
                         entityName=workingData['entityName']
                     )
@@ -2676,17 +2685,25 @@ class RefreshMapService(ArcpyTool):
         arcloc = self.serverInfo["service_folder"] + "/" + self.serverInfo["service_name"]
         # shorten names that have db and schema in the name
         for lyr in layers:
-            while lyr['name'].startswith("geonis."):
-                lyr['name'] = lyr['name'][7:]
+            if lyr['name'].find('.') != -1:
+                lyr['name'] = lyr['name'].split('.')[-1]
+            #while lyr['name'].startswith("geonis."):
+            #    lyr['name'] = lyr['name'][7:]
             lyr["scope"] = site
             lyr["arcloc"] = arcloc
         # update table, set arcloc field for layers that are newly added
-        stmt = "UPDATE geonis_layer set arcloc = %s WHERE scope = %s AND (layerid = -1 OR layerid is null);"
+        stmt = (
+            "UPDATE geonis_layer SET arcloc = %s WHERE scope = %s "
+            "AND (layerid = -1 OR layerid IS NULL)"
+        )
         with cursorContext(self.logger) as cur:
             cur.execute(stmt, (arcloc, site))
         # update table with ids of layers for all layers (not just newly added)
         valObj = tuple(layers)
-        stmt = "UPDATE geonis_layer set layerid = %(id)s WHERE scope = %(scope)s AND layername = %(name)s and arcloc = %(arcloc)s;"
+        stmt = (
+            "UPDATE geonis_layer SET layerid = %(id)s WHERE scope = %(scope)s "
+            "AND layername = %(name)s AND arcloc = %(arcloc)s"
+        )
         with cursorContext(self.logger) as cur:
             cur.executemany(stmt, valObj)
 
