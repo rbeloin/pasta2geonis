@@ -583,6 +583,8 @@ class Setup(ArcpyTool):
                         idList = urllib2.urlopen(
                             getConfigValue('pastaurl') + '/package/eml/knb-lter-' + s
                         ).read().split('\n')
+                        #if '151' in idList:
+                        #    idList = [j for j in idList if j != '151']
                         for id in idList:
                             valsArr.append({'inc': 'knb-lter-' + s + '.' + id})
 
@@ -1469,8 +1471,14 @@ class CheckSpatialData(ArcpyTool):
         passed = True
         fields = arcpy.ListFields(dataFilePath)
         for fld in fields:
-            #if fld.type == u'Double' and fld.precision > 15:
-            if fld.type == u'Double' and fld.precision > 31:
+            if fld.type == u'Double' and fld.precision > 15:
+                self.logger.logMessage(
+                    WARN,
+                    ("Field %s is type double but has precision %i, "
+                    "data will be rounded to the maximum double "
+                    "precision (15)") % (fld.name, fld.precision)
+                )
+            elif fld.type == u'Double' and fld.precision > 31:
                 passed = False
             elif fld.type == u'Single' and fld.precision > 6:
                 passed = False
@@ -1479,7 +1487,6 @@ class CheckSpatialData(ArcpyTool):
         if not passed:
             self.logger.logMessage(WARN,"Precision test failed.")
         return passed
-
 
     @errHandledWorkflowTask(taskName="Format report")
     def getReport(self, pkgId, reportText):
@@ -1736,7 +1743,10 @@ class LoadVectorTypes(ArcpyTool):
             self.logger.logMessage(WARN, e.message)
             if e.message.find('DBMS error') != -1:
                 with cursorContext(self.logger) as cur:
+                    #arcpy.workspace.env = r'Database Connections\Connection to Maps3.sde'
+                    #pdb.set_trace()
                     if not arcpy.Exists(os.path.join(geodatabase,scope)):
+                    #if not arcpy.Exists(scope):
                         arcpy.CreateFeatureDataset_management(
                             out_dataset_path=geodatabase,
                             out_name=scope,
