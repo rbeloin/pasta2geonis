@@ -366,11 +366,18 @@ class Setup(ArcpyTool):
                 for row in cur.fetchall() if row[0] is not None]
             for featureClass in featureClasses:
                 try:
-                    arcpy.Delete_management(featureClass)
-                    self.logger.logMessage(
-                        INFO,
-                        "Dropped " + featureClass + " from " + geodb
-                    )
+                    if arcpy.Exists(featureClass):
+                        arcpy.Delete_management(featureClass)
+                        self.logger.logMessage(
+                            INFO,
+                            "Dropped " + featureClass + " from " + geodb
+                        )
+                    else:
+                        self.logger.logMessage(
+                            WARN,
+                            ("Feature class %s listed in entity table but not found"
+                            " in geodatabase %s") % (featureClass.split(os.sep)[-1], geodb)
+                        )
 
                 # Error 000464: Cannot get exclusive schema lock, usually caused by
                 # another user connecting to the geodb; disconnect all users and
@@ -390,7 +397,7 @@ class Setup(ArcpyTool):
                             "Dropped " + featureClass + " from " + geodb
                         )
                     else:
-                        raise(Exception)
+                        raise(Exception(err.message))
 
         # Delete from geonis_layer table
         cur.execute("DELETE FROM geonis_layer WHERE packageid = %s", (package, ))
@@ -460,13 +467,28 @@ class Setup(ArcpyTool):
         if site not in self.sitesAlreadyChecked:
             self.sitesAlreadyChecked.append(site)
 
-            # Stop map service, if available
-            if self.mapServiceAvailable(cur, site):
-                self.stopMapService(cur)
+            # If any of the packages we're clearing from this site contain
+            # vector data, then we'll need to stop and re-start the map
+            # service.
+            sql = (
+                "SELECT DISTINCT packageid FROM entity "
+                "WHERE isvector = 't' AND packageid LIKE %s"
+            )
+            cur.execute(sql, ('%' + site + '%', ))
+            if cur.rowcount:
+                hasVectors = set(
+                    ['.'.join(row[0].split('.')[:-1]) for row in cur.fetchall()]
+                )
+                if hasVectors & self.fullPackageSet:
+                    self.vectorsInEntity = True
 
-            # If this package exists in the map, delete layers and update table
-            if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
-                self.deleteMapLayers(cur, package, site)
+                    # Stop map service, if available
+                    if self.mapServiceAvailable(cur, site):
+                        self.stopMapService(cur)
+
+                    # If this package exists in the map, delete layers and update table
+                    if site + '.mxd' in os.listdir(getConfigValue('pathtomapdoc')):
+                        self.deleteMapLayers(cur, package, site)
 
         # Clean up the database tables
         layersInEntity = self.cleanUpTables(cur, package, siteWorkflow)
@@ -493,19 +515,17 @@ class Setup(ArcpyTool):
             )
             allPackages = [row[0] for row in cur.fetchall()]
             for package in allPackages:
-                cur.execute(
-                    "SELECT COUNT(*) FROM entity WHERE packageid = %s AND isvector = 't'",
-                    (package, )
-                )
-                if cur.fetchone()[0] > 0:
-                    self.vectorsInEntity = True
                 self.cleanUpPackage(cur, package, srch, site, siteWorkflow)
 
     def cleanUp(self, pkgArray):
-        for p in pkgArray:
-            self.logger.logMessage(DEBUG, "Found package " + p.values()[0])
+        for pkgset in pkgArray:
+            self.logger.logMessage(DEBUG, "Found package " + pkgset.values()[0])
+        self.fullPackageSet = set([pkgset.values()[0] for pkgset in pkgArray])
         self.vectorsInEntity = False
         self.sitesAlreadyChecked = []
+        for pkgset in pkgArray:
+            self.cleanUpPackageSet(pkgset['inc'])
+        '''
         for i in xrange(2):
             try:
                 for pkgset in pkgArray:
@@ -517,9 +537,10 @@ class Setup(ArcpyTool):
             err = None
             break
         if err:
-            raise(Exception)
+            raise(Exception(err.message))
+        '''
 
-        # Finally, refresh map services to reflect changes
+        # Finally, refresh map services (if necessary)
         if self.vectorsInEntity:
             RMS = RefreshMapService()
             RMS._isRunningAsTool = False
@@ -1442,6 +1463,10 @@ class CheckSpatialData(ArcpyTool):
                 )
                 return 'entityName'
             else:
+                self.logger.logMessage(
+                    WARN,
+                    "Neither objectName and entityName matches the filename"
+                )
                 return False
 
     @errHandledWorkflowTask(taskName="Attribute name check")
@@ -1478,14 +1503,12 @@ class CheckSpatialData(ArcpyTool):
                     "data will be rounded to the maximum double "
                     "precision (15)") % (fld.name, fld.precision)
                 )
-            #elif fld.type == u'Double' and fld.precision > 31:
-            #    passed = False
             elif fld.type == u'Single' and fld.precision > 6:
                 passed = False
             elif fld.type == u'Integer' and fld.precision > 10:
                 passed = False
         if not passed:
-            self.logger.logMessage(WARN,"Precision test failed.")
+            self.logger.logMessage(WARN, "Precision test failed.")
         return passed
 
     @errHandledWorkflowTask(taskName="Format report")
@@ -1511,7 +1534,6 @@ class CheckSpatialData(ArcpyTool):
                 taskDesc = 'Check spatial data'
                 try:
                     status = "Entering data checks."
-                    #pdb.set_trace()
                     emldata = readWorkingData(dataDir, self.logger)
                     pkgId = emldata["packageId"]
                     shortPkgId = pkgId[9:]
@@ -1682,67 +1704,76 @@ class LoadVectorTypes(ArcpyTool):
             INFO,
             "Loading %s to %s/%s as %s" % (path, geodatabase, scope, name)
         )
+        sde = r'Database Connections\Connection to Maps3.sde'
+        sdeConnect = arcpy.Exists(sde)
+        geonisConnect = arcpy.Exists(r'C:\pasta2geonis\geonisOnMaps3.sde')
+        self.logger.logMessage(INFO, "SDE connection: " + str(sdeConnect))
+        self.logger.logMessage(INFO, "GeoNIS connection: " + str(geonisConnect))
         
         # This try-except block is to deal with an error that
         # arises when Arc loses its connection to the database.
         # I have not been able to isolate WHY the database
         # connection gets lost, but a workaround is to simply
         # manually restore the connection using cursorContext().
+        #try:
+        # If a feature dataset doesn't already exist, create one
+        if not arcpy.Exists(os.path.join(geodatabase, scope)):
+            arcpy.CreateFeatureDataset_management(
+                out_dataset_path=geodatabase,
+                out_name=scope,
+                spatial_reference=self.spatialRef
+            )
         try:
-            # If a feature dataset doesn't already exist, create one
-            if not arcpy.Exists(os.path.join(geodatabase,scope)):
-                arcpy.CreateFeatureDataset_management(
-                    out_dataset_path=geodatabase,
-                    out_name=scope,
-                    spatial_reference=self.spatialRef
-                )
-            try:
-                arcpy.FeatureClassToFeatureClass_conversion(
-                    in_features=path,
-                    out_path=os.path.join(geodatabase, scope),
-                    out_name=name
-                )
-            except Exception as err:
+            arcpy.FeatureClassToFeatureClass_conversion(
+                in_features=path,
+                out_path=os.path.join(geodatabase, scope),
+                out_name=name
+            )
+        except Exception as err:
 
-                # Error 999999: Failed to execute FeatureClassToFeatureClass usually
-                # means that, for some mysterious reason, Arc doesn't like the name
-                # we've assigned to the dataset.  Pick a new one, and try again...
-                if err[0].find('ERROR 999999') != -1:
-                    self.logger.logMessage(
-                        WARN,
-                        ("Encountered error 999999, which usually means that Arc "
-                        "doesn't like our proposed feature class name %s, "
-                        "attempting to work around by adding a _RENAME "
-                        "suffix") % name
-                    )
-                    name += '_RENAME'
-
-                # Looking for ERROR 000361: The name starts with an invalid character
-                # This is usually because the shapefile starts with a number,
-                # so workaround by prefixing 's' to the shapefile name
-                if err[0].find('ERROR 000361') != -1:
-                    self.logger.logMessage(
-                        WARN,
-                        ("Encountered error 000361, usually indicates that the name "
-                        "starts with a number (which is not allowed), attempting "
-                        "to work around by prefixing 's' to the shapefile name")
-                    )
-                    name = 's' + name
-
-                # Retry FeatureClassToFeatureClass conversion...
+            # Error 999999: Failed to execute FeatureClassToFeatureClass usually
+            # means that, for some mysterious reason, Arc doesn't like the name
+            # we've assigned to the dataset.  Pick a new one, and try again...
+            '''
+            if err[0].find('ERROR 999999') != -1:
                 self.logger.logMessage(
-                    INFO,
-                    "Loading %s to %s/%s as %s" % (path, geodatabase, scope, name)
+                    WARN,
+                    ("Encountered error 999999, which usually means that Arc "
+                    "doesn't like our proposed feature class name %s, "
+                    "attempting to work around by adding a _RENAME "
+                    "suffix") % name
                 )
-                arcpy.FeatureClassToFeatureClass_conversion(
-                    in_features=path,
-                    out_path=os.path.join(geodatabase, scope),
-                    out_name=name
+                name += '_RENAME'
+            '''
+
+            # Looking for ERROR 000361: The name starts with an invalid character
+            # This is usually because the shapefile starts with a number,
+            # so workaround by prefixing 's' to the shapefile name
+            if err[0].find('ERROR 000361') != -1:
+                self.logger.logMessage(
+                    WARN,
+                    ("Encountered error 000361, usually indicates that the name "
+                    "starts with a number (which is not allowed), attempting "
+                    "to work around by prefixing 's' to the shapefile name")
                 )
+                name = 's' + name
+
+            # Retry FeatureClassToFeatureClass conversion...
+            self.logger.logMessage(
+                INFO,
+                "Loading %s to %s/%s as %s" % (path, geodatabase, scope, name)
+            )
+            arcpy.FeatureClassToFeatureClass_conversion(
+                in_features=path,
+                out_path=os.path.join(geodatabase, scope),
+                out_name=name
+            )
+        '''
         except Exception as e:
             self.logger.logMessage(WARN, e.message)
-            #if e.message.find('DBMS error') != -1:
-            if True:
+            pdb.set_trace()
+            if e.message.find('DBMS error') != -1:
+            #if True:
                 #with cursorContext(self.logger) as cur:
                 sde = r'Database Connections\Connection to Maps3.sde'
                 arcpy.workspace.env = sde
@@ -1797,6 +1828,7 @@ class LoadVectorTypes(ArcpyTool):
                         out_path=os.path.join(geodatabase, scope),
                         out_name=name
                     )
+        '''
 
         return geodatabase + os.sep + scope + os.sep + name
 
@@ -1844,12 +1876,15 @@ class LoadVectorTypes(ArcpyTool):
             return
         arcpy.env.workspace = workDir
         pathToStylesheets = getConfigValue("pathtostylesheets")
-        result = arcpy.XSLTransform_conversion(
-            loadedFeatureClass,
-            pathToStylesheets + os.sep + "metadataMerge.xsl",
-            "merged_metadata.xml",
-            xmlSuppFile
-        )
+        try:
+            result = arcpy.XSLTransform_conversion(
+                loadedFeatureClass,
+                pathToStylesheets + os.sep + "metadataMerge.xsl",
+                "merged_metadata.xml",
+                xmlSuppFile
+            )
+        except Exception as e:
+            pdb.set_trace()
         result2 = arcpy.MetadataImporter_conversion(
             "merged_metadata.xml",
             loadedFeatureClass
@@ -1866,7 +1901,6 @@ class LoadVectorTypes(ArcpyTool):
 
     def execute(self, parameters, messages):
         super(LoadVectorTypes, self).execute(parameters, messages)
-        #pdb.set_trace()
         for dir in self.inputDirs:
             datafilePath, pkgId, datatype, entityName, objectName = ("" for i in range(5))
             try:
@@ -1895,14 +1929,15 @@ class LoadVectorTypes(ArcpyTool):
                     # arcpy.FeatureClassToFeatureClass_conversion returns an ERROR 999999 if
                     # it receives a fullObjectName that it doesn't like --
                     # try adding an extra _RENAME to the end as a workaround.
-                    try:
-                        loadedFeatureClass = self.loadShapefile(
-                            scopeWithSuffix,
-                            fullObjectName,
-                            datafilePath,
-                            packageId=pkgId,
-                            entityName=entityName
-                        )
+                    #try:
+                    loadedFeatureClass = self.loadShapefile(
+                        scopeWithSuffix,
+                        fullObjectName,
+                        datafilePath,
+                        packageId=pkgId,
+                        entityName=entityName
+                    )
+                    '''
                     except Exception as err:
                         if err[0].find('ERROR 999999') != -1:
                             loadedFeatureClass = self.loadShapefile(
@@ -1917,6 +1952,7 @@ class LoadVectorTypes(ArcpyTool):
                                 "Added _RENAME suffix in geodatabase due to "
                                 + fullObjectName + " returning an error."
                             )
+                    '''
                     status = "Loaded shapefile"
                 elif 'KML' in datatype:
                     loadedFeatureClass = self.loadKml(
@@ -2337,7 +2373,7 @@ class UpdateMXDs(ArcpyTool):
 
         # Drop denormalized report table (if it exists)
         with cursorContext(self.logger) as cur:
-            self.logger.logMessage(INFO, "Replace " + schema + "viewreport table")
+            self.logger.logMessage(INFO, "Replace " + schema + "viewreport")
             cur.execute("DROP TABLE IF EXISTS " + schema + "viewreport")
 
         # Now replace and index it

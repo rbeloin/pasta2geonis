@@ -238,6 +238,7 @@ def main(argv):
         load_raster_types(parameters)
         update_mxds(parameters)
         refresh_map_service(parameters)
+        
 
 if __name__ == '__main__':
     main(sys.argv[1:])
