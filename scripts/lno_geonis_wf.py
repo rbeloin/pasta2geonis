@@ -2860,11 +2860,23 @@ class RefreshMapService(ArcpyTool):
         self.logger.logMessage(INFO, "Refreshing image services")
         mosaicDatasets = None
         with cursorContext(self.logger) as cur:
-            cur.execute("SELECT DISTINCT storage FROM entity WHERE israster = 't'")
-            mosaicDatasets = [row[0].split('\\')[0] for row in cur.fetchall()]
+            sql = (
+                "SELECT DISTINCT storage FROM entity "
+                "WHERE israster = 't' AND storage IS NOT NULL"
+            )
+            cur.execute(sql)
+            mosaicDatasets = tuple(set(
+                [row[0].split('\\')[0] for row in cur.fetchall() if row[0].find('\\') != -1]
+            ))
         if mosaicDatasets is not None:
             for mosaic in mosaicDatasets:
-                self.refreshImageService(mosaic.split('_')[0])
+                try:
+                    self.refreshImageService(mosaic.split('_')[0])
+                except Exception as e:
+                    self.logger.logMessage(
+                        WARN,
+                        "Error refreshing image service: %s" % e.message
+                    )
 
 
 ## *****************************************************************************
