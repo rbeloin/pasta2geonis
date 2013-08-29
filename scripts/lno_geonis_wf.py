@@ -127,7 +127,7 @@ class Setup(ArcpyTool):
                     response = httpConn.getresponse()
                     if (response.status != 200):
                         self.logger.logMessage(WARN, "Error while attempting to stop service.")
-                    self.logger.logMessage(WARN, "Stopped image service " + site + "_mosaic")
+                    self.logger.logMessage(INFO, "Stopped image service " + site + "_mosaic")
                     httpConn.close()
                 else:
                     self.logger.logMessage(WARN, "Error while attempting to get admin token.")
@@ -408,7 +408,10 @@ class Setup(ArcpyTool):
         # Get feature class names (from the entity table)
         geodb = getConfigValue('geodatabase')
         if arcpy.Exists(geodb + os.sep + siteWorkflow):
-            cur.execute("SELECT storage FROM entity WHERE packageid = %s", (package, ))
+            cur.execute(
+                "SELECT storage FROM entity WHERE packageid = %s AND isvector = 't'",
+                (package, )
+            )
             featureClasses = [geodb + os.sep + os.sep.join(row[0].split('\\')[:2]) \
                 for row in cur.fetchall() if row[0] is not None]
             for featureClass in featureClasses:
@@ -467,28 +470,30 @@ class Setup(ArcpyTool):
         mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWorkflow
         if arcpy.Exists(mosaicDataset):
             for layer in layersInEntity:
-                try:
-                    arcpy.RemoveRastersFromMosaicDataset_management(
-                        mosaicDataset,
-                        "Name='%s'" % layer,
-                        'UPDATE_BOUNDARY',
-                        'MARK_OVERVIEW_ITEMS',
-                        'DELETE_OVERVIEW_IMAGES',
-                        'DELETE_ITEM_CACHE',
-                        'REMOVE_MOSAICDATASET_ITEMS',
-                        'UPDATE_CELL_SIZES'
-                    )
-                    self.logger.logMessage(
-                        INFO,
-                        "Removed %s from raster mosaic %s" % (layer, mosaicDataset)
-                    )
-                except ExecuteError:
-                    self.logger.logMessage(
-                        WARN,
-                        ("Raster layer %s recorded in entity table, but not present in "
-                        "mosaic %s") % (layer, mosaicDataset)
-                    )
-                    continue
+                #if layer != 'GIS200':
+                if True:
+                    try:
+                        arcpy.RemoveRastersFromMosaicDataset_management(
+                            mosaicDataset,
+                            "Name='%s'" % layer,
+                            'UPDATE_BOUNDARY',
+                            'MARK_OVERVIEW_ITEMS',
+                            'DELETE_OVERVIEW_IMAGES',
+                            'DELETE_ITEM_CACHE',
+                            'REMOVE_MOSAICDATASET_ITEMS',
+                            'UPDATE_CELL_SIZES'
+                        )
+                        self.logger.logMessage(
+                            INFO,
+                            "Removed %s from raster mosaic %s" % (layer, mosaicDataset)
+                        )
+                    except ExecuteError:
+                        self.logger.logMessage(
+                            WARN,
+                            ("Raster layer %s recorded in entity table, but not present in "
+                            "mosaic %s") % (layer, mosaicDataset)
+                        )
+                        continue
 
         # Delete folders in the raster data folder
         rasterFolder = getConfigValue('pathtorasterdata') + os.sep + siteWorkflow
@@ -2783,7 +2788,6 @@ class RefreshMapService(ArcpyTool):
             if token:
 
                 # Stop service
-                '''
                 serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/stop" % site
                 self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
                 params = urllib.urlencode({'token': token, 'f': 'json'})
@@ -2793,11 +2797,11 @@ class RefreshMapService(ArcpyTool):
                 response = httpConn.getresponse()
                 if (response.status != 200):
                     self.logger.logMessage(WARN, "Error while attempting to stop service.")
-                self.logger.logMessage(WARN, "Stopped image service " + site + "_mosaic")
+                self.logger.logMessage(INFO, "Stopped image service " + site + "_mosaic")
                 httpConn.close()
-                '''
 
                 # Restart service
+                '''
                 serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/start" % site
                 self.logger.logMessage(DEBUG, "starting %s" % (serviceStopURL,))
                 params = urllib.urlencode({'token': token, 'f': 'json'})
@@ -2807,12 +2811,70 @@ class RefreshMapService(ArcpyTool):
                 response = httpConn.getresponse()
                 if (response.status != 200):
                     self.logger.logMessage(WARN, "Error while attempting to start service.")
-                self.logger.logMessage(WARN, "Stopped image service " + site + "_mosaic")
+                self.logger.logMessage(INFO, "Started image service " + site + "_mosaic")
                 httpConn.close()
+                '''
             else:
                 self.logger.logMessage(WARN, "Error while attempting to get admin token.")
         except Exception as e:
             self.logger.logMessage(INFO, "Image service not found")
+
+        # Define local variables:
+        # The folder for service definition draft and service definition files
+        MyWorkspace = r"C:\pasta2geonis\Gis_data\servicedefs"
+        Name = "%s_%s" % (site, getConfigValue('datasetscopesuffix'))
+        InputData = r"C:\pasta2geonis\Gis_data\Raster_md_test.gdb\%s_%s" % \
+            (site, getConfigValue('datasetscopesuffix'))
+        Sddraft = os.path.join(MyWorkspace, Name + ".sddraft")
+        Sd = os.path.join(MyWorkspace, Name + ".sd")
+        con = pubConnection #os.path.join(MyWorkspace, "arcgis on myserver_6080 (admin).ags")
+
+        # Create service definition draft
+        try:
+            print("Creating image service .sddraft")
+            arcpy.CreateImageSDDraft(InputData, Sddraft, Name, 'ARCGIS_SERVER', con, 
+                                     False, None, site.upper() + " image service",
+                                     "image service test")
+        except Exception as err:
+            print(err[0] + "\n\n")
+            sys.exit("Failed to create SD draft")
+
+        # Analyze the service definition draft
+        analysis = arcpy.mapping.AnalyzeForSD(Sddraft)
+        print("The following was returned during analysis of the image service:")
+        for key in analysis.keys():
+
+            print("---{}---".format(key.upper()))
+
+            for ((message, code), layerlist) in analysis[key].iteritems():
+                print("    {} (CODE {})".format(message, code))
+                print("       applies to: {}".format(
+                    " ".join([layer.name for layer in layerlist])))
+
+        # Stage and upload the service if the sddraft analysis did not contain errors
+        if analysis['errors'] == {}:
+            try:
+                #print("Adding data path to data store to avoid copying data to server")
+                #arcpy.AddDataStoreItem(con, "FOLDER", "Images", MyWorkspace,
+                #                       MyWorkspace)
+
+                print "Staging service to create service definition"
+                arcpy.StageService_server(Sddraft, Sd)
+
+                print "Uploading the service definition and publishing image service"
+                arcpy.UploadServiceDefinition_server(Sd, con)
+
+                print "Service successfully published"
+            except arcpy.ExecuteError:
+                print(arcpy.GetMessages() + "\n\n")
+                sys.exit("Failed to stage and upload service")
+
+            except Exception as err:
+                print(err[0] + "\n\n")
+                sys.exit("Failed to stage and upload service")
+        else:
+            print("Service was not published because of errors found during analysis.")
+            print(analysis['errors'])
 
     def execute(self, parameters, messages):
         super(RefreshMapService, self).execute(parameters, messages)

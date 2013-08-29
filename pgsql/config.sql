@@ -7,7 +7,8 @@ delete from workflow.wfconfig;
 --reset values for workflow production
 insert into workflow.wfconfig values
 ('pathtoenvsettings','C:\pasta2geonis\savedEnv.xml'),
-('geodatabase', 'C:\pasta2geonis\geonisOnMaps3.sde'),
+#('geodatabase', 'C:\pasta2geonis\geonisOnMaps3.sde'),
+('geodatabase', 'Database Connections\Connection to Maps3.sde'),
 ('pathtostylesheets','C:\pasta2geonis\stylesheets'),
 ('pathtorasterdata','C:\pasta2geonis\Gis_data\Raster_raw'),
 ('pathtorastermosaicdatasets','C:\pasta2geonis\Gis_data\Raster_md.gdb'),
@@ -49,7 +50,8 @@ create table if not exists workflow_d.wfconfig (LIKE workflow.wfconfig);
 delete from workflow_d.wfconfig;
 insert into workflow_d.wfconfig values
 ('pathtoenvsettings','C:\pasta2geonis\savedEnv.xml'),
-('geodatabase', 'C:\pasta2geonis\geonisOnMaps3.sde'),
+#('geodatabase', 'C:\pasta2geonis\geonisOnMaps3.sde'),
+('geodatabase', 'Database Connections\Connection to Maps3.sde'),
 ('pathtostylesheets','C:\pasta2geonis\stylesheets'),
 ('pathtorasterdata','C:\pasta2geonis\Gis_data\Raster_raw_test'),
 ('pathtorastermosaicdatasets','C:\pasta2geonis\Gis_data\Raster_md_test.gdb'),
