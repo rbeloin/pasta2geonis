@@ -1760,9 +1760,7 @@ class LoadVectorTypes(ArcpyTool):
         sde = r'Database Connections\Connection to Maps3.sde'
         sdeConnect = arcpy.Exists(sde)
         geonisConnect = arcpy.Exists(r'C:\pasta2geonis\geonisOnMaps3.sde')
-        if sdeConnect and geonisConnect:
-            self.logger.logMessage(INFO, "Database connection ok")
-        else:
+        if not sdeConnect or not geonisConnect:
             self.logger.logMessage(WARN, "Database connection lost:")
             self.logger.logMessage(INFO, "SDE connection: " + str(sdeConnect))
             self.logger.logMessage(INFO, "GeoNIS connection: " + str(geonisConnect))
@@ -1824,66 +1822,6 @@ class LoadVectorTypes(ArcpyTool):
                 out_path=os.path.join(geodatabase, scope),
                 out_name=name
             )
-        '''
-        except Exception as e:
-            self.logger.logMessage(WARN, e.message)
-            if e.message.find('DBMS error') != -1:
-            #if True:
-                #with cursorContext(self.logger) as cur:
-                sde = r'Database Connections\Connection to Maps3.sde'
-                arcpy.workspace.env = sde
-                #if not arcpy.Exists(os.path.join(geodatabase,scope)):
-                if not arcpy.Exists(scope):
-                    arcpy.CreateFeatureDataset_management(
-                        out_dataset_path=sde,
-                        out_name=scope,
-                        spatial_reference=self.spatialRef
-                    )
-                try:
-                    arcpy.FeatureClassToFeatureClass_conversion(
-                        in_features=path,
-                        out_path=scope, #os.path.join(geodatabase, scope),
-                        out_name=name
-                    )
-                except Exception as err:
-
-                    # Error 999999: Failed to execute FeatureClassToFeatureClass usually
-                    # means that, for some mysterious reason, Arc doesn't like the name
-                    # we've assigned to the dataset.  Pick a new one, and try again...
-                    if err[0].find('ERROR 999999') != -1:
-                        self.logger.logMessage(
-                            WARN,
-                            ("Encountered error 999999, which usually means that Arc "
-                            "doesn't like our proposed feature class name %s, "
-                            "attempting to work around by adding a _RENAME "
-                            "suffix") % name
-                        )
-                        name += '_RENAME'
-
-                    # Looking for ERROR 000361: The name starts with an invalid character
-                    # This is usually because the shapefile starts with a number,
-                    # so workaround by prefixing 's' to the shapefile name
-                    if err[0].find('ERROR 000361') != -1:
-                        self.logger.logMessage(
-                            WARN,
-                            ("Encountered error 000361, usually indicates that the name "
-                            "starts with a number (which is not allowed), attempting "
-                            "to work around by prefixing 's' to the shapefile name")
-                        )
-                        name = 's' + name
-
-                    # Retry FeatureClassToFeatureClass conversion...
-                    self.logger.logMessage(
-                        INFO,
-                        "Loading %s to %s/%s as %s" % (path, geodatabase, scope, name)
-                    )
-                    arcpy.FeatureClassToFeatureClass_conversion(
-                        in_features=path,
-                        out_path=os.path.join(geodatabase, scope),
-                        out_name=name
-                    )
-        '''
-
         return geodatabase + os.sep + scope + os.sep + name
 
     @errHandledWorkflowTask(taskName="Load KML")
