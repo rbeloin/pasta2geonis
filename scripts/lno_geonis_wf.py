@@ -330,7 +330,7 @@ class Setup(ArcpyTool):
         else:
             self.logger.logMessage(WARN, "Error while attempting to get admin token.")
 
-    def stopImageService(self, cur):
+    def stopImageService(self, site):
         self.logger.logMessage(INFO, "Checking for image service")
         try:
             with open(arcgiscred) as f:
@@ -429,7 +429,7 @@ class Setup(ArcpyTool):
                 # Error 000464: Cannot get exclusive schema lock, usually caused by
                 # another user connecting to the geodb; disconnect all users and
                 # try again...
-                except Exception as err:                    
+                except Exception as err:
                     if err[0].find('ERROR 000464') != -1:
                         self.logger.logMessage(
                             WARN,
@@ -542,6 +542,7 @@ class Setup(ArcpyTool):
 
         # Clean up raster folders and mosaics
         if layersInEntity is not None:
+            self.stopImageService(site)
             self.cleanUpRasters(cur, siteWorkflow, layersInEntity)
 
     def cleanUpPackageSet(self, pkg):
@@ -2773,6 +2774,46 @@ class RefreshMapService(ArcpyTool):
                 #bypass for testing, ignore contact
                 sendEmail(group, composeMessage(pkgid))
 
+    def refreshImageService(self, site):
+        self.logger.logMessage(INFO, "Checking for image service")
+        try:
+            with open(arcgiscred) as f:
+                cred = eval(f.readline())
+            token = getToken(cred['username'], cred['password'])
+            if token:
+
+                # Stop service
+                '''
+                serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/stop" % site
+                self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
+                params = urllib.urlencode({'token': token, 'f': 'json'})
+                headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+                httpConn = httplib.HTTPConnection("localhost", "6080")
+                httpConn.request("POST", serviceStopURL, params, headers)
+                response = httpConn.getresponse()
+                if (response.status != 200):
+                    self.logger.logMessage(WARN, "Error while attempting to stop service.")
+                self.logger.logMessage(WARN, "Stopped image service " + site + "_mosaic")
+                httpConn.close()
+                '''
+
+                # Restart service
+                serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/start" % site
+                self.logger.logMessage(DEBUG, "starting %s" % (serviceStopURL,))
+                params = urllib.urlencode({'token': token, 'f': 'json'})
+                headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+                httpConn = httplib.HTTPConnection("localhost", "6080")
+                httpConn.request("POST", serviceStopURL, params, headers)
+                response = httpConn.getresponse()
+                if (response.status != 200):
+                    self.logger.logMessage(WARN, "Error while attempting to start service.")
+                self.logger.logMessage(WARN, "Stopped image service " + site + "_mosaic")
+                httpConn.close()
+            else:
+                self.logger.logMessage(WARN, "Error while attempting to get admin token.")
+        except Exception as e:
+            self.logger.logMessage(INFO, "Image service not found")
+
     def execute(self, parameters, messages):
         super(RefreshMapService, self).execute(parameters, messages)
         mapServInfoString = getConfigValue("mapservinfo")
@@ -2826,6 +2867,9 @@ class RefreshMapService(ArcpyTool):
                 self.sendEmailReport()
         except Exception as err:
             self.logger.logMessage(ERROR, err.message)
+
+        # Testing for image service refresh
+        self.refreshImageService('knz')
 
 
 ## *****************************************************************************
