@@ -2822,59 +2822,70 @@ class RefreshMapService(ArcpyTool):
         # Define local variables:
         # The folder for service definition draft and service definition files
         MyWorkspace = r"C:\pasta2geonis\Gis_data\servicedefs"
-        Name = "%s_%s" % (site, getConfigValue('datasetscopesuffix'))
-        InputData = r"C:\pasta2geonis\Gis_data\Raster_md_test.gdb\%s_%s" % \
+        Name = "%s%s" % (site, getConfigValue('datasetscopesuffix'))
+        InputData = r"C:\pasta2geonis\Gis_data\Raster_md_test.gdb\%s%s" % \
             (site, getConfigValue('datasetscopesuffix'))
         Sddraft = os.path.join(MyWorkspace, Name + ".sddraft")
         Sd = os.path.join(MyWorkspace, Name + ".sd")
-        con = pubConnection #os.path.join(MyWorkspace, "arcgis on myserver_6080 (admin).ags")
+        #con = os.path.join(MyWorkspace, "arcgis on myserver_6080 (admin).ags")
 
-        # Create service definition draft
-        try:
-            print("Creating image service .sddraft")
-            arcpy.CreateImageSDDraft(InputData, Sddraft, Name, 'ARCGIS_SERVER', con, 
-                                     False, None, site.upper() + " image service",
-                                     "image service test")
-        except Exception as err:
-            print(err[0] + "\n\n")
-            sys.exit("Failed to create SD draft")
+        if arcpy.Exists(InputData):
+            self.logger.logMessage(INFO, "Found mosaic %s" % InputData)
+            arcpy.AnalyzeMosaicDataset_management(InputData)
 
-        # Analyze the service definition draft
-        analysis = arcpy.mapping.AnalyzeForSD(Sddraft)
-        print("The following was returned during analysis of the image service:")
-        for key in analysis.keys():
-
-            print("---{}---".format(key.upper()))
-
-            for ((message, code), layerlist) in analysis[key].iteritems():
-                print("    {} (CODE {})".format(message, code))
-                print("       applies to: {}".format(
-                    " ".join([layer.name for layer in layerlist])))
-
-        # Stage and upload the service if the sddraft analysis did not contain errors
-        if analysis['errors'] == {}:
+            # Create service definition draft
             try:
-                #print("Adding data path to data store to avoid copying data to server")
-                #arcpy.AddDataStoreItem(con, "FOLDER", "Images", MyWorkspace,
-                #                       MyWorkspace)
-
-                print "Staging service to create service definition"
-                arcpy.StageService_server(Sddraft, Sd)
-
-                print "Uploading the service definition and publishing image service"
-                arcpy.UploadServiceDefinition_server(Sd, con)
-
-                print "Service successfully published"
-            except arcpy.ExecuteError:
-                print(arcpy.GetMessages() + "\n\n")
-                sys.exit("Failed to stage and upload service")
-
+                print("Creating image service .sddraft")
+                arcpy.CreateImageSDDraft(
+                    InputData,
+                    Sddraft,
+                    Name,
+                    'ARCGIS_SERVER',
+                    pubConnection, 
+                    False,
+                    getConfigValue("imageservinfo"),
+                    site.upper() + " image service",
+                    "GeoNIS image service for raster data"
+                )
             except Exception as err:
                 print(err[0] + "\n\n")
-                sys.exit("Failed to stage and upload service")
-        else:
-            print("Service was not published because of errors found during analysis.")
-            print(analysis['errors'])
+
+            # Analyze the service definition draft
+            analysis = arcpy.mapping.AnalyzeForSD(Sddraft)
+            print("The following was returned during analysis of the image service:")
+            for key in analysis.keys():
+
+                print("---{}---".format(key.upper()))
+
+                for ((message, code), layerlist) in analysis[key].iteritems():
+                    print("    {} (CODE {})".format(message, code))
+                    print("       applies to: {}".format(
+                        " ".join([layer.name for layer in layerlist])))
+
+            # Stage and upload the service if the sddraft analysis did not contain errors
+            if analysis['errors'] == {}:
+                try:
+                    #print("Adding data path to data store to avoid copying data to server")
+                    #arcpy.AddDataStoreItem(pubConnection, "FOLDER", "Images", MyWorkspace,
+                    #                       MyWorkspace)
+
+                    print "Staging service to create service definition"
+                    arcpy.StageService_server(Sddraft, Sd)
+
+                    print "Uploading the service definition and publishing image service"
+                    arcpy.UploadServiceDefinition_server(Sd, pubConnection)
+
+                    print "Service successfully published"
+                except arcpy.ExecuteError:
+                    print(arcpy.GetMessages() + "\n\n")
+                    #sys.exit("Failed to stage and upload service")
+
+                except Exception as err:
+                    print(err[0] + "\n\n")
+                    #sys.exit("Failed to stage and upload service")
+            else:
+                print("Service was not published because of errors found during analysis.")
+                print(analysis['errors'])
 
     def execute(self, parameters, messages):
         super(RefreshMapService, self).execute(parameters, messages)
