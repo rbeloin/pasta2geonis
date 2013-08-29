@@ -2852,6 +2852,7 @@ class RefreshMapService(ArcpyTool):
 
             # Analyze the service definition draft
             analysis = arcpy.mapping.AnalyzeForSD(Sddraft)
+            '''
             print("The following was returned during analysis of the image service:")
             for key in analysis.keys():
 
@@ -2861,6 +2862,7 @@ class RefreshMapService(ArcpyTool):
                     print("    {} (CODE {})".format(message, code))
                     print("       applies to: {}".format(
                         " ".join([layer.name for layer in layerlist])))
+            '''
 
             # Stage and upload the service if the sddraft analysis did not contain errors
             if analysis['errors'] == {}:
