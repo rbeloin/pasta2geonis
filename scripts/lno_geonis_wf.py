@@ -110,6 +110,30 @@ class Setup(ArcpyTool):
         if type(self.scope) != list:
             self.scope = [self.scope]
         for site in self.scope:
+
+            # Stop the image service so we can drop the raster mosaic
+            self.logger.logMessage(INFO, "Checking for image service")
+            try:
+                with open(arcgiscred) as f:
+                    cred = eval(f.readline())
+                token = getToken(cred['username'], cred['password'])
+                if token:
+                    serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/stop" % site
+                    self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
+                    params = urllib.urlencode({'token': token, 'f': 'json'})
+                    headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+                    httpConn = httplib.HTTPConnection("localhost", "6080")
+                    httpConn.request("POST", serviceStopURL, params, headers)
+                    response = httpConn.getresponse()
+                    if (response.status != 200):
+                        self.logger.logMessage(WARN, "Error while attempting to stop service.")
+                    self.logger.logMessage(WARN, "Stopped image service " + site + "_mosaic")
+                    httpConn.close()
+                else:
+                    self.logger.logMessage(WARN, "Error while attempting to get admin token.")
+            except Exception as e:
+                self.logger.logMessage(INFO, "Image service not found")
+
             srch = '%' + site + '%'
             self.logger.logMessage(WARN, "Flushing data for " + site)
             with cursorContext(self.logger) as cur:
@@ -305,6 +329,29 @@ class Setup(ArcpyTool):
             httpConn.close()
         else:
             self.logger.logMessage(WARN, "Error while attempting to get admin token.")
+
+    def stopImageService(self, cur):
+        self.logger.logMessage(INFO, "Checking for image service")
+        try:
+            with open(arcgiscred) as f:
+                cred = eval(f.readline())
+            token = getToken(cred['username'], cred['password'])
+            if token:
+                serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/stop" % site
+                self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
+                params = urllib.urlencode({'token': token, 'f': 'json'})
+                headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+                httpConn = httplib.HTTPConnection("localhost", "6080")
+                httpConn.request("POST", serviceStopURL, params, headers)
+                response = httpConn.getresponse()
+                if (response.status != 200):
+                    self.logger.logMessage(WARN, "Error while attempting to stop service.")
+                self.logger.logMessage(WARN, "Stopped image service " + site + "_mosaic")
+                httpConn.close()
+            else:
+                self.logger.logMessage(WARN, "Error while attempting to get admin token.")
+        except Exception as e:
+            self.logger.logMessage(INFO, "Image service not found")
 
     def deleteMapLayers(self, cur, package, site):
         """
@@ -1708,9 +1755,9 @@ class LoadVectorTypes(ArcpyTool):
         sdeConnect = arcpy.Exists(sde)
         geonisConnect = arcpy.Exists(r'C:\pasta2geonis\geonisOnMaps3.sde')
         if sdeConnect and geonisConnect:
-            self.logger.logMessage(INFO, "Database connection(s) ok")
+            self.logger.logMessage(INFO, "Database connection ok")
         else:
-            self.logger.logMessage(WARN, "Database connection(s) lost")
+            self.logger.logMessage(WARN, "Database connection lost:")
             self.logger.logMessage(INFO, "SDE connection: " + str(sdeConnect))
             self.logger.logMessage(INFO, "GeoNIS connection: " + str(geonisConnect))
             pdb.set_trace()
@@ -1739,8 +1786,7 @@ class LoadVectorTypes(ArcpyTool):
             # Error 999999: Failed to execute FeatureClassToFeatureClass usually
             # means that, for some mysterious reason, Arc doesn't like the name
             # we've assigned to the dataset.  Pick a new one, and try again...
-            '''
-            if err[0].find('ERROR 999999') != -1:
+            if err[0].find('ERROR 999999') != -1 and err[0].find('DBMS error') == -1:
                 self.logger.logMessage(
                     WARN,
                     ("Encountered error 999999, which usually means that Arc "
@@ -1749,7 +1795,6 @@ class LoadVectorTypes(ArcpyTool):
                     "suffix") % name
                 )
                 name += '_RENAME'
-            '''
 
             # Looking for ERROR 000361: The name starts with an invalid character
             # This is usually because the shapefile starts with a number,
@@ -2097,7 +2142,7 @@ class LoadRasterTypes(ArcpyTool):
         rastype = "Raster Dataset"
         updatecs = "UPDATE_CELL_SIZES"
         updatebnd = "UPDATE_BOUNDARY"
-        updateovr = "UPDATE_OVERVIEWS"
+        updateovr = "NO_OVERVIEWS" #"UPDATE_OVERVIEWS"
         maxlevel = "2"
         maxcs = "#"
         maxdim = "#"
