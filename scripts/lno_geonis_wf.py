@@ -2782,12 +2782,12 @@ class RefreshMapService(ArcpyTool):
     def refreshImageService(self, site):
         self.logger.logMessage(INFO, "Checking for image service")
         try:
+
+            # Stop service
             with open(arcgiscred) as f:
                 cred = eval(f.readline())
             token = getToken(cred['username'], cred['password'])
             if token:
-
-                # Stop service
                 serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/stop" % site
                 self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
                 params = urllib.urlencode({'token': token, 'f': 'json'})
@@ -2799,21 +2799,6 @@ class RefreshMapService(ArcpyTool):
                     self.logger.logMessage(WARN, "Error while attempting to stop service.")
                 self.logger.logMessage(INFO, "Stopped image service " + site + "_mosaic")
                 httpConn.close()
-
-                # Restart service
-                '''
-                serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/start" % site
-                self.logger.logMessage(DEBUG, "starting %s" % (serviceStopURL,))
-                params = urllib.urlencode({'token': token, 'f': 'json'})
-                headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
-                httpConn = httplib.HTTPConnection("localhost", "6080")
-                httpConn.request("POST", serviceStopURL, params, headers)
-                response = httpConn.getresponse()
-                if (response.status != 200):
-                    self.logger.logMessage(WARN, "Error while attempting to start service.")
-                self.logger.logMessage(INFO, "Started image service " + site + "_mosaic")
-                httpConn.close()
-                '''
             else:
                 self.logger.logMessage(WARN, "Error while attempting to get admin token.")
         except Exception as e:
@@ -2827,19 +2812,17 @@ class RefreshMapService(ArcpyTool):
             (site, getConfigValue('datasetscopesuffix'))
         Sddraft = os.path.join(MyWorkspace, Name + ".sddraft")
         Sd = os.path.join(MyWorkspace, Name + ".sd")
-        #con = os.path.join(MyWorkspace, "arcgis on myserver_6080 (admin).ags")
-
         if arcpy.Exists(InputData):
             self.logger.logMessage(INFO, "Found mosaic %s" % InputData)
             arcpy.AnalyzeMosaicDataset_management(InputData)
 
             # Create service definition draft
             try:
-                print("Creating image service .sddraft")
+                self.logger.logMessage(INFO, "Creating image service draft")
                 arcpy.CreateImageSDDraft(
                     InputData,
                     Sddraft,
-                    Name,
+                    site + '_mosaic',
                     'ARCGIS_SERVER',
                     pubConnection, 
                     False,
@@ -2848,46 +2831,38 @@ class RefreshMapService(ArcpyTool):
                     "GeoNIS image service for raster data"
                 )
             except Exception as err:
-                print(err[0] + "\n\n")
+                self.logger.logMessage(WARN, err[0] + "\n\n")
 
             # Analyze the service definition draft
             analysis = arcpy.mapping.AnalyzeForSD(Sddraft)
-            '''
-            print("The following was returned during analysis of the image service:")
-            for key in analysis.keys():
-
-                print("---{}---".format(key.upper()))
-
-                for ((message, code), layerlist) in analysis[key].iteritems():
-                    print("    {} (CODE {})".format(message, code))
-                    print("       applies to: {}".format(
-                        " ".join([layer.name for layer in layerlist])))
-            '''
 
             # Stage and upload the service if the sddraft analysis did not contain errors
             if analysis['errors'] == {}:
                 try:
-                    #print("Adding data path to data store to avoid copying data to server")
-                    #arcpy.AddDataStoreItem(pubConnection, "FOLDER", "Images", MyWorkspace,
-                    #                       MyWorkspace)
-
-                    print "Staging service to create service definition"
+                    self.logger.logMessage(
+                        INFO,
+                        "Staging service to create service definition"
+                    )
                     arcpy.StageService_server(Sddraft, Sd)
-
-                    print "Uploading the service definition and publishing image service"
+                    self.logger.logMessage(
+                        INFO,
+                        "Uploading the service definition and publishing image service"
+                    )
                     arcpy.UploadServiceDefinition_server(Sd, pubConnection)
-
-                    print "Service successfully published"
+                    self.logger.logMessage(INFO, "Service successfully published")
                 except arcpy.ExecuteError:
                     print(arcpy.GetMessages() + "\n\n")
-                    #sys.exit("Failed to stage and upload service")
-
                 except Exception as err:
-                    print(err[0] + "\n\n")
-                    #sys.exit("Failed to stage and upload service")
+                    self.logger.logMessage(
+                        WARN,
+                        "Failed to stage and upload service: " + err[0]
+                    )
             else:
-                print("Service was not published because of errors found during analysis.")
-                print(analysis['errors'])
+                self.logger.logMessage(
+                    WARN,
+                    ("Service was not published because of errors "
+                    "found during analysis: %s") % analysis['errors']
+                )
 
     def execute(self, parameters, messages):
         super(RefreshMapService, self).execute(parameters, messages)
@@ -2943,8 +2918,15 @@ class RefreshMapService(ArcpyTool):
         except Exception as err:
             self.logger.logMessage(ERROR, err.message)
 
-        # Testing for image service refresh
-        self.refreshImageService('knz')
+        # Refresh image services
+        self.logger.logMessage(INFO, "Refreshing image services")
+        mosaicDatasets = None
+        with cursorContext(self.logger) as cur:
+            cur.execute("SELECT DISTINCT storage FROM entity WHERE israster = 't'")
+            mosaicDatasets = [row[0].split('\\')[0] for row in cur.fetchall()]
+        if mosaicDatasets is not None:
+            for mosaic in mosaicDatasets:
+                self.refreshImageService(mosaic.split('_')[0])
 
 
 ## *****************************************************************************
