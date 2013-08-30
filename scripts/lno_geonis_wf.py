@@ -346,7 +346,7 @@ class Setup(ArcpyTool):
                 response = httpConn.getresponse()
                 if (response.status != 200):
                     self.logger.logMessage(WARN, "Error while attempting to stop service.")
-                self.logger.logMessage(WARN, "Stopped image service " + site + "_mosaic")
+                self.logger.logMessage(INFO, "Stopped image service " + site + "_mosaic")
                 httpConn.close()
             else:
                 self.logger.logMessage(WARN, "Error while attempting to get admin token.")
@@ -1899,10 +1899,10 @@ class LoadVectorTypes(ArcpyTool):
                 status = "Entering load vector"
                 emldata = readWorkingData(dir, self.logger)
                 if emldata['spatialType'] == 'spatialRaster':
-                    self.logger.logMessage(
-                        INFO,
-                        "Found spatialRaster tag, skipping " + dir
-                    )
+                    #self.logger.logMessage(
+                    #    INFO,
+                    #    "Found spatialRaster tag, skipping " + dir
+                    #)
                     self.outputDirs.append(dir)
                     continue
                 pkgId = emldata["packageId"]
@@ -2086,7 +2086,7 @@ class LoadRasterTypes(ArcpyTool):
         rastype = "Raster Dataset"
         updatecs = "UPDATE_CELL_SIZES"
         updatebnd = "UPDATE_BOUNDARY"
-        updateovr = "NO_OVERVIEWS" #"UPDATE_OVERVIEWS"
+        updateovr = "UPDATE_OVERVIEWS"
         maxlevel = "2"
         maxcs = "#"
         maxdim = "#"
@@ -2856,9 +2856,9 @@ class RefreshMapService(ArcpyTool):
         except Exception as err:
             self.logger.logMessage(ERROR, err.message)
 
-        # Refresh image services
-        self.logger.logMessage(INFO, "Refreshing image services")
+        # Find stale image services
         mosaicDatasets = None
+        self.logger.logMessage(INFO, "Synchronizing stale image services:")
         with cursorContext(self.logger) as cur:
             sql = (
                 "SELECT DISTINCT storage FROM entity "
@@ -2868,15 +2868,106 @@ class RefreshMapService(ArcpyTool):
             mosaicDatasets = tuple(set(
                 [row[0].split('\\')[0] for row in cur.fetchall() if row[0].find('\\') != -1]
             ))
-        if mosaicDatasets is not None:
-            for mosaic in mosaicDatasets:
+
+        # Fetch list of image services
+        with open(arcgiscred) as f:
+            cred = eval(f.readline())
+        token = getToken(cred['username'], cred['password'])
+        serviceURL = "/arcgis/admin/services/ImageTest/"
+        self.logger.logMessage(DEBUG, "Fetching catalog from %s" % (serviceURL, ))
+        params = urllib.urlencode({'token': token, 'f': 'json'})
+        headers = {
+            "Content-type": "application/x-www-form-urlencoded",
+            "Accept": "text/plain",
+        }
+        httpConn = httplib.HTTPConnection("localhost", "6080")
+        httpConn.request("POST", serviceURL, params, headers)
+        response = httpConn.getresponse()
+        if (response.status != 200):
+            self.logger.logMessage(WARN, "Could not get list of image services")
+        httpConn.close()
+        catalog = json.load(urllib2.urlopen('http://localhost:6080' + serviceURL + "?f=pjson&token=" + token))
+        imageServices = [j['serviceName'] for j in catalog['services'] if j['type'] == u'ImageService']
+        pdb.set_trace()
+        '''
+        services = catalog['services']
+        for service in services:
+            response = json.load(urllib2.urlopen('http://localhost:6080' + serviceURL + '/' + service['name'] + '/' + service['type'] + "?f=pjson&token=" + token))
+            print '  %s %s (%s)' % (service['name'], service['type'], 'ERROR' if "error" in response else 'SUCCESS')
+        folders = catalog['folders']
+        for folderName in folders:
+            catalog = json.load(urllib2.urlopen('http://localhost:6080' + serviceURL + folderName + "?f=json&token=" + token))
+            print folderName
+            if "error" in catalog:
+                return
+            services = catalog['services']
+            for service in services:
+                response = json.load(urllib2.urlopen('http://localhost:6080' + serviceURL + service['name'] + '/' + service['type'] + "?f=pjson&token=" + token))
+                print '  %s %s (%s)' % (service['name'], service['type'], 'ERROR' if "error" in response else 'SUCCESS')
+        '''
+
+        if imageServices is not None:
+            for service in imageServices:
                 try:
-                    self.refreshImageService(mosaic.split('_')[0])
+                    site = service.split('_')[0]
+                    InputData = r"C:\pasta2geonis\Gis_data\Raster_md_test.gdb\%s%s" % \
+                        (site, getConfigValue('datasetscopesuffix'))
+                    if arcpy.Exists(InputData):
+                        self.logger.logMessage(INFO, "Analyze mosaic %s:" % InputData)
+                        arcpy.AnalyzeMosaicDataset_management(InputData)
+                        self.logger.logMessage(
+                            INFO,
+                            "Sync mosaic with service %s:" % (InputData, pubConnection + os.sep + service)
+                        )
+                        mdname = InputData
+                        query = "#"
+                        updatenew = "UPDATE_WITH_NEW_ITEMS"
+                        syncstale = "SYNC_STALE"
+                        updatecs = "#"
+                        updatebnd = "#"
+                        updateovr = "#"
+                        buildpy = "#"
+                        calcstats = "#"
+                        buildthumb = "BUILD_THUMBNAILS"
+                        buildcache = "BUILD_ITEM_CACHE"
+                        updateras = "REBUILD_RASTER"
+                        updatefield = "UPDATE_FIELDS"
+                        fields = "PointCount;Version;ZMax;ZMin"
+                        updateexist = "#"
+                        removebroken = "REMOVE_BROKEN_ITEMS"
+                        arcpy.SynchronizeMosaicDataset_management(
+                            mdname,
+                            query,
+                            updatenew,
+                            syncstale,
+                            updatecs,
+                            updatebnd,
+                            updateovr,
+                            buildpy,
+                            calcstats,
+                            buildthumb,
+                            buildcache,
+                            updateras,
+                            updatefield,
+                            fields,
+                            updateexist,
+                            removebroken
+                        )
                 except Exception as e:
-                    self.logger.logMessage(
-                        WARN,
-                        "Error refreshing image service: %s" % e.message
-                    )
+                    self.logger.logMessage(WARN, e.message)
+                    pdb.set_trace()
+
+        # Refresh image services
+        #self.logger.logMessage(INFO, "Refreshing image services:")
+        #if mosaicDatasets is not None:
+        #    for mosaic in mosaicDatasets:
+        #        try:
+        #            self.refreshImageService(mosaic.split('_')[0])
+        #        except Exception as e:
+        #            self.logger.logMessage(
+        #                WARN,
+        #                "Error refreshing image service: %s" % e.message
+        #            )
 
 
 ## *****************************************************************************
