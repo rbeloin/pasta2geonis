@@ -2956,8 +2956,6 @@ class RefreshMapService(ArcpyTool):
                             self.logger.logMessage(WARN, "Error while attempting to start service.")
                         self.logger.logMessage(INFO, "Started image service " + service + "_mosaic")
                         httpConn.close()
-            else:
-                self.logger.logMessage(WARN, "Error while attempting to get admin token.")
                 except Exception as e:
                     self.logger.logMessage(WARN, e.message)
                     pdb.set_trace()
