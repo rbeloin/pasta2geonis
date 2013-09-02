@@ -24,7 +24,9 @@ tempMetadataFilename = "temp_meta.data"
 if platform.node().lower() == "maps3":
     baseURL = "http://pasta.lternet.edu/package/eml"
     #DSN file
+    #dsnfile = r"C:\pasta2geonis\sdeDSN.txt"
     dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
+    #dsnfile = r"C:\pasta2geonis\workflowDSN.txt"
     # smtp stuff
     smtpfile = r"C:\pasta2geonis\mailCred.txt"
     #publisher conn

@@ -59,7 +59,7 @@ def getEntityInsert():
     return (sql, parameters)
 
 @contextmanager
-def cursorContext(logger=None):
+def cursorContext(logger=None, connect=None):
     """ Provides a wrapper to a generator function that yields a db cursor
         ready to execute a statement. Handles connection, commit, rollback,
         error trapping, and closing connection. Will propagate exceptions.
@@ -69,8 +69,12 @@ def cursorContext(logger=None):
     """
     try:
         conn = None
-        with open(dsnfile) as dsnf:
-            dsnStr = dsnf.readline()
+        if connect is None:
+            with open(dsnfile) as dsnf:
+                dsnStr = dsnf.readline()
+        else:
+            with open(connect) as dsnf:
+                dsnStr = dsnf.readline()
         conn = psycopg2.connect(dsn=dsnStr)
         if not conn or conn.closed:
             if conn:

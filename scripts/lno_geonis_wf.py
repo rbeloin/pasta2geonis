@@ -612,16 +612,18 @@ class Setup(ArcpyTool):
         staging = parameters[3].value
         # "$user" is required to be first schema to satisfy esri tools
         if testingMode is True:
+            #stmt1 = 'alter role workflow in database geonis set search_path = "$user",workflow_d,workflow,sde,public;'
             stmt1 = 'alter role geonis in database geonis set search_path = "$user",workflow_d,workflow,sde,public;'
             if staging:
                 stmt3 = "update workflow_d.wfconfig set strvalue = 'https://pasta-s.lternet.edu' where name = 'pastaurl';"
             else:
                 stmt3 = "update workflow_d.wfconfig set strvalue = 'https://pasta.lternet.edu' where name = 'pastaurl';"
         else:
+            #stmt1 = 'alter role workflow in database geonis set search_path = "$user",workflow,sde,public;'
             stmt1 = 'alter role geonis in database geonis set search_path = "$user",workflow,sde,public;'
             stmt3 = None
         stmt2 = "delete from limit_identifier;"
-        with cursorContext(self.logger) as cur:
+        with cursorContext(self.logger, connect='C:\pasta2geonis\geonisDSN.txt') as cur:
             cur.execute(stmt1)
             cur.execute(stmt2)
             if stmt3 is not None:
@@ -2718,32 +2720,6 @@ class RefreshMapService(ArcpyTool):
                 sendEmail(group, composeMessage(pkgid))
 
     def createImageService(self, site):
-        '''
-        self.logger.logMessage(INFO, "Checking for image service")
-        try:
-
-            # Stop service
-            with open(arcgiscred) as f:
-                cred = eval(f.readline())
-            token = getToken(cred['username'], cred['password'])
-            if token:
-                serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/stop" % site
-                self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
-                params = urllib.urlencode({'token': token, 'f': 'json'})
-                headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
-                httpConn = httplib.HTTPConnection("localhost", "6080")
-                httpConn.request("POST", serviceStopURL, params, headers)
-                response = httpConn.getresponse()
-                if (response.status != 200):
-                    self.logger.logMessage(WARN, "Error while attempting to stop service.")
-                self.logger.logMessage(INFO, "Stopped image service " + site + "_mosaic")
-                httpConn.close()
-            else:
-                self.logger.logMessage(WARN, "Error while attempting to get admin token.")
-        except Exception as e:
-            self.logger.logMessage(INFO, "Image service not found")
-        '''
-
         # Define local variables:
         # The folder for service definition draft and service definition files
         MyWorkspace = r"C:\pasta2geonis\Gis_data\servicedefs"
@@ -2814,7 +2790,7 @@ class RefreshMapService(ArcpyTool):
                 "Wrong number of items in map serv info: %s" % mapServInfoString
             )
             #maybe we have the name and folder
-            mapServInfoItems = [mapServInfoItems[0],mapServInfoItems[1],"",""]
+            mapServInfoItems = [mapServInfoItems[0], mapServInfoItems[1], "", ""]
         mapServInfo = {
             'service_name': mapServInfoItems[0],
             'service_folder': mapServInfoItems[1],
@@ -2832,7 +2808,7 @@ class RefreshMapService(ArcpyTool):
             # Otherwise, get list of map services where entity record
             # exists, is OK, has mxd, but not in geonis_layer
             else:
-                stmt = "SELECT * FROM vw_stalemapservices;"
+                stmt = "SELECT * FROM vw_stalemapservices"
                 mxds = []
                 with cursorContext(self.logger) as cur:
                     cur.execute(stmt)
@@ -2912,14 +2888,14 @@ class RefreshMapService(ArcpyTool):
                         mdname = InputData
                         query = "#"
                         updatenew = "UPDATE_WITH_NEW_ITEMS"
-                        syncstale = "SYNC_STALE"
+                        syncstale = "SYNC_STALE" #"SYNC_ALL"
                         updatecs = "#"
                         updatebnd = "#"
                         updateovr = "#"
                         buildpy = "#"
                         calcstats = "#"
-                        buildthumb = "BUILD_THUMBNAILS"
-                        buildcache = "BUILD_ITEM_CACHE"
+                        buildthumb = "NO_THUMBNAILS"
+                        buildcache = "NO_ITEM_CACHE"
                         updateras = "REBUILD_RASTER"
                         updatefield = "UPDATE_FIELDS"
                         fields = "PointCount;Version;ZMax;ZMin"
@@ -2953,12 +2929,19 @@ class RefreshMapService(ArcpyTool):
                         httpConn.request("POST", serviceStopURL, params, headers)
                         response = httpConn.getresponse()
                         if (response.status != 200):
-                            self.logger.logMessage(WARN, "Error while attempting to start service.")
-                        self.logger.logMessage(INFO, "Started image service " + service + "_mosaic")
+                            self.logger.logMessage(WARN, "Server error while starting image service.")
                         httpConn.close()
                 except Exception as e:
                     self.logger.logMessage(WARN, e.message)
-                    pdb.set_trace()
+                    self.logger.logMessage(WARN, "Mosaic synchronization failed, rebuilding image service:")
+                    try:
+                        self.createImageService(service)
+                    except Exception as e:
+                        self.logger.logMessage(
+                            WARN,
+                            "Error creating %s image service: %s" % (service, e.message)
+                        )
+
 
         # Create image services for any mosaics that do not yet have one
         if newMosaicDatasets is not None:
