@@ -25,8 +25,8 @@ if platform.node().lower() == "maps3":
     baseURL = "http://pasta.lternet.edu/package/eml"
     #DSN file
     #dsnfile = r"C:\pasta2geonis\sdeDSN.txt"
-    dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
-    #dsnfile = r"C:\pasta2geonis\workflowDSN.txt"
+    #dsnfile = r"C:\pasta2geonis\geonisDSN.txt"
+    dsnfile = r"C:\pasta2geonis\workflowDSN.txt"
     # smtp stuff
     smtpfile = r"C:\pasta2geonis\mailCred.txt"
     #publisher conn
@@ -42,8 +42,8 @@ if platform.node().lower() == "maps3":
     #raster mosaic datasets
     pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.gdb"
     #geodatabase connection
-    #geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
-    geodatabase = r"Database Connections\Connection to Maps3.sde"
+    geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
+    #geodatabase = r"Database Connections\Connection to Maps3.sde"
     #map doc
     pathToMapDoc = r"C:\pasta2geonis\Arcmap_mxd"
     #map service layer query

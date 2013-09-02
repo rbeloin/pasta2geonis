@@ -2056,10 +2056,30 @@ class LoadRasterTypes(ArcpyTool):
         pathToRasterMosaicDatasets = getConfigValue("pathtorastermosaicdatasets")
         siteMosDS = pathToRasterMosaicDatasets + os.sep + dsName
         if not arcpy.Exists(siteMosDS):
-            result = arcpy.Copy_management(
-                pathToRasterMosaicDatasets + os.sep + "Template",
-                siteMosDS
-            )
+            try:
+                result = arcpy.Copy_management(
+                    pathToRasterMosaicDatasets + os.sep + "Template",
+                    siteMosDS
+                )
+            except Exception as e:
+                self.logger.logMessage(WARN, e.message)
+                self.logger.logMessage(INFO, "Reset temporary feature classes:")
+                if e.message.find('ERROR 000260') != -1:
+                    suffixes = ('_ART', '_BND', '_CAT', '_LOG')
+                    for suffix in suffixes:
+                        try:
+                            toDelete = pathToRasterMosaicDatasets + os.sep + 'AMD_' + dsName + suffix
+                            arcpy.Delete_management(toDelete)
+                            self.logger.logMessage(INFO, "Delete %s" % toDelete)
+                        except Exception as err:
+                            if err.message.find('ERROR 000732') != -1: # Input data element does not exist
+                                continue
+                            else:
+                                self.logger.logMessage(WARN, err.message)
+                    result = arcpy.Copy_management(
+                        pathToRasterMosaicDatasets + os.sep + "Template",
+                        siteMosDS
+                    )
         else:
             #if raster exists, delete it?
             pass
