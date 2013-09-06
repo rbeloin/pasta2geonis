@@ -106,35 +106,51 @@ h1 {
 }
 #header {
     width: 100%;
-    height: 50px;
-    padding-top: 5px;
-    padding-bottom: 5px;
+    height: 34px;
+    padding-top: 7px;
+    padding-bottom: 7px;
     padding-left: 10px;
     background-color: #0489B1;
     color: #fff;
 }
-#header-content {
+/*#header-content {
 	width: 960px;
 	max-width: 100%;
 	margin: 0 auto;
+}*/
+#site-title {
 }
-#site_title {
-    text-align: center;
-    margin-top: 10px;
-    color: #000;
+#site-title h1 {
+
 }
-#site_title h1 {
-    margin: 0;
-    padding: 0;
+#geonis {
+    position: absolute;
+    top: 4px;
+    left: 10px;
     font-size: 200%;
     line-height: 22pt;
     color: #fff;
+    display: inline;    
+}
+#pid {
+    color: #fff;
+    font-size: 175% !important;
+    border: none;
+    float: right;
+    clear: right;
+    text-align: center;
+    width: 100%;
+    /*position: absolute;
+    top: 2px;
+    left: 50%;
+    margin-left: -250px;
+    width: 500px;*/
 }
 
-#pid {
+/*#pid {
     border-bottom: 1px solid #ccc;
     background-color: #086A87;
-}
+}*/
 #welcome-message {
 	line-height: 16pt;
 	display: none;
@@ -443,10 +459,11 @@ hr {
 .leftbar-grid {
     clear: left;
     float: left;
-    width: 17%;
+    width: 150px;
     font-size: 14px;
     color: #000;
     margin-top: 10px;
+    padding-left: 10px;
     padding-top: 12px;
     padding-right: 3px;
     line-height: normal;
@@ -466,19 +483,46 @@ hr {
 .leftbar-grid a:hover {
     text-decoration: none;
 }
+
+.sidebar {
+    position: absolute;
+    right: 0;
+    background-color: #fff;
+    top: 0;
+    width: 55px;
+    z-index: 100000;
+}
+.sidebar ul li:hover {
+    background-color: #CEECF5;
+}
+.sidebar a {
+    color: #000;
+}
+.sidebar a:hover {
+    text-decoration: none;
+}
 #lter-links {
     width: 100%;
+    border: 1px solid #ccc;
 }
 #lter-links li {
+    background-color: #fff;
     list-style-type: none; 
-    padding: 3px 1px;
-    margin: 1px 0;
+    font-size: 10pt;
+    padding: 0px 0;
+    margin: 0;
     display: inline-block;
-    width: 28%;
-    border: 1px solid #ccc;
+    line-height: 200%;
+    width: 100%;
+    border-bottom: 1px solid #ccc;
+    text-align: center;
+}
+#lter-links li:last-child {
+    border: none;
 }
 #lter-links li.selected {
 	background-color: #CEECF5;
+    border-top: 1px solid #CEECF5;
 }
 .selected {
     background-color: #CEECF5;
@@ -495,13 +539,13 @@ hr {
     border: 1px solid #ccc;
     color: #000;
     font-size: 13px;
-    height: 30px;
-    line-height: 30px;
+    height: 28px;
+    line-height: 28px;
     margin: 0 auto;
     position: absolute;
     text-align: center;
-    top: -35px;
-    left: -45px;
+    top: -2px;
+    right: 0;
     display: none;
     padding: 0 20px;
     white-space: nowrap;
@@ -523,7 +567,6 @@ hr {
 	background-color: #CEECF5;
 }
 #layer-checks-title {
-	padding-top: 10px;
 	font-size: 115%;
 }
 #layer-checks-title a:hover {

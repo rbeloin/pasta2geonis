@@ -732,7 +732,7 @@ var GEONIS = (function () {
             $('#package-report').hide();
             $('#workflow-info').hide();
             $('.banner').css('border', 'none');
-            $('#pid').css('border', '1px solid #ccc');
+            //$('#pid').css('border', '1px solid #ccc');
 
             servicesUrl = "http://maps3.lternet.edu/arcgis/rest/services/";
             window.mapInfo = {
