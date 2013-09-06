@@ -714,13 +714,14 @@ var lter = {
 var GEONIS = (function () {
     $(document).ready(function () {
         var welcomeMessage, servicesUrl, reportUrl, siteReportUrl, siteCode, entities;
+        var headerHeight = 48;
         pid = getPID();
         siteCode = pid.split('.')[0];
         site = siteCode.split('-')[2];
         $('#' + site).addClass('selected');
         $('.leftbar-menu').css(
             'max-height',
-            $(window).height() - $('.leftbar-grid').height() - 100
+            $(window).height() - $('.leftbar-grid').height() - headerHeight
         );
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
@@ -729,6 +730,10 @@ var GEONIS = (function () {
         }
         else if (!pid.split('.')[1] || !pid.split('.')[2]) {
             generateBanner(pid);
+            $('#map-block')
+                .css('height', $(window).height() - headerHeight)
+                .css('width', $(window).width() - 55 - 150);
+            $('#active-layers').css('width', $(window).width() - 55 - 150);
             $('#package-report').hide();
             $('#workflow-info').hide();
             $('.banner').css('border', 'none');
