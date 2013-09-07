@@ -712,15 +712,20 @@ var lter = {
 };
 
 var GEONIS = (function () {
-    $(document).ready(function () {
+    $(window).load(function () {
         var welcomeMessage, servicesUrl, reportUrl, siteReportUrl, siteCode, entities;
-        var headerHeight = 48;
+        var headerHeight = $('#header').height();
+        var leftbarWidth = $('#leftbar-wrapper').width();
+        var lterlinksWidth = $('.sidebar').width();
+        $('#map-block')
+            .css('height', $(window).height() - headerHeight)
+            .css('width', $(window).width() - lterlinksWidth - leftbarWidth);
         pid = getPID();
         siteCode = pid.split('.')[0];
         site = siteCode.split('-')[2];
         $('#' + site).addClass('selected');
         $('.leftbar-menu').css(
-            'max-height',
+            'height',
             $(window).height() - $('.leftbar-grid').height() - headerHeight
         );
         if (!pid) {
@@ -730,10 +735,7 @@ var GEONIS = (function () {
         }
         else if (!pid.split('.')[1] || !pid.split('.')[2]) {
             generateBanner(pid);
-            $('#map-block')
-                .css('height', $(window).height() - headerHeight)
-                .css('width', $(window).width() - 55 - 150);
-            $('#active-layers').css('width', $(window).width() - 55 - 150);
+            $('#active-layers').css('width', $(window).width() - lterlinksWidth - leftbarWidth);
             $('#package-report').hide();
             $('#workflow-info').hide();
             $('.banner').css('border', 'none');
