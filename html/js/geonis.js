@@ -248,7 +248,7 @@ function writeReports(reports, counter) {
  * Create the buttons linking to the map and image services, and to
  * the lightboxed map and images.
  */
-function createServiceButtons(site, entities) {
+function createServiceButtons(site) {
 
     // Check if map and/or image services exist for this site
     var servicesUrl = "http://maps3.lternet.edu/arcgis/rest/services/";
@@ -256,51 +256,53 @@ function createServiceButtons(site, entities) {
         'site': site,
         'services': {'map': true, 'image': true},
         'mapUrl': servicesUrl + "Test/" + site + "_layers/MapServer",
-        'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer",
-        'entities': entities
+        'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer"
     };
     $.getJSON(mapInfo.mapUrl + "?f=pjson", function (response) {
         if (!response.error) {
             mapInfo.services.map = true;
-            var linkToMapLightbox = $("<a />")
+            /*var linkToMapLightbox = $("<a />")
                 .attr("href", "#")
                 .text("View map")
                 .click(function () {
                     showLightbox(mapInfo, 'map');
                 }
-            );
+            );*/
             var linkToMapService = $("<a />")
                 .attr("href", mapInfo.mapUrl)
-                .text("Map service");
-            $('#view-map').html(linkToMapLightbox).show();
-            $('#map-service').html(linkToMapService).show();
+                .append($('<p />')
+                    .text("Map service")
+                );
+            //$('#view-map').html(linkToMapLightbox).show();
+            $('#map-service').append(linkToMapService).show();
         }
         else {
-            $('#view-map').hide();
+            //$('#view-map').hide();
             $('#map-service').hide();
         }
     });
     $.getJSON(mapInfo.imageUrl + "?f=pjson", function (response) {
         if (!response.error) {
             mapInfo.services.image = true;
-            var linkToImageLightbox = $("<a />")
+            /*var linkToImageLightbox = $("<a />")
                 .attr("href", "#")
                 .text("View image")
                 .click(function () {
                     showLightbox(mapInfo, 'image');
                 }
-            );
+            );*/
             var linkToImageService = $("<a />")
                 .attr("href", mapInfo.imageUrl)
                 .text("Image service");
-            $('#view-image').html(linkToImageLightbox).show();
-            $('#image-service').html(linkToImageService).show();
+            //$('#view-image').html(linkToImageLightbox).show();
+            $('#image-service').append($('<p />').append(linkToImageService)).show();
         }
         else {
-            $('#view-image').hide();
+            //$('#view-image').hide();
             $('#image-service').hide();
         }
-        $('#linkbar').show();
+        //$('#linkbar').show();
+        $('#service-links').show();
     });
 }
 
@@ -739,8 +741,6 @@ var GEONIS = (function () {
             $('#package-report').hide();
             $('#workflow-info').hide();
             $('.banner').css('border', 'none');
-            //$('#pid').css('border', '1px solid #ccc');
-
             servicesUrl = "http://maps3.lternet.edu/arcgis/rest/services/";
             window.mapInfo = {
                 'site': site,
@@ -764,6 +764,7 @@ var GEONIS = (function () {
                     };
                 });
             });
+            createServiceButtons(site);
             loadMapBlock();
             window.layerData = {};
             $.getJSON(mapInfo.entityUrl, function (response) {

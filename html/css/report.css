@@ -262,14 +262,25 @@ hr {
 #linkbar a:hover {
     text-decoration: none;
 }
-#map-service, #image-service, #view-map, #view-image {
+#service-links p {
+	display: inline-block;
+	margin: 0;
+}
+#service-links ul li {
+	padding: 0;
+	margin: 0;
+}
+#map-service, #image-service {
+	font-size: 115%;
+}
+/*#map-service, #image-service, #view-map, #view-image {
     border: 1px solid #ccc;
     border-radius: 5px;
     display: none;
 }
 #map-service a, #image-service a, #view-map a, #view-image a {
     font-size: 115%;
-}
+}*/
 #vector-report-header {
     display: none;
     background-color: #086A87;
@@ -413,7 +424,7 @@ hr {
     margin: 0;
     padding: 0;
     display: none;
-    background-color: orange;
+    background-color: #fff;
 }
 #active-layers table {
 	text-align: left;
@@ -571,12 +582,11 @@ hr {
 #layer-checks-title {
 	font-size: 115%;
 }
-#layer-checks-title a:hover {
+/*#layer-checks-title a:hover {
 	color: #086A87;
-}
+}*/
 #layer-checks {
 	display: none;
-	padding-bottom: 10px;
 }
 #layer-checks ul {
     border-bottom: 1px solid #ccc;
@@ -586,6 +596,7 @@ hr {
     border-left: 1px solid #ccc;
     border-right: 1px solid #ccc;
     line-height: 18pt;
+    background-color: #fff;
 }
 #layer-checks ul li:hover {
     background-color: #CEECF5;
@@ -604,12 +615,11 @@ hr {
 #image-checks-title {
 	font-size: 115%;
 }
-#image-checks-title a:hover {
+/*#image-checks-title a:hover {
 	color: #086A87;
-}
+}*/
 #image-checks {
 	display: none;
-	padding-bottom: 10px;
 }
 #image-checks ul {
     border-bottom: 1px solid #ccc;
@@ -619,6 +629,7 @@ hr {
     border-left: 1px solid #ccc;
     border-right: 1px solid #ccc;
     line-height: 18pt;
+    background-color: #fff;
 }
 #image-checks ul li:hover {
     background-color: #CEECF5;
