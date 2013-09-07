@@ -276,6 +276,7 @@ hr {
 #service-links > li {
 	padding: 0;
 	margin: 10px 0;
+	border-top: 1px solid #ccc;
 }
 #map-service, #image-service {
 	font-size: 115%;
@@ -583,98 +584,41 @@ hr {
 }
 
 /* Layer show/hide */
-#layer-checks .show-layer {
+#layer-checks .show-layer, #image-checks .show-layer {
 	background-color: #CEECF5;
+	margin-top: 5px;
 }
-#layer-checks-title {
+#layer-checks-title, #image-checks-title, #site-report-title {
 	font-size: 115%;
 }
 /*#layer-checks-title a:hover {
 	color: #086A87;
 }*/
-#layer-checks {
+#layer-checks, #image-checks, #site-report {
 	display: none;
 }
-#layer-checks ul {
-    border-bottom: 1px solid #ccc;
+#layer-checks ul, #image-checks ul, #site-report ul {
+    /*border-bottom: 1px solid #ccc;*/
+    padding: 5px 0 0 0;
 }
-#layer-checks ul li {
-    border-top: 1px solid #ccc;
+#layer-checks ul li, #image-checks ul li, #site-report ul li {
+    /*border-top: 1px solid #ccc;
     border-left: 1px solid #ccc;
-    border-right: 1px solid #ccc;
+    border-right: 1px solid #ccc;*/
     line-height: 18pt;
     background-color: #fff;
 }
-#layer-checks ul li:hover {
-    background-color: #CEECF5;
+#layer-checks ul li:hover, #image-checks ul li:hover, #site-report ul li:hover {
+    background-color: #EFF8FB;
 }
-#layer-checks a {
+#layer-checks a, #image-checks a, #site-report a {
     color: #0B2161;
+    font-size: 12pt;
 }
-#layer-checks a:hover {
-    text-decoration: none;
+#layer-checks label, #image-checks label {
+	font-size: 12pt;
 }
-
-/* Image show/hide */
-#image-checks .show-layer {
-	background-color: #CEECF5;
-}
-#image-checks-title {
-	font-size: 115%;
-}
-/*#image-checks-title a:hover {
-	color: #086A87;
-}*/
-#image-checks {
-	display: none;
-}
-#image-checks ul {
-    border-bottom: 1px solid #ccc;
-}
-#image-checks ul li {
-    border-top: 1px solid #ccc;
-    border-left: 1px solid #ccc;
-    border-right: 1px solid #ccc;
-    line-height: 18pt;
-    background-color: #fff;
-}
-#image-checks ul li:hover {
-    background-color: #CEECF5;
-}
-#image-checks a {
-    color: #0B2161;
-}
-#image-checks a:hover {
-    text-decoration: none;
-}
-
-
-/* List of packages */
-#site-report-title {
-	font-size: 115%;
-}
-#site-report-title a:hover {
-	color: #086A87;
-}
-#site-report {
-	display: none;
-}
-#site-report ul {
-    border-bottom: 1px solid #ccc;
-}
-#site-report ul li {
-    border-top: 1px solid #ccc;
-    border-left: 1px solid #ccc;
-    border-right: 1px solid #ccc;
-    line-height: 18pt;
-}
-#site-report ul li:hover {
-    background-color: #CEECF5;
-}
-#site-report a {
-    color: #0B2161;
-}
-#site-report a:hover {
+#layer-checks a:hover, #image-checks a:hover, #site-report a:hover {
     text-decoration: none;
 }
 

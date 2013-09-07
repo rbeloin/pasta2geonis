@@ -159,7 +159,7 @@ function fetchSitePackages(siteCode) {
                 $('#site-report').slideToggle('fast');
             });
         }
-        $('#site-report-title').append($('<p />').append(packageTitleLink));
+        $('#site-report-title').prepend($('<p />').append(packageTitleLink));
         sitePackages = '';
         for (i = 0; i < sitePackageArray.length; i++) {
             sitePackages += '<li><a href="report.html?packageid=' + sitePackageArray[i] + '">' +
@@ -356,7 +356,7 @@ function embedInit() {
             .click(function () {
                 $('#layer-checks').slideToggle('fast');
             });
-        $('#layer-checks-title').append($('<p />').append(layerTitleLink));
+        $('#layer-checks-title').prepend($('<p />').append(layerTitleLink));
         layerChecks = $('<ul />').appendTo('#layer-checks');
         for (i = 0; i < layerInfo.length; i++) {
             /*checkboxLink = $('<a />')
@@ -415,7 +415,7 @@ function embedInit() {
             .click(function () {
                 $('#image-checks').slideToggle('fast');
             });
-        $('#image-checks-title').append($('<p />').append(imageTitleLink));
+        $('#image-checks-title').prepend($('<p />').append(imageTitleLink));
         imageChecks = $('<ul />').appendTo('#image-checks');
         $.each(imageData, function () {
             checkbox = $('<label />').text(this.layername);
@@ -728,7 +728,7 @@ var GEONIS = (function () {
         $('#' + site).addClass('selected');
         $('.leftbar-menu').css(
             'height',
-            $(window).height() - $('.leftbar-grid').height() - headerHeight
+            $(window).height() - headerHeight - 10
         );
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
