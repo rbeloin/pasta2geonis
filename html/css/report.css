@@ -439,8 +439,9 @@ hr {
 	width: 100%;
 }
 #active-layers th {
-	font-weight: bold;
-	font-size: 90%;
+	/*font-weight: bold;*/
+	padding: 0 0;
+	font-size: 95%;
 	border-bottom: 1px solid #ccc;
 }
 #active-layers td {
@@ -452,9 +453,9 @@ hr {
 #active-layers .detail-title {
 	font-size: 105%;
 }
-#active-layers .detail-sourceloc {
+/*#active-layers .detail-sourceloc {
 	font-style: italic;
-}
+}*/
 #active-layers a, a:visited {
 	color: #0B2161;
 }
@@ -466,6 +467,7 @@ hr {
 }
 #active-layers .detail-box {
 	border: 1px solid #ccc;
+	background-color: #EFF8FB;
 }
 
 /* Link grid */
@@ -607,19 +609,20 @@ hr {
     border-right: 1px solid #ccc;*/
     line-height: 18pt;
     background-color: #fff;
+    color: #0B2161;
 }
 #layer-checks ul li:hover, #image-checks ul li:hover, #site-report ul li:hover {
     background-color: #EFF8FB;
 }
 #layer-checks a, #image-checks a, #site-report a {
     color: #0B2161;
-    font-size: 12pt;
-}
-#layer-checks label, #image-checks label {
-	font-size: 12pt;
+    font-size: 90%;
 }
 #layer-checks a:hover, #image-checks a:hover, #site-report a:hover {
     text-decoration: none;
+}
+.drop-down-font {
+	font-size: 90%;
 }
 
 .hidden {

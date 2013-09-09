@@ -367,7 +367,7 @@ function embedInit() {
                 });*/
             if (layerInfo[i].name === "LTER site boundary") {
                 siteBoundary = i;
-                checkbox = $('<label />').text('Boundary');
+                checkbox = $('<label />').text('Boundary').addClass('drop-down-font');
                 checkbox.prepend($('<input />')
                     .attr('type', 'checkbox')
                     .attr('name', 'checkbox' + i)
@@ -381,7 +381,7 @@ function embedInit() {
             }
             else {
                 var layerDesc = layerInfo[i].name.split(':');
-                checkbox = $('<label />').text(layerDesc[0]);
+                checkbox = $('<label />').text(layerDesc[0]).addClass('drop-down-font');
                 checkbox.prepend($('<input />')
                     .attr('type', 'checkbox')
                     .attr('name', 'checkbox' + i)
@@ -418,14 +418,13 @@ function embedInit() {
         $('#image-checks-title').prepend($('<p />').append(imageTitleLink));
         imageChecks = $('<ul />').appendTo('#image-checks');
         $.each(imageData, function () {
-            checkbox = $('<label />').text(this.layername);
+            checkbox = $('<label />').text(this.layername).addClass('drop-down-font');
             checkbox.prepend($('<input />')
                 .attr('type', 'checkbox')
                 .attr('name', 'checkbox-' + this.layername)
                 .attr('id', 'checkbox-' + this.layername)
                 .click({'layername': this.layername}, function (event) {
                     var visibleImage, mosaicRule;
-                    //event.preventDefault(event);
                     if (embeddedMap.layerIds.indexOf('imageStack') !== -1) {
                         visibleImage =
                             imageStack.mosaicRule.where.split('=')[1].split('\'')[1];
@@ -439,8 +438,6 @@ function embedInit() {
                     imageStack.setMosaicRule(mosaicRule);
                     $(event.target).parents().eq(2).find(':checked').prop('checked', false);
                     $(event.target).prop('checked', true);
-                    //$(event.target).parent().parent().children().removeClass('show-layer');
-                    //$(event.target).parent().addClass('show-layer');
                     if (embeddedMap.layerIds.indexOf('imageStack') === -1) {
                         embeddedMap.addLayer(imageStack);
                     }
@@ -449,7 +446,6 @@ function embedInit() {
                             embeddedMap.getLayer('imageStack')
                         );
                         $(event.target).parent().children().prop('checked', false);
-                        //$(event.target).parent().parent().children().removeClass('show-layer');
                     }
                 })
             );
@@ -499,18 +495,19 @@ function mapLayerToggle(event, isVector) {
         showLayers.push(layer);
         //listItem.addClass('show-layer');
         $(event.target).prop('checked', true);
-        if (layerDetail) {
+        //if (layerDetail) {
             $('#active-layers').show();
             $('#layer' + layerDetail).removeClass('hidden');
-        }
+            $('#layer' + layerDetail).trigger('click');
+        //}
     }
     else {
         showLayers.splice(layerIndex, 1);
         //listItem.removeClass('show-layer');
         $(event.target).prop('checked', false);
-        if (layerDetail) {
+        //if (layerDetail) {
             $('#layer' + layerDetail).addClass('hidden');
-        }
+        //}
     }
     substack.setVisibleLayers(showLayers);
     if (!substack.visibleLayers.length) {
@@ -786,7 +783,7 @@ var GEONIS = (function () {
                     var fullTitle = $('<li class="detail-title" />').text(this.attributes.title);
                     var fullSourceloc = $('<li class="detail-sourceloc" />').append($('<a />')
                         .attr('href', this.attributes.sourceloc)
-                        .text(this.attributes.sourceloc)
+                        .text('Download data')
                     );
                     var fullAbstract = $('<li />').append($('<p />').text(this.attributes.abstract));
                     var row = $('<tr />')
@@ -843,7 +840,7 @@ var GEONIS = (function () {
                         .addClass('hidden');
                     $('#active-layers tbody').append(row);
                     function shorten(data) {
-                        return (data.length < 40) ? data : data.slice(0, 39) + '...';
+                        return (data.length < 65) ? data : data.slice(0, 64) + '...';
                     }
                 });
             });
