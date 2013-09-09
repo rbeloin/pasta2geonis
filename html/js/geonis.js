@@ -772,20 +772,32 @@ var GEONIS = (function () {
                         'entityname': this.attributes.entityname,
                         'abstract': this.attributes.abstract,
                         'sourceloc': this.attributes.sourceloc,
-                        'ESRI_OID': this.attributes.ESRI_OID
+                        'ESRI_OID': this.attributes.ESRI_OID,
+                        'entitydescription': this.attributes.entitydescription
                     };
                     var packageid =
                         this.attributes.packageid.split('.').slice(1, 3).join('.');
-                    var title = shorten(this.attributes.title);
+                    var title = shorten(this.attributes.entitydescription);
                     var abstract = shorten(this.attributes.abstract);
                     var entityname = shorten(this.attributes.entityname);
                     var layerID = this.attributes.ESRI_OID;
                     var fullTitle = $('<li class="detail-title" />').text(this.attributes.title);
                     var fullSourceloc = $('<li class="detail-sourceloc" />').append($('<a />')
                         .attr('href', this.attributes.sourceloc)
-                        .text('Download data')
+                        .text('Download')
                     );
-                    var fullAbstract = $('<li />').append($('<p />').text(this.attributes.abstract));
+                    var fullAbstract = $('<li />').append(
+                        $('<p />').text(this.attributes.abstract)
+                    );
+                    var fullEntityname = $('<li />').append(
+                        'Entity name: ' + this.attributes.entityname
+                    );
+                    var fullLayername = $('<li />').append(
+                        'Layer/object name: ' + this.attributes.layername
+                    );
+                    var fullEntitydescription = $('<li />').append(
+                        $('<p />').text(this.attributes.entitydescription)
+                    );
                     var row = $('<tr />')
                         .attr('id', 'layer' + layerID)
                         .append($('<td />').text(this.attributes.layername))
@@ -805,11 +817,19 @@ var GEONIS = (function () {
                                                 .attr('id', 'detailText' + layerID)
                                             )
                                         )
+                                        /*.append($('<td />')
+                                            .append($('<img />')
+                                                .attr('src', 'images/close-button.png')
+                                            )
+                                        )*/
                                 );
                                 var detailText = $('<ul />').appendTo($('#detailText' + layerID));
                                 detailText.append(fullTitle);
+                                detailText.append(fullEntityname);
+                                detailText.append(fullLayername);
                                 detailText.append(fullSourceloc);
-                                detailText.append(fullAbstract);
+                                detailText.append(fullEntitydescription);
+                                //detailText.append(fullAbstract);
                             }
                             else {
                                 if ($('.detail-box:visible').length === 1 && details.is(':visible')) {

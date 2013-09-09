@@ -428,7 +428,7 @@ hr {
     position: absolute;
     bottom: 0;
     left: 155px;
-    z-index: 999999;
+    z-index: 100;
     margin: 0;
     padding: 0;
     display: none;
@@ -448,14 +448,15 @@ hr {
 	font-size: 90%;
 }
 #active-layers ul {
-	padding: 10px 20px;
+	padding: 10px 20px 5px 20px;
 }
 #active-layers .detail-title {
 	font-size: 105%;
+	padding: 5px 0 10px 0;
 }
-/*#active-layers .detail-sourceloc {
-	font-style: italic;
-}*/
+#active-layers .detail-sourceloc {
+	padding: 10px 0;
+}
 #active-layers a, a:visited {
 	color: #0B2161;
 }
@@ -468,6 +469,9 @@ hr {
 #active-layers .detail-box {
 	border: 1px solid #ccc;
 	background-color: #EFF8FB;
+}
+#active-layers .detail-box ul {
+	line-height: 15px;
 }
 
 /* Link grid */
