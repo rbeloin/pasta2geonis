@@ -815,13 +815,16 @@ var GEONIS = (function () {
                                             .attr('colspan', 4)
                                             .append($('<div />')
                                                 .attr('id', 'detailText' + layerID)
+                                                .append($('<img />')
+                                                    .attr('src', 'images/close-button.png?9')
+                                                    .attr('alt', 'Close')
+                                                    .attr('title', 'Close')
+                                                    .click(function () {
+                                                        $('#layer' + layerID).trigger('click');
+                                                    })
+                                                )
                                             )
                                         )
-                                        /*.append($('<td />')
-                                            .append($('<img />')
-                                                .attr('src', 'images/close-button.png')
-                                            )
-                                        )*/
                                 );
                                 var detailText = $('<ul />').appendTo($('#detailText' + layerID));
                                 detailText.append(fullTitle);
@@ -864,11 +867,12 @@ var GEONIS = (function () {
                     }
                 });
             });
-            /*$.getJSON(mapInfo.rasterEntityUrl, function (response) {
+            $.getJSON(mapInfo.rasterEntityUrl, function (response) {
                 $.each(response.features, function () {
-                    window.imageData[this.attributes.entityname] = {
+                    window.imageData[this.attributes.lyrname] = {
                         'packageid': this.attributes.packageid,
-                        'ESRI_OID': this.attributes.ESRI_OID
+                        'ESRI_OID': this.attributes.id,
+                        'entityname': this.attributes.entityname
                     };
                     var packageid =
                         this.attributes.packageid.split('.').slice(1, 3).join('.');
@@ -936,10 +940,10 @@ var GEONIS = (function () {
                         .addClass('hidden');
                     $('#active-layers tbody').append(row);
                     function shorten(data) {
-                        return (data.length < 40) ? data : data.slice(0, 39) + '...';
+                        return (data.length < 65) ? data : data.slice(0, 64) + '...';
                     }
                 });
-            });*/
+            });
         }
         else {
             generateBanner(pid);

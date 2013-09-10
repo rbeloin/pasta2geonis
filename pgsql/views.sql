@@ -31,7 +31,7 @@ CREATE OR REPLACE VIEW workflow_d.vw_publist AS
 --
 -- view for raster query layer
 CREATE OR REPLACE VIEW workflow_d.vw_rasterentities AS
- SELECT id, packageid, entityname, layername FROM entity WHERE israster = 't' AND layername IS NOT NULL;
+ SELECT * FROM entity WHERE israster = 't' AND layername IS NOT NULL;
 
 /*CREATE OR REPLACE VIEW workflow_d.vw_report AS
 SELECT rt.*, e.israster, e.isvector, e.sourceloc FROM
@@ -74,7 +74,7 @@ CREATE OR REPLACE VIEW workflow.vw_publist AS
 --
 -- view for raster query layer
 CREATE OR REPLACE VIEW workflow.vw_rasterentities AS
- SELECT id, packageid, entityname, layername FROM entity WHERE israster = 't' AND layername IS NOT NULL;
+ SELECT * FROM entity WHERE israster = 't' AND layername IS NOT NULL;
 
 /* this view works, but not needed. update mxd tool needs to create rec in layer table 
 CREATE OR REPLACE VIEW workflow_d.vw_newvectorlayer AS

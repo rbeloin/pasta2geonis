@@ -130,7 +130,7 @@ h1 {
     border-radius: 10px;
     padding-left: 5px;
     padding-right: 5px;
-	background-color: #0B614B;
+	/*background-color: #0B614B;*/
 	background: url('../images/geonis-topbar.png') repeat-x;
     font-family: 'Lato', Helvetica, Arial, sans-serif;
     text-shadow: #1659AC 0px 1px 3px;
@@ -473,6 +473,17 @@ hr {
 #active-layers .detail-box ul {
 	line-height: 15px;
 }
+#active-layers .detail-box img {
+	float: right;
+	padding: 10px 10px 0 0;
+	cursor: pointer;
+}
+#active-layers .detail-box hover {
+	float: right;
+	padding: 10px 10px 0 0;
+	width: 22px;
+	height: 22px;
+}
 
 /* Link grid */
 #leftbar-wrapper {
@@ -531,7 +542,7 @@ hr {
     border: 1px solid #BDBDBD;
 }
 #lter-links li {
-    background-color: #fff;
+    background-color: #EFF8FB;
     list-style-type: none; 
     font-size: 10pt;
     padding: 0px 0;
