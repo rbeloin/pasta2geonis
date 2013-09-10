@@ -2484,6 +2484,9 @@ class UpdateMXDs(ArcpyTool):
                 pkgId = workingData["packageId"]
                 packageInfo = createDictFromEmlSubset(dir)
                 packageInfo['packageId'] = pkgId
+                for datum in ('title', 'abstract', 'purpose', 'source', 'keywords'):
+                    if datum not in packageInfo.keys():
+                        packageInfo[datum] = None
                 self.logger.logMessage(
                     INFO,
                     "Add package info to entity and package tables:"
