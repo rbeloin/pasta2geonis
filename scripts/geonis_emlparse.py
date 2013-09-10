@@ -364,8 +364,9 @@ def writeWorkingDataToXML(workDir, data, logger = None):
 
 
 
-def readWorkingData(workDir, logger = None):
+def readWorkingData(workDir, logger=None, fullEML=False):
     try:
+        #pathToXML = workDir if fullEML else workDir + os.sep + "emlSubset.xml"
         pathToXML = workDir + os.sep + "emlSubset.xml"
         treeObj = etree.parse(pathToXML)
         root =  treeObj.getroot()

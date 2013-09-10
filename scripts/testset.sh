@@ -1,6 +1,6 @@
 #!/bin/sh
-sites=( and nwt knz cap pie bnz vcr )
-servers=( pasta pasta-s pasta pasta pasta-s pasta-s pasta-s )
+sites=( and nwt knz cap pie bnz vcr ntl )
+servers=( pasta pasta-s pasta pasta pasta-s pasta-s pasta-s pasta-s )
 
 echo "python update_wf.py"
 echo ""

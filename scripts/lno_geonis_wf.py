@@ -1138,7 +1138,6 @@ class UnpackPackages(ArcpyTool):
             "status = %(status)s WHERE "
             "packageid = %(packageid)s AND entityname = %(entityname)s"
         )
-        pdb.set_trace()
         parameters = {
             'packageid': emldata['packageId'],
             'entityname': emldata['entityName'],
@@ -2353,9 +2352,9 @@ class UpdateMXDs(ArcpyTool):
         if status != "Added to map":
             self.logger.logMessage(DEBUG, "Status of entity is %s" % (status,))
         insertObj = createDictFromEmlSubset(workDir)
-        with cursorContext(self.logger) as cur:
-            sql = "UPDATE package SET title = %s WHERE packageid = %s"
-            cur.execute(sql, (insertObj['title'], pkgId))
+        #with cursorContext(self.logger) as cur:
+        #    sql = "UPDATE package SET title = %s WHERE packageid = %s"
+        #    cur.execute(sql, (insertObj['title'], pkgId))
         insertObj['id'] = recId
         insertObj['pid'] = pkgId
         insertObj['name'] = name
@@ -2389,7 +2388,7 @@ class UpdateMXDs(ArcpyTool):
             "ON r.reportid = t.reportid) AS rt "
             "LEFT JOIN entity AS e "
             "ON rt.entityid = e.id"
-        )
+        )        
 
         # Drop denormalized report table (if it exists)
         with cursorContext(self.logger) as cur:
@@ -2482,8 +2481,25 @@ class UpdateMXDs(ArcpyTool):
             try:
                 status = "Entering add vector to MXD"
                 workingData = readWorkingData(dir, self.logger)
+                pkgId = workingData["packageId"]
+                packageInfo = createDictFromEmlSubset(dir)
+                packageInfo['packageId'] = pkgId
+                self.logger.logMessage(
+                    INFO,
+                    "Add package info to entity and package tables:"
+                )
+                with cursorContext(self.logger) as cur:
+                    sql = (
+                        "UPDATE %s "
+                        "SET title=%%(title)s, abstract=%%(abstract)s, "
+                        "purpose=%%(purpose)s, sourceloc=%%(source)s, "
+                        "keywords=%%(keywords)s "
+                        "WHERE packageid=%%(packageId)s"
+                    )
+                    for table in ('entity', 'package'):
+                        cur.execute(sql % table, packageInfo)
+
                 if workingData["spatialType"] == "spatialVector":
-                    pkgId = workingData["packageId"]
                     lName, mxdName = self.addVectorData(
                         dir,
                         workingData,
