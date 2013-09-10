@@ -23,6 +23,10 @@ mxd varchar(200),
 layername varchar(2000),
 status varchar(500),
 sourceloc varchar(2000),
+title TEXT,
+abstract TEXT,
+purpose TEXT,
+keywords varchar(1000),
 report text,
 UNIQUE ( packageid, entityname ) );
 CREATE TABLE workflow_d.geonis_layer (
@@ -110,6 +114,10 @@ mxd varchar(200),
 layername varchar(2000),
 status varchar(500),
 sourceloc varchar(2000),
+title TEXT,
+abstract TEXT,
+purpose TEXT,
+keywords varchar(1000),
 report text,
 UNIQUE ( packageid, entityname ) );
 CREATE TABLE workflow.geonis_layer (

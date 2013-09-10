@@ -1138,6 +1138,7 @@ class UnpackPackages(ArcpyTool):
             "status = %(status)s WHERE "
             "packageid = %(packageid)s AND entityname = %(entityname)s"
         )
+        pdb.set_trace()
         parameters = {
             'packageid': emldata['packageId'],
             'entityname': emldata['entityName'],
