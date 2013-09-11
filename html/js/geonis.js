@@ -749,7 +749,7 @@ var GEONIS = (function () {
                     "&outFields=*&f=pjson"
             };
             window.imageData = {};
-            $.getJSON(mapInfo.rasterEntityUrl, function (response) {
+            /*$.getJSON(mapInfo.rasterEntityUrl, function (response) {
                 $.each(response.features, function () {
                     imageData[this.attributes.id] = {
                         'packageid': this.attributes.packageid,
@@ -757,7 +757,7 @@ var GEONIS = (function () {
                         'layername': this.attributes.lyrname
                     };
                 });
-            });
+            });*/
             createServiceButtons(site);
             loadMapBlock();
             window.layerData = {};
@@ -869,7 +869,8 @@ var GEONIS = (function () {
                     window.imageData[this.attributes.lyrname] = {
                         'packageid': this.attributes.packageid,
                         'ESRI_OID': this.attributes.id,
-                        'entityname': this.attributes.entityname
+                        'entityname': this.attributes.entityname,
+                        'layername': this.attributes.lyrname
                     };
                     var packageid =
                         this.attributes.packageid.split('.').slice(1, 3).join('.');
