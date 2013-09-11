@@ -448,6 +448,9 @@ function embedInit() {
                         $(event.target).parent().children().prop('checked', false);
                     }
                     $('#active-layers').show();
+                    $.each(window.imageData, function () {
+                        $('#image' + this.layername).addClass('hidden');
+                    });
                     $('#image' + event.data.layername).removeClass('hidden');
                     $('#image' + event.data.layername).trigger('click');
                 })
