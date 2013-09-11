@@ -588,6 +588,214 @@ function init(mapInfo) {
     }
 }
 
+function fetchVectors() {
+    $.getJSON(mapInfo.entityUrl, function (response) {
+        $.each(response.features, function () {
+            layerData[this.attributes.layername] = {
+                'packageid': this.attributes.packageid,
+                'title': this.attributes.title,
+                'entityname': this.attributes.entityname,
+                'abstract': this.attributes.abstract,
+                'sourceloc': this.attributes.sourceloc,
+                'ESRI_OID': this.attributes.ESRI_OID,
+                'entitydescription': this.attributes.entitydescription
+            };
+            var packageid =
+                this.attributes.packageid.split('.').slice(1, 3).join('.');
+            var title = shorten(this.attributes.entitydescription);
+            var abstract = shorten(this.attributes.abstract);
+            var entityname = shorten(this.attributes.entityname);
+            var layerID = this.attributes.ESRI_OID;
+            var fullTitle = $('<li class="detail-title" />').text(this.attributes.title);
+            var fullSourceloc = $('<li class="detail-sourceloc" />').append($('<a />')
+                .attr('href', this.attributes.sourceloc)
+                .text('Download')
+            );
+            var fullAbstract = $('<li />').append(
+                $('<p />').text(this.attributes.abstract)
+            );
+            var fullEntityname = $('<li />').append(
+                'Entity name: ' + this.attributes.entityname
+            );
+            var fullLayername = $('<li />').append(
+                'Layer/object name: ' + this.attributes.layername
+            );
+            var fullEntitydescription = $('<li />').append(
+                $('<p />').text(this.attributes.entitydescription)
+            );
+            var row = $('<tr />')
+                .attr('id', 'layer' + layerID)
+                .append($('<td />').text(this.attributes.layername))
+                .append($('<td />').text(packageid))
+                .append($('<td />').text(entityname))
+                .append($('<td />').text(title))
+                .click(function (event) {
+                    var details = $('#layer-detail-row-' + layerID);
+                    if (!details.length) {
+                        $('.detail-box:visible').hide();
+                        $(event.target).parent().after(
+                            $('<tr class="detail-box" />')
+                                .attr('id', 'layer-detail-row-' + layerID)
+                                .append($('<td />')
+                                    .attr('colspan', 4)
+                                    .append($('<div />')
+                                        .attr('id', 'detailText' + layerID)
+                                        .append($('<img />')
+                                            .attr('src', 'images/close-button.png?9')
+                                            .attr('alt', 'Close')
+                                            .attr('title', 'Close')
+                                            .click(function () {
+                                                $('#layer' + layerID).trigger('click');
+                                            })
+                                        )
+                                    )
+                                )
+                        );
+                        var detailText = $('<ul />').appendTo($('#detailText' + layerID));
+                        detailText.append(fullTitle);
+                        detailText.append(fullEntityname);
+                        detailText.append(fullLayername);
+                        detailText.append(fullSourceloc);
+                        detailText.append(fullEntitydescription);
+                        //detailText.append(fullAbstract);
+                    }
+                    else {
+                        if ($('.detail-box:visible').length === 1 && details.is(':visible')) {
+                            details.hide();
+                        }
+                        else if ($('.detail-box:visible').length > 1 && details.is(':visible')) {
+                            $('.detail-box:visible').hide();
+                        }
+                        else if ($('.detail-box:visible').length === 1 && !details.is(':visible')) {
+                            $('.detail-box:visible').hide();
+                            details.show();
+                        }
+                        else {
+                            details.show();
+                        }
+                    }
+                })
+                .hover(
+                    function () {
+                        $(this).css('background-color', '#CEECF5');
+                        $(this).css('cursor', 'pointer');
+                    },
+                    function () {
+                        $(this).css('background-color', '#FFF');
+                        $(this).css('cursor', 'default');
+                    }
+                )
+                .addClass('hidden');
+            $('#active-layers tbody').append(row);
+            function shorten(data) {
+                return (data.length < 65) ? data : data.slice(0, 64) + '...';
+            }
+        });
+    });
+}
+
+function fetchRasters() {
+    $.getJSON(mapInfo.rasterEntityUrl, function (response) {
+        $.each(response.features, function () {
+            window.imageData[this.attributes.lyrname] = {
+                'packageid': this.attributes.packageid,
+                'ESRI_OID': this.attributes.id,
+                'entityname': this.attributes.entityname,
+                'layername': this.attributes.lyrname
+            };
+            var packageid =
+                this.attributes.packageid.split('.').slice(1, 3).join('.');
+            var title = shorten(this.attributes.title);
+            var abstract = shorten(this.attributes.abstract);
+            var entityname = shorten(this.attributes.entityname);
+            var layerID = this.attributes.lyrname;
+            var fullTitle = $('<li class="detail-title" />').text(this.attributes.title);
+            var fullSourceloc = $('<li class="detail-sourceloc" />').append($('<a />')
+                .attr('href', this.attributes.sourceloc)
+                .text('Download')
+            );
+            var fullAbstract = $('<li />').append(
+                $('<p />').text(this.attributes.abstract)
+            );
+            var fullEntityname = $('<li />').append(
+                'Entity name: ' + this.attributes.entityname
+            );
+            var fullLayername = $('<li />').append(
+                'Layer/object name: ' + this.attributes.lyrname
+            );
+            var fullEntitydescription = $('<li />').append(
+                $('<p />').text(this.attributes.entitydescription)
+            );
+            var row = $('<tr />')
+                .attr('id', 'image' + layerID)
+                .append($('<td />').text(this.attributes.lyrname))
+                .append($('<td />').text(packageid))
+                .append($('<td />').text(entityname))
+                .append($('<td />').text(title))
+                .click(function (event) {
+                    var details = $('#image-detail-row-' + layerID);
+                    if (!details.length) {
+                        $('.detail-box:visible').hide();
+                        $(event.target).parent().after(
+                            $('<tr class="detail-box" />')
+                                .attr('id', 'image-detail-row-' + layerID)
+                                .append($('<td />')
+                                    .attr('colspan', 4)
+                                    .append($('<div />')
+                                        .attr('id', 'detailText' + layerID)
+                                        .append($('<img />')
+                                            .attr('src', 'images/close-button.png?9')
+                                            .attr('alt', 'Close')
+                                            .attr('title', 'Close')
+                                            .click(function () {
+                                                $('#image' + layerID).trigger('click');
+                                            })
+                                        )
+                                    )
+                                )
+                        );
+                        var detailText = $('<ul />').appendTo($('#detailText' + layerID));
+                        detailText.append(fullTitle);
+                        detailText.append(fullEntityname);
+                        detailText.append(fullLayername);
+                        detailText.append(fullSourceloc);
+                        detailText.append(fullEntitydescription);
+                    }
+                    else {
+                        if ($('.detail-box:visible').length === 1 && details.is(':visible')) {
+                            details.hide();
+                        }
+                        else if ($('.detail-box:visible').length > 1 && details.is(':visible')) {
+                            $('.detail-box:visible').hide();
+                        }
+                        else if ($('.detail-box:visible').length === 1 && !details.is(':visible')) {
+                            $('.detail-box:visible').hide();
+                            details.show();
+                        }
+                        else {
+                            details.show();
+                        }
+                    }
+                })
+                .hover(
+                    function () {
+                        $(this).css('background-color', '#CEECF5');
+                        $(this).css('cursor', 'pointer');
+                    },
+                    function () {
+                        $(this).css('background-color', '#FFF');
+                        $(this).css('cursor', 'default');
+                    }
+                )
+                .addClass('hidden');
+            $('#active-layers tbody').append(row);
+            function shorten(data) {
+                return (data.length < 65) ? data : data.slice(0, 64) + '...';
+            }
+        });
+    });
+}
+
 var lter = {
     "and": {
         "coords": [44.24, -122.18],
@@ -762,226 +970,28 @@ var GEONIS = (function () {
                     "where=packageid+like+%27knb-lter-" + site + "%%%27&returnGeometry=true" +
                     "&outFields=*&f=pjson"
             };
-            window.imageData = {};
-            /*$.getJSON(mapInfo.rasterEntityUrl, function (response) {
-                $.each(response.features, function () {
-                    imageData[this.attributes.id] = {
-                        'packageid': this.attributes.packageid,
-                        'entityname': this.attributes.entityname,
-                        'layername': this.attributes.lyrname
-                    };
-                });
-            });*/
             createServiceButtons(site);
             loadMapBlock();
             window.layerData = {};
-            $.getJSON(mapInfo.entityUrl, function (response) {
-                $.each(response.features, function () {
-                    layerData[this.attributes.layername] = {
-                        'packageid': this.attributes.packageid,
-                        'title': this.attributes.title,
-                        'entityname': this.attributes.entityname,
-                        'abstract': this.attributes.abstract,
-                        'sourceloc': this.attributes.sourceloc,
-                        'ESRI_OID': this.attributes.ESRI_OID,
-                        'entitydescription': this.attributes.entitydescription
-                    };
-                    var packageid =
-                        this.attributes.packageid.split('.').slice(1, 3).join('.');
-                    var title = shorten(this.attributes.entitydescription);
-                    var abstract = shorten(this.attributes.abstract);
-                    var entityname = shorten(this.attributes.entityname);
-                    var layerID = this.attributes.ESRI_OID;
-                    var fullTitle = $('<li class="detail-title" />').text(this.attributes.title);
-                    var fullSourceloc = $('<li class="detail-sourceloc" />').append($('<a />')
-                        .attr('href', this.attributes.sourceloc)
-                        .text('Download')
-                    );
-                    var fullAbstract = $('<li />').append(
-                        $('<p />').text(this.attributes.abstract)
-                    );
-                    var fullEntityname = $('<li />').append(
-                        'Entity name: ' + this.attributes.entityname
-                    );
-                    var fullLayername = $('<li />').append(
-                        'Layer/object name: ' + this.attributes.layername
-                    );
-                    var fullEntitydescription = $('<li />').append(
-                        $('<p />').text(this.attributes.entitydescription)
-                    );
-                    var row = $('<tr />')
-                        .attr('id', 'layer' + layerID)
-                        .append($('<td />').text(this.attributes.layername))
-                        .append($('<td />').text(packageid))
-                        .append($('<td />').text(entityname))
-                        .append($('<td />').text(title))
-                        .click(function (event) {
-                            var details = $('#layer-detail-row-' + layerID);
-                            if (!details.length) {
-                                $('.detail-box:visible').hide();
-                                $(event.target).parent().after(
-                                    $('<tr class="detail-box" />')
-                                        .attr('id', 'layer-detail-row-' + layerID)
-                                        .append($('<td />')
-                                            .attr('colspan', 4)
-                                            .append($('<div />')
-                                                .attr('id', 'detailText' + layerID)
-                                                .append($('<img />')
-                                                    .attr('src', 'images/close-button.png?9')
-                                                    .attr('alt', 'Close')
-                                                    .attr('title', 'Close')
-                                                    .click(function () {
-                                                        $('#layer' + layerID).trigger('click');
-                                                    })
-                                                )
-                                            )
-                                        )
-                                );
-                                var detailText = $('<ul />').appendTo($('#detailText' + layerID));
-                                detailText.append(fullTitle);
-                                detailText.append(fullEntityname);
-                                detailText.append(fullLayername);
-                                detailText.append(fullSourceloc);
-                                detailText.append(fullEntitydescription);
-                                //detailText.append(fullAbstract);
-                            }
-                            else {
-                                if ($('.detail-box:visible').length === 1 && details.is(':visible')) {
-                                    details.hide();
-                                }
-                                else if ($('.detail-box:visible').length > 1 && details.is(':visible')) {
-                                    $('.detail-box:visible').hide();
-                                }
-                                else if ($('.detail-box:visible').length === 1 && !details.is(':visible')) {
-                                    $('.detail-box:visible').hide();
-                                    details.show();
-                                }
-                                else {
-                                    details.show();
-                                }
-                            }
-                        })
-                        .hover(
-                            function () {
-                                $(this).css('background-color', '#CEECF5');
-                                $(this).css('cursor', 'pointer');
-                            },
-                            function () {
-                                $(this).css('background-color', '#FFF');
-                                $(this).css('cursor', 'default');
-                            }
-                        )
-                        .addClass('hidden');
-                    $('#active-layers tbody').append(row);
-                    function shorten(data) {
-                        return (data.length < 65) ? data : data.slice(0, 64) + '...';
-                    }
-                });
-            });
-            $.getJSON(mapInfo.rasterEntityUrl, function (response) {
-                $.each(response.features, function () {
-                    window.imageData[this.attributes.lyrname] = {
-                        'packageid': this.attributes.packageid,
-                        'ESRI_OID': this.attributes.id,
-                        'entityname': this.attributes.entityname,
-                        'layername': this.attributes.lyrname
-                    };
-                    var packageid =
-                        this.attributes.packageid.split('.').slice(1, 3).join('.');
-                    var title = shorten(this.attributes.title);
-                    var abstract = shorten(this.attributes.abstract);
-                    var entityname = shorten(this.attributes.entityname);
-                    var layerID = this.attributes.lyrname;
-                    var fullTitle = $('<li class="detail-title" />').text(this.attributes.title);
-                    var fullSourceloc = $('<li class="detail-sourceloc" />').append($('<a />')
-                        .attr('href', this.attributes.sourceloc)
-                        .text('Download')
-                    );
-                    var fullAbstract = $('<li />').append(
-                        $('<p />').text(this.attributes.abstract)
-                    );
-                    var fullEntityname = $('<li />').append(
-                        'Entity name: ' + this.attributes.entityname
-                    );
-                    var fullLayername = $('<li />').append(
-                        'Layer/object name: ' + this.attributes.lyrname
-                    );
-                    var fullEntitydescription = $('<li />').append(
-                        $('<p />').text(this.attributes.entitydescription)
-                    );
-                    var row = $('<tr />')
-                        .attr('id', 'image' + layerID)
-                        .append($('<td />').text(this.attributes.lyrname))
-                        .append($('<td />').text(packageid))
-                        .append($('<td />').text(entityname))
-                        .append($('<td />').text(title))
-                        .click(function (event) {
-                            var details = $('#image-detail-row-' + layerID);
-                            if (!details.length) {
-                                $('.detail-box:visible').hide();
-                                $(event.target).parent().after(
-                                    $('<tr class="detail-box" />')
-                                        .attr('id', 'image-detail-row-' + layerID)
-                                        .append($('<td />')
-                                            .attr('colspan', 4)
-                                            .append($('<div />')
-                                                .attr('id', 'detailText' + layerID)
-                                                .append($('<img />')
-                                                    .attr('src', 'images/close-button.png?9')
-                                                    .attr('alt', 'Close')
-                                                    .attr('title', 'Close')
-                                                    .click(function () {
-                                                        $('#image' + layerID).trigger('click');
-                                                    })
-                                                )
-                                            )
-                                        )
-                                );
-                                var detailText = $('<ul />').appendTo($('#detailText' + layerID));
-                                detailText.append(fullTitle);
-                                detailText.append(fullEntityname);
-                                detailText.append(fullLayername);
-                                detailText.append(fullSourceloc);
-                                detailText.append(fullEntitydescription);
-                            }
-                            else {
-                                if ($('.detail-box:visible').length === 1 && details.is(':visible')) {
-                                    details.hide();
-                                }
-                                else if ($('.detail-box:visible').length > 1 && details.is(':visible')) {
-                                    $('.detail-box:visible').hide();
-                                }
-                                else if ($('.detail-box:visible').length === 1 && !details.is(':visible')) {
-                                    $('.detail-box:visible').hide();
-                                    details.show();
-                                }
-                                else {
-                                    details.show();
-                                }
-                            }
-                        })
-                        .hover(
-                            function () {
-                                $(this).css('background-color', '#CEECF5');
-                                $(this).css('cursor', 'pointer');
-                            },
-                            function () {
-                                $(this).css('background-color', '#FFF');
-                                $(this).css('cursor', 'default');
-                            }
-                        )
-                        .addClass('hidden');
-                    $('#active-layers tbody').append(row);
-                    function shorten(data) {
-                        return (data.length < 65) ? data : data.slice(0, 64) + '...';
-                    }
-                });
-            });
+            fetchVectors();
+            window.imageData = {};
+            fetchRasters();
         }
         else {
             generateBanner(pid);
+            $('#pid').css('font-size', '125%');
+            leftbarWidth = $('#leftbar-wrapper').width();
+            lterlinksWidth = $('.sidebar').width();
             $('#site-report').show();
-            //entities = [];
+            $('#map-block').hide();
+            midWidth = $(window).width() - lterlinksWidth - leftbarWidth - 2;
+            $('#report-wrapper').show().css('width', midWidth);
+            $('.banner').each(function() {
+                $(this).css('width', midWidth);
+            });
+            $('#layer-checks-title').hide();
+            $('#image-checks-title').hide();
+            createServiceButtons(site);
             window.packageReports = [];
             window.vectorReports = {};
             window.rasterReports = {};
@@ -1094,8 +1104,8 @@ var GEONIS = (function () {
                         $('#raster-entities').prepend($('<li />')
                             .addClass('entity-name')
                             .attr('id', 'entity-' + this[0].entityid)
-                            .text(this[0].entityname)
                             .css('cursor', 'pointer')
+                            .text(this[0].entityname)
                             .click(function (event) {
                                 var isSelected = $(event.target).hasClass('selected');
                                 $('.report-wrapper').hide();
@@ -1111,6 +1121,15 @@ var GEONIS = (function () {
                                 .hide()
                                 .addClass('report-wrapper')
                                 .attr('id', 'report-wrapper-' + this[0].entityid)
+                                .append($('<ul />')
+                                    .append($('<li />')
+                                        .addClass('report-table-header')
+                                        .text('Entity name: ' + this[0].entityname)
+                                    )
+                                    .append($('<li />')
+                                        .text(this[0].entitydescription)
+                                    )
+                                )
                                 .append($('<table />')
                                     .attr('id', 'report-' + this[0].entityid)
                                     .attr('class', 'report-table')
@@ -1134,59 +1153,6 @@ var GEONIS = (function () {
                     });
                 }
             });
-
-            // Fetch report from database using the Search service, then parse
-            // the report, extract information about the report from the
-            // stringified-JSON structure, then write output to document.
-            /*reportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
-                "Search/MapServer/2/query?where=packageid+%3D+%27" + pid +
-                "%27&returnGeometry=true&outFields=report&f=pjson&callback=?";
-            $.getJSON(reportUrl, function (response) {
-                var i, serverInfo, parsed, counter, reports;
-                counter = {'package': 0, 'vector': 0, 'raster': 0};
-                reports = {'package': '', 'vector': '', 'raster': ''};
-
-                // The error report is pipe-delimited from other useful info stored in
-                // the report field, in stringified-JSON format
-                $.each(response.features, function () {
-
-                    // Parse the raw report from the Search service
-                    parsed = parseReport(this.attributes.report);
-                    formatted = checkTables(
-                        parsed.biography, parsed.report, parsed.reportType
-                    );
-                    counter[formatted.subject]++;
-                    if (parsed.reportType === 'entity-report') {
-                        entities.push(
-                            (parsed.biography.entityname === 'None') ?
-                            'Untitled ' + formatted.subject + ' data set' :
-                            parsed.biography.entityname
-                        );
-                    }
-                    if (!serverInfo) {
-                        serverInfo = getServerInfo(parsed.biography);
-                    }
-
-                    // Append the report text onto the appropriate section
-                    reports[formatted.subject] += '<p>' + formatted.report + '</p>';
-                });
-
-                // Insert report text into document, and create section headers
-                writeReports(reports, counter);
-
-                // Map and image buttons
-                createServiceButtons(site, entities);
-
-                // Append server information and download link to the bottom of the report
-                if (parsed && parsed.biography) {
-                    appendServerInfo(serverInfo, parsed.biography);
-                }
-            });
-            if (pid.split('.')[1]) {
-                $('#package-report').html(
-                    "<p style='text-align: center; padding-top: 5px;'>Data set not found.</p>"
-                );
-            }*/
         }
 
         // Other data sets from the same site

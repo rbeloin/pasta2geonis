@@ -137,7 +137,7 @@ h1 {
 }
 #pid {
     color: #fff;
-    font-size: 155% !important;
+    font-size: 155%;
     /*text-shadow: 1px 1px #6E6E6E;*/
     text-shadow: #1659AC 0px 1px 3px;
     border: none;
@@ -154,14 +154,15 @@ h1 {
     font-weight: bold;
 }
 
+#report-wrapper {
+	float: left;
+	display: none;
+}
 .banner {
-	clear: right;
-    float: right;
-	width: 82%;
+	float: left;
 	font-size: 14px;
 	color: #000;
 	margin-top: 10px;
-	border: 1px solid #ccc;
 	margin-bottom: 10px;
     line-height: normal;
 }
@@ -182,12 +183,10 @@ h1 {
     font-weight: bold;
 }
 .banner p {
-	margin-left: 25px;
-	margin-right: 25px;
+/*	margin-left: 25px;*/
 }
 .banner ul li {
-    margin-left: 25px;
-    margin-right: 25px;
+/*    margin-left: 25px;*/
 }
 .banner a {
 	color: #0B2161;
@@ -310,12 +309,22 @@ hr {
     margin-left: 25px;
     margin-right: 25px;
 }
-.report-table table {
-    margin-left: 25px;
-    margin-right: 25px;    
+.report-wrapper {
+	margin-top: 10px;
+}
+.report-wrapper ul li {
+	padding-bottom: 5px;
+}
+.report-wrapper ul li:last-child {
+	padding-bottom: 10px;
+}
+.report-table-header {
+	font-size: 105%;
+}
+.report-table {
+	width: 100%;
 }
 .report-table td, th {
-    padding: 10px;
     text-align: left;
 }
 .report-table th {
@@ -324,6 +333,12 @@ hr {
 }
 .report-table td {
     font-size: 100%;
+}
+.report-table p {
+	padding-left: 0;
+	padding-right: 0;
+	margin-left: 0;
+	margin-right: 0;
 }
 
 /* push */
@@ -549,7 +564,7 @@ hr {
     background-color: #EFF8FB;
     list-style-type: none; 
     font-size: 10pt;
-    padding: 0px 0;
+    padding: 0;
     margin: 0;
     display: inline-block;
     line-height: 200%;
