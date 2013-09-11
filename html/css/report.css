@@ -154,11 +154,6 @@ h1 {
     font-weight: bold;
 }
 
-#welcome-message {
-	line-height: 16pt;
-	display: none;
-}
-
 .banner {
 	clear: right;
     float: right;
@@ -403,6 +398,15 @@ hr {
 .close-button {
     float: right;
     text-align: right;
+}
+
+#welcome-message {
+	line-height: 16pt;
+	display: none;
+	float: left;
+	margin: 20px;
+	padding: 0;
+	text-align: justify;
 }
 
 /* Arc JS map */

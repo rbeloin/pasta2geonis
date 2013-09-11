@@ -407,6 +407,7 @@ function embedInit() {
             opacity: 0.75
         }
     );
+    window.imageLayer = false;
     dojo.connect(imageStack, 'onLoad', function (images) {
         var i, imageTitleLink, imageChecks;
         imageTitleLink = $('<a />')
@@ -440,12 +441,14 @@ function embedInit() {
                     $(event.target).prop('checked', true);
                     if (embeddedMap.layerIds.indexOf('imageStack') === -1) {
                         embeddedMap.addLayer(imageStack);
+                        window.imageLayer = true;
                     }
                     else if (visibleImage === event.data.layername) {
                         embeddedMap.removeLayer(
                             embeddedMap.getLayer('imageStack')
                         );
                         $(event.target).parent().children().prop('checked', false);
+                        window.imageLayer = false;
                     }
                     $('#active-layers').show();
                     $.each(window.imageData, function () {
@@ -453,6 +456,12 @@ function embedInit() {
                     });
                     $('#image' + event.data.layername).removeClass('hidden');
                     $('#image' + event.data.layername).trigger('click');
+                    if (!window.imageLayer && layerStack.visibleLayers &&
+                        layerStack.visibleLayers.length === 1 &&
+                        (layerStack.layerInfos[layerStack.visibleLayers[0]].name ===
+                            'LTER site boundary')) {
+                        $('#active-layers').hide();
+                    }
                 })
             );
             imageChecks.append($('<li />').append(checkbox));
@@ -517,7 +526,7 @@ function mapLayerToggle(event, isVector) {
     if (substack.visibleLayers.length) {
         isBoundary = (layerStack.layerInfos[substack.visibleLayers[0]].name ===
             'LTER site boundary');
-        if (substack.visibleLayers.length === 1 && isBoundary) {
+        if (substack.visibleLayers.length === 1 && isBoundary && !imageLayer) {
             $('.detail-box').hide();
             $('#active-layers').hide();
         }
@@ -729,7 +738,9 @@ var GEONIS = (function () {
         );
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
-            $('#welcome-message').show();
+            $('#leftbar-wrapper').hide();
+            $('#geonis').hide();
+            $('#welcome-message').show().css('width', $(window).width() - lterlinksWidth - 40);
             return;
         }
         else if (!pid.split('.')[1] || !pid.split('.')[2]) {
