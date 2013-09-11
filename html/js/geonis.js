@@ -447,6 +447,9 @@ function embedInit() {
                         );
                         $(event.target).parent().children().prop('checked', false);
                     }
+                    $('#active-layers').show();
+                    $('#image' + event.data.layername).removeClass('hidden');
+                    $('#image' + event.data.layername).trigger('click');
                 })
             );
             imageChecks.append($('<li />').append(checkbox));
@@ -493,21 +496,15 @@ function mapLayerToggle(event, isVector) {
     }
     if (layerIndex === -1) {
         showLayers.push(layer);
-        //listItem.addClass('show-layer');
         $(event.target).prop('checked', true);
-        //if (layerDetail) {
-            $('#active-layers').show();
-            $('#layer' + layerDetail).removeClass('hidden');
-            $('#layer' + layerDetail).trigger('click');
-        //}
+        $('#active-layers').show();
+        $('#layer' + layerDetail).removeClass('hidden');
+        $('#layer' + layerDetail).trigger('click');
     }
     else {
         showLayers.splice(layerIndex, 1);
-        //listItem.removeClass('show-layer');
         $(event.target).prop('checked', false);
-        //if (layerDetail) {
-            $('#layer' + layerDetail).addClass('hidden');
-        //}
+        $('#layer' + layerDetail).addClass('hidden');
     }
     substack.setVisibleLayers(showLayers);
     if (!substack.visibleLayers.length) {
@@ -879,37 +876,58 @@ var GEONIS = (function () {
                     var title = shorten(this.attributes.title);
                     var abstract = shorten(this.attributes.abstract);
                     var entityname = shorten(this.attributes.entityname);
-                    var layerID = this.attributes.ESRI_OID;
+                    var layerID = this.attributes.lyrname;
                     var fullTitle = $('<li class="detail-title" />').text(this.attributes.title);
                     var fullSourceloc = $('<li class="detail-sourceloc" />').append($('<a />')
                         .attr('href', this.attributes.sourceloc)
-                        .text(this.attributes.sourceloc)
+                        .text('Download')
                     );
-                    var fullAbstract = $('<li />').append($('<p />').text(this.attributes.abstract));
+                    var fullAbstract = $('<li />').append(
+                        $('<p />').text(this.attributes.abstract)
+                    );
+                    var fullEntityname = $('<li />').append(
+                        'Entity name: ' + this.attributes.entityname
+                    );
+                    var fullLayername = $('<li />').append(
+                        'Layer/object name: ' + this.attributes.lyrname
+                    );
+                    var fullEntitydescription = $('<li />').append(
+                        $('<p />').text(this.attributes.entitydescription)
+                    );
                     var row = $('<tr />')
-                        .attr('id', 'layer' + layerID)
-                        .append($('<td />').text(this.attributes.layername))
+                        .attr('id', 'image' + layerID)
+                        .append($('<td />').text(this.attributes.lyrname))
                         .append($('<td />').text(packageid))
                         .append($('<td />').text(entityname))
                         .append($('<td />').text(title))
                         .click(function (event) {
-                            var details = $('#layer-detail-row-' + layerID);
+                            var details = $('#image-detail-row-' + layerID);
                             if (!details.length) {
                                 $('.detail-box:visible').hide();
                                 $(event.target).parent().after(
                                     $('<tr class="detail-box" />')
-                                        .attr('id', 'layer-detail-row-' + layerID)
+                                        .attr('id', 'image-detail-row-' + layerID)
                                         .append($('<td />')
                                             .attr('colspan', 4)
                                             .append($('<div />')
                                                 .attr('id', 'detailText' + layerID)
+                                                .append($('<img />')
+                                                    .attr('src', 'images/close-button.png?9')
+                                                    .attr('alt', 'Close')
+                                                    .attr('title', 'Close')
+                                                    .click(function () {
+                                                        $('#image' + layerID).trigger('click');
+                                                    })
+                                                )
                                             )
                                         )
                                 );
                                 var detailText = $('<ul />').appendTo($('#detailText' + layerID));
                                 detailText.append(fullTitle);
+                                detailText.append(fullEntityname);
+                                detailText.append(fullLayername);
                                 detailText.append(fullSourceloc);
-                                detailText.append(fullAbstract);
+                                detailText.append(fullEntitydescription);
                             }
                             else {
                                 if ($('.detail-box:visible').length === 1 && details.is(':visible')) {
