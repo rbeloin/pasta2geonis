@@ -469,18 +469,24 @@ function embedInit() {
             $('.esriScalebar')//.removeClass('scalebar_bottom-left')
         ).show();
         $('#basemap-gallery-container').show();
-        /*var basemapGallery = new esri.dijit.BasemapGallery(
-            {
-                showArcGISBasemaps: true,
-                map: window.embeddedMap
-            },
-            "basemapGallery"
-        );
-        basemapGallery.startup();
-        basemapGallery.on("error", function(msg) {
-            console.log("basemap gallery error:  ", msg);
-        });*/
+        require([
+            "esri/map", "esri/dijit/BasemapGallery", "esri/arcgis/utils", "dojo/parser",
+            "dijit/layout/BorderContainer", "dijit/layout/ContentPane", "dijit/TitlePane",
+            "dojo/domReady!"
+        ], function(Map, BasemapGallery, arcgisUtils, parser) {
+            parser.parse();
 
+            //add the basemap gallery, in this case we'll display maps from ArcGIS.com including bing maps
+            var basemapGallery = new BasemapGallery({
+                showArcGISBasemaps: true,
+                map: embeddedMap
+            }, "basemapGallery");
+            basemapGallery.startup();
+
+            basemapGallery.on("error", function(msg) {
+              console.log("basemap gallery error:  ", msg);
+            });
+        });
         dojo.connect(dijit.byId('map-block'), 'resize', function () {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function () {
@@ -935,6 +941,24 @@ var GEONIS = (function () {
         var headerHeight = $('#header').height();
         var leftbarWidth = $('#leftbar-wrapper').width();
         var lterlinksWidth = $('.sidebar').width();
+        $(window).on('resize', function () {
+            $('#map-block')
+                .css('height', $(window).height() - headerHeight)
+                .css('width', $(window).width() - lterlinksWidth - leftbarWidth);
+            $('#active-layers')
+                .css('width', $(window).width() - lterlinksWidth - leftbarWidth);
+            $('.leftbar-menu').css(
+                'height',
+                $(window).height() - headerHeight - 60
+            );
+            midWidth = $(window).width() - lterlinksWidth - leftbarWidth - 30;
+            $('#report-wrapper')
+                .css('width', midWidth)
+                .css('max-height', $(window).height() - headerHeight - 30);
+            $('.banner').each(function() {
+                $(this).css('width', midWidth);
+            });
+        });
         $('#map-block')
             .css('height', $(window).height() - headerHeight)
             .css('width', $(window).width() - lterlinksWidth - leftbarWidth);
