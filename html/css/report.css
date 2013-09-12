@@ -157,13 +157,16 @@ h1 {
 #report-wrapper {
 	float: left;
 	display: none;
+	padding: 0 17px 5px 12px;
+	margin-top: 10px;
+	border: 1px solid #ccc;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 .banner {
 	float: left;
 	font-size: 14px;
 	color: #000;
-	margin-top: 10px;
-	margin-bottom: 10px;
     line-height: normal;
 }
 .banner h2 {
@@ -301,14 +304,30 @@ hr {
     display: none;
     padding-bottom: 5px;
 }
-#package-report, #welcome-message {
+#welcome-message {
     margin-top: 10px;
     font-size: 107%;
 }
-#package-report ul li {
-    margin-left: 25px;
-    margin-right: 25px;
+#package-report {
+	margin-top: 10px;
+	font-size: 100%;
 }
+#package-report ul {
+	list-style-type: none;
+}
+#package-report ul li {
+    padding-bottom: 5px;
+}
+#package-report .package-title {
+    font-size: 115%;
+}
+#package-report, #vector-entities, #raster-entities ul li:last-child {
+	padding-bottom: 10px;
+}
+#package-report .report-table {
+    width: 100%;
+}
+
 .report-wrapper {
 	margin-top: 10px;
 }

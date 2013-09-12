@@ -143,7 +143,7 @@ function appendServerInfo(serverInfo, biography) {
 function fetchSitePackages(siteCode) {
     siteReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
         "queryPackage/MapServer/1/query?where=scope+%3D+%27" +
-        siteCode.split('-')[2] + "%27&returnGeometry=true&f=pjson&callback=?";
+        siteCode.split('-')[2] + "%27&returnGeometry=true&f=pjson";
     $.getJSON(siteReportUrl, function (response) {
         var i, sitePackages, packageTitleLink;
         var sitePackageArray = [];
@@ -249,41 +249,17 @@ function writeReports(reports, counter) {
  * the lightboxed map and images.
  */
 function createServiceButtons(site) {
-
-    // Check if map and/or image services exist for this site
     var servicesUrl = "http://maps3.lternet.edu/arcgis/rest/services/";
-    var mapInfo = {
-        'site': site,
-        'services': {'map': true, 'image': true},
-        'mapUrl': servicesUrl + "Test/" + site + "_layers/MapServer",
-        'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer"
-    };
-    $.getJSON(mapInfo.mapUrl + "?f=pjson", function (response) {
+    window.mapInfo.services.map = true;
+    var linkToMapService = $("<a />")
+        .attr("href", window.mapInfo.mapUrl)
+        .append($('<p />')
+            .text("Map service")
+        );
+    $('#map-service').append(linkToMapService).show();
+    $.getJSON(window.mapInfo.imageUrl + "?f=pjson", function (response) {
         if (!response.error) {
-            mapInfo.services.map = true;
-            /*var linkToMapLightbox = $("<a />")
-                .attr("href", "#")
-                .text("View map")
-                .click(function () {
-                    showLightbox(mapInfo, 'map');
-                }
-            );*/
-            var linkToMapService = $("<a />")
-                .attr("href", mapInfo.mapUrl)
-                .append($('<p />')
-                    .text("Map service")
-                );
-            //$('#view-map').html(linkToMapLightbox).show();
-            $('#map-service').append(linkToMapService).show();
-        }
-        else {
-            //$('#view-map').hide();
-            $('#map-service').hide();
-        }
-    });
-    $.getJSON(mapInfo.imageUrl + "?f=pjson", function (response) {
-        if (!response.error) {
-            mapInfo.services.image = true;
+            window.mapInfo.services.image = true;
             /*var linkToImageLightbox = $("<a />")
                 .attr("href", "#")
                 .text("View image")
@@ -292,7 +268,7 @@ function createServiceButtons(site) {
                 }
             );*/
             var linkToImageService = $("<a />")
-                .attr("href", mapInfo.imageUrl)
+                .attr("href", window.mapInfo.imageUrl)
                 .text("Image service");
             //$('#view-image').html(linkToImageLightbox).show();
             $('#image-service').append($('<p />').append(linkToImageService)).show();
@@ -398,74 +374,81 @@ function embedInit() {
     });
 
     // Create the image stack and click handlers for the image menu
-    var imageParams = new esri.layers.ImageServiceParameters();
-    imageParams.noData = 0;
-    window.imageStack = new esri.layers.ArcGISImageServiceLayer(
-        mapInfo.imageUrl, {
-            id: 'imageStack',
-            imageServiceParameters: imageParams,
-            opacity: 0.75
-        }
-    );
-    window.imageLayer = false;
-    dojo.connect(imageStack, 'onLoad', function (images) {
-        var i, imageTitleLink, imageChecks;
-        imageTitleLink = $('<a />')
-            .attr('href', '#')
-            .text("Images (" + Object.keys(imageData).length + ")")
-            .click(function () {
-                $('#image-checks').slideToggle('fast');
-            });
-        $('#image-checks-title').prepend($('<p />').append(imageTitleLink));
-        imageChecks = $('<ul />').appendTo('#image-checks');
-        $.each(imageData, function () {
-            checkbox = $('<label />').text(this.layername).addClass('drop-down-font');
-            checkbox.prepend($('<input />')
-                .attr('type', 'checkbox')
-                .attr('name', 'checkbox-' + this.layername)
-                .attr('id', 'checkbox-' + this.layername)
-                .click({'layername': this.layername}, function (event) {
-                    var visibleImage, mosaicRule;
-                    if (embeddedMap.layerIds.indexOf('imageStack') !== -1) {
-                        visibleImage =
-                            imageStack.mosaicRule.where.split('=')[1].split('\'')[1];
-                    }
-                    mosaicRule = new esri.layers.MosaicRule({
-                        "method": esri.layers.MosaicRule.METHOD_LOCKRASTER,
-                        "ascending": true,
-                        "operation": esri.layers.MosaicRule.OPERATION_FIRST,
-                        "where": "Name='" + event.data.layername + "'"
-                    });
-                    imageStack.setMosaicRule(mosaicRule);
-                    $(event.target).parents().eq(2).find(':checked').prop('checked', false);
-                    $(event.target).prop('checked', true);
-                    if (embeddedMap.layerIds.indexOf('imageStack') === -1) {
-                        embeddedMap.addLayer(imageStack);
-                        window.imageLayer = true;
-                    }
-                    else if (visibleImage === event.data.layername) {
-                        embeddedMap.removeLayer(
-                            embeddedMap.getLayer('imageStack')
-                        );
-                        $(event.target).parent().children().prop('checked', false);
-                        window.imageLayer = false;
-                    }
-                    $('#active-layers').show();
-                    $.each(window.imageData, function () {
-                        $('#image' + this.layername).addClass('hidden');
-                    });
-                    $('#image' + event.data.layername).removeClass('hidden');
-                    $('#image' + event.data.layername).trigger('click');
-                    if (!window.imageLayer && layerStack.visibleLayers &&
-                        layerStack.visibleLayers.length === 1 &&
-                        (layerStack.layerInfos[layerStack.visibleLayers[0]].name ===
-                            'LTER site boundary')) {
-                        $('#active-layers').hide();
-                    }
-                })
+    $.getJSON(window.mapInfo.imageUrl + "?f=pjson", function (response) {
+        if (!response.error) {
+            var imageParams = new esri.layers.ImageServiceParameters();
+            imageParams.noData = 0;
+            window.imageStack = new esri.layers.ArcGISImageServiceLayer(
+                mapInfo.imageUrl, {
+                    id: 'imageStack',
+                    imageServiceParameters: imageParams,
+                    opacity: 0.75
+                }
             );
-            imageChecks.append($('<li />').append(checkbox));
-        });
+            window.imageLayer = false;
+            dojo.connect(imageStack, 'onLoad', function (images) {
+                var i, imageTitleLink, imageChecks;
+                imageTitleLink = $('<a />')
+                    .attr('href', '#')
+                    .text("Images (" + Object.keys(imageData).length + ")")
+                    .click(function () {
+                        $('#image-checks').slideToggle('fast');
+                    });
+                $('#image-checks-title').prepend($('<p />').append(imageTitleLink));
+                imageChecks = $('<ul />').appendTo('#image-checks');
+                $.each(imageData, function () {
+                    checkbox = $('<label />').text(this.layername).addClass('drop-down-font');
+                    checkbox.prepend($('<input />')
+                        .attr('type', 'checkbox')
+                        .attr('name', 'checkbox-' + this.layername)
+                        .attr('id', 'checkbox-' + this.layername)
+                        .click({'layername': this.layername}, function (event) {
+                            var visibleImage, mosaicRule;
+                            if (embeddedMap.layerIds.indexOf('imageStack') !== -1) {
+                                visibleImage =
+                                    imageStack.mosaicRule.where.split('=')[1].split('\'')[1];
+                            }
+                            mosaicRule = new esri.layers.MosaicRule({
+                                "method": esri.layers.MosaicRule.METHOD_LOCKRASTER,
+                                "ascending": true,
+                                "operation": esri.layers.MosaicRule.OPERATION_FIRST,
+                                "where": "Name='" + event.data.layername + "'"
+                            });
+                            imageStack.setMosaicRule(mosaicRule);
+                            $(event.target).parents().eq(2).find(':checked').prop('checked', false);
+                            $(event.target).prop('checked', true);
+                            if (embeddedMap.layerIds.indexOf('imageStack') === -1) {
+                                embeddedMap.addLayer(imageStack);
+                                window.imageLayer = true;
+                            }
+                            else if (visibleImage === event.data.layername) {
+                                embeddedMap.removeLayer(
+                                    embeddedMap.getLayer('imageStack')
+                                );
+                                $(event.target).parent().children().prop('checked', false);
+                                window.imageLayer = false;
+                            }
+                            $('#active-layers').show();
+                            $.each(window.imageData, function () {
+                                $('#image' + this.layername).addClass('hidden');
+                            });
+                            $('#image' + event.data.layername).removeClass('hidden');
+                            $('#image' + event.data.layername).trigger('click');
+                            if (!window.imageLayer && layerStack.visibleLayers &&
+                                layerStack.visibleLayers.length === 1 &&
+                                (layerStack.layerInfos[layerStack.visibleLayers[0]].name ===
+                                    'LTER site boundary')) {
+                                $('#active-layers').hide();
+                            }
+                        })
+                    );
+                    imageChecks.append($('<li />').append(checkbox));
+                });
+            });
+        }
+        else {
+            $('#image-checks-title').html('Images (0)');
+        }
     });
 
     // Once the map is loaded, add layers, resize, and scalebar
@@ -526,7 +509,8 @@ function mapLayerToggle(event, isVector) {
     if (substack.visibleLayers.length) {
         isBoundary = (layerStack.layerInfos[substack.visibleLayers[0]].name ===
             'LTER site boundary');
-        if (substack.visibleLayers.length === 1 && isBoundary && !imageLayer) {
+        if (substack.visibleLayers.length === 1 && isBoundary &&
+            (typeof imageLayer === 'undefined' || !imageLayer)) {
             $('.detail-box').hide();
             $('#active-layers').hide();
         }
@@ -641,7 +625,7 @@ function fetchVectors() {
                                     .append($('<div />')
                                         .attr('id', 'detailText' + layerID)
                                         .append($('<img />')
-                                            .attr('src', 'images/close-button.png?9')
+                                            .attr('src', 'images/close-button.png')
                                             .attr('alt', 'Close')
                                             .attr('title', 'Close')
                                             .click(function () {
@@ -744,7 +728,7 @@ function fetchRasters() {
                                     .append($('<div />')
                                         .attr('id', 'detailText' + layerID)
                                         .append($('<img />')
-                                            .attr('src', 'images/close-button.png?9')
+                                            .attr('src', 'images/close-button.png')
                                             .attr('alt', 'Close')
                                             .attr('title', 'Close')
                                             .click(function () {
@@ -944,6 +928,19 @@ var GEONIS = (function () {
             'height',
             $(window).height() - headerHeight - 10
         );
+        servicesUrl = "http://maps3.lternet.edu/arcgis/rest/services/";
+        window.mapInfo = {
+            'site': site,
+            'services': {'map': true, 'image': true},
+            'mapUrl': servicesUrl + "Test/" + site + "_layers/MapServer",
+            'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer",
+            'entityUrl': servicesUrl + "Test/queryGeonisLayer/MapServer/1/query?" +
+                "where=scope+%3D+%27" + site + "%27&returnGeometry=true&" +
+                "outFields=*&f=pjson",
+            'rasterEntityUrl': servicesUrl + "ImageTest/queryRaster/MapServer/1/query?" +
+                "where=packageid+like+%27knb-lter-" + site + "%%%27&returnGeometry=true" +
+                "&outFields=*&f=pjson"
+        };
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
             $('#leftbar-wrapper').hide();
@@ -957,19 +954,6 @@ var GEONIS = (function () {
             $('#package-report').hide();
             $('#workflow-info').hide();
             $('.banner').css('border', 'none');
-            servicesUrl = "http://maps3.lternet.edu/arcgis/rest/services/";
-            window.mapInfo = {
-                'site': site,
-                'services': {'map': true, 'image': true},
-                'mapUrl': servicesUrl + "Test/" + site + "_layers/MapServer",
-                'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer",
-                'entityUrl': servicesUrl + "Test/queryGeonisLayer/MapServer/1/query?" +
-                    "where=scope+%3D+%27" + site + "%27&returnGeometry=true&" +
-                    "outFields=*&f=pjson",
-                'rasterEntityUrl': servicesUrl + "ImageTest/queryRaster/MapServer/1/query?" +
-                    "where=packageid+like+%27knb-lter-" + site + "%%%27&returnGeometry=true" +
-                    "&outFields=*&f=pjson"
-            };
             createServiceButtons(site);
             loadMapBlock();
             window.layerData = {};
@@ -984,8 +968,12 @@ var GEONIS = (function () {
             lterlinksWidth = $('.sidebar').width();
             $('#site-report').show();
             $('#map-block').hide();
-            midWidth = $(window).width() - lterlinksWidth - leftbarWidth - 2;
-            $('#report-wrapper').show().css('width', midWidth);
+            midWidth = $(window).width() - lterlinksWidth - leftbarWidth - 30;  // -2 for borders, -15 for scrollbar
+            //console.log($(window).width() + ' ' + lterlinksWidth + ' ' + leftbarWidth + ' ' + $(document).width());
+            $('#report-wrapper')
+                .show()
+                .css('width', midWidth)
+                .css('max-height', $(window).height() - headerHeight - 30);
             $('.banner').each(function() {
                 $(this).css('width', midWidth);
             });
@@ -996,10 +984,39 @@ var GEONIS = (function () {
             window.vectorReports = {};
             window.rasterReports = {};
 
+            var packageUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
+                "queryPackageDetails/MapServer/1/query?where=packageid+%3D+%27" +
+                pid + "%27&outFields=*&returnGeometry=true&f=pjson";
+            $.getJSON(packageUrl, function (response) {
+                $.each(response.features, function () {
+                    var purpose = (!this.attributes.purpose) ? '' : this.attributes.purpose;
+                    var keywords = (!this.attributes.keywords) ?  '' : this.attributes.keywords;
+                    var abstract = (!this.attributes.abstract) ? '' : this.attributes.abstract;
+                    var packageHeaders = $('<ul />').prependTo($('#package-report'));
+                    packageHeaders.append($('<li />')
+                        .addClass('package-title')
+                        .text(this.attributes.packageid + ': ' + this.attributes.title));
+                    packageHeaders.append($('<li />')
+                        .append($('<a />')
+                            .attr('href', this.attributes.sourceloc)
+                            .text('Download package')
+                        )
+                    );
+                    packageHeaders.append($('<li />').text('Purpose: ' + purpose));
+                    packageHeaders.append($('<li />').text('Keywords: ' + keywords));
+                    packageHeaders.append($('<li />').text('Abstract: ' + abstract));
+                    //packageHeaders.append($('<li />').text(this.attributes.downloaded));
+                    //packageHeaders.append($('<li />').addClass('package-title').text('GeoNIS reports:'));
+                    var summaryReport = this.attributes.report.split(' | ')[0];
+                    packageHeaders.append($('<hr />'));
+                    packageHeaders.append($('<li />').addClass('package-title').text('GeoNIS package report summary: ' + summaryReport));
+                });
+            });
+
             // Fetch detailed reports from viewreport using viewreport query layer
             var viewReportUrl = "http://maps3.lternet.edu/arcgis/rest/services/Test/" +
                 "viewreport/MapServer/1/query?where=packageid+%3D+%27" + pid +
-                "%27&returnGeometry=true&outFields=*&f=pjson&callback=?";
+                "%27&returnGeometry=true&outFields=*&f=pjson";
             $.getJSON(viewReportUrl, function (response) {
                 $.each(response.features, function() {
                     if (this.attributes.entityid === null) {
@@ -1061,16 +1078,31 @@ var GEONIS = (function () {
                                 $('.report-wrapper').hide();
                                 $(event.target).parent().children().removeClass('selected');
                                 if (!isSelected) {
-                                    $('#report-wrapper-' + this.id.split('-')[1]).slideDown('fast');
+                                    $('#report-wrapper-' + this.id.split('-')[1]).fadeIn('fast');
                                     $(event.target).addClass('selected');
                                 }
                             })
                         );
+                        var entityReportSummary = (!this[0].report) ? '' : this[0].report.split(' | ')[0];
                         $('#vector-entities').append($('<li />')
                             .append($('<div />')
                                 .hide()
                                 .addClass('report-wrapper')
                                 .attr('id', 'report-wrapper-' + this[0].entityid)
+                                .append($('<ul />')
+                                    .append($('<li />')
+                                        .addClass('report-table-header')
+                                        .text('Entity name: ' + this[0].entityname)
+                                    )
+                                    .append($('<li />')
+                                        .text(this[0].entitydescription)
+                                    )
+                                    .append($('<hr />'))
+                                    .append($('<li />')
+                                        .addClass('report-table-header')
+                                        .text('GeoNIS entity report summary: ' + entityReportSummary)
+                                    )
+                                )
                                 .append($('<table />')
                                     .attr('id', 'report-' + this[0].entityid)
                                     .attr('class', 'report-table')
@@ -1111,7 +1143,7 @@ var GEONIS = (function () {
                                 $('.report-wrapper').hide();
                                 $(event.target).parent().children().removeClass('selected');
                                 if (!isSelected) {
-                                    $('#report-wrapper-' + this.id.split('-')[1]).slideDown('fast');
+                                    $('#report-wrapper-' + this.id.split('-')[1]).fadeIn('fast');
                                     $(event.target).addClass('selected');
                                 }
                             })
@@ -1128,6 +1160,11 @@ var GEONIS = (function () {
                                     )
                                     .append($('<li />')
                                         .text(this[0].entitydescription)
+                                    )
+                                    .append($('<hr />'))
+                                    .append($('<li />')
+                                        .addClass('report-table-header')
+                                        .text('GeoNIS entity report summary: ' + entityReportSummary)
                                     )
                                 )
                                 .append($('<table />')

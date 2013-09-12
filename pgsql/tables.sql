@@ -84,6 +84,7 @@ CREATE TABLE workflow_d.viewreport (
     status BOOLEAN,
     israster BOOLEAN,
     isvector BOOLEAN,
+    jsonreport TEXT,
     sourceloc VARCHAR(2000),
     UNIQUE(reportid, taskname)
 );
@@ -183,5 +184,6 @@ CREATE TABLE workflow.viewreport (
     israster BOOLEAN,
     isvector BOOLEAN,
     sourceloc VARCHAR(2000),
+    jsonreport TEXT,
     UNIQUE(reportid, taskname)
 );

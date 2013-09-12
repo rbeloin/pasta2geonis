@@ -2379,7 +2379,7 @@ class UpdateMXDs(ArcpyTool):
         sql = (
             "CREATE TABLE " + schema + "viewreport AS "
             "SELECT "
-            "rt.*, e.israster, e.isvector, e.sourceloc, e.entitydescription "
+            "rt.*, e.israster, e.isvector, e.sourceloc, e.entitydescription, e.report AS jsonreport "
             "FROM "
             "(SELECT t.taskreportid, r.packageid, r.entityid, r.entityname, "
             "t.taskname, t.description AS taskdescription, t.report, t.status "
