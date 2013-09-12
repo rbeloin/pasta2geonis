@@ -958,6 +958,7 @@ var GEONIS = (function () {
             $('.banner').each(function() {
                 $(this).css('width', midWidth);
             });
+            $('#welcome-message').show().css('width', $(window).width() - lterlinksWidth - 40);
         });
         $('#map-block')
             .css('height', $(window).height() - headerHeight)
@@ -986,12 +987,12 @@ var GEONIS = (function () {
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
             $('#leftbar-wrapper').hide();
-            $('#geonis').hide();
             $('#welcome-message').show().css('width', $(window).width() - lterlinksWidth - 40);
             return;
         }
         else if (!pid.split('.')[1] || !pid.split('.')[2]) {
             generateBanner(pid);
+            $('#geonis').fadeIn('slow');
             $('#active-layers')
                 .css('width', $(window).width() - lterlinksWidth - leftbarWidth)
                 .css('left', leftbarWidth);
@@ -1007,6 +1008,7 @@ var GEONIS = (function () {
         }
         else {
             generateBanner(pid);
+            $('#geonis').fadeIn('slow');
             $('#pid').css('font-size', '125%');
             leftbarWidth = $('#leftbar-wrapper').width();
             lterlinksWidth = $('.sidebar').width();

@@ -134,6 +134,7 @@ h1 {
 	background: url('../images/geonis-topbar.png') repeat-x;
     font-family: 'Lato', Helvetica, Arial, sans-serif;
     text-shadow: #1659AC 0px 1px 3px;
+    display: none;
 }
 #pid {
     color: #fff;
@@ -305,8 +306,13 @@ hr {
     padding-bottom: 5px;
 }
 #welcome-message {
+	float: left;
     margin-top: 10px;
     font-size: 107%;
+    border: 1px solid #BDBDBD;
+}
+#welcome-message p {
+	margin: 20px;
 }
 #package-report {
 	margin-top: 10px;
