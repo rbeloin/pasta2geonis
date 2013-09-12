@@ -303,11 +303,11 @@ hr {
 #welcome-message {
 	float: left;
     margin: 18px 20px 0 20px;
-    font-size: 105%;
+    font-size: 100%;
     border: 1px solid #BDBDBD;
     background: #F5FBEF;
-    opacity: 0.98;
-	filter: alpha(opacity=98);
+    /*opacity: 0.98;
+	filter: alpha(opacity=98);*/
 	line-height: 16pt;
 	display: none;
 	text-align: justify;
