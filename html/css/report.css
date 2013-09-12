@@ -24,12 +24,6 @@ article, aside, details, figcaption, figure,
 footer, header, hgroup, menu, nav, section {
 	display: block;
 }
-body {
-	line-height: 1;
-	/*background: url('../images/lterboundaries.png');
-	background-size: 100% 100%;
-	background-repeat: no-repeat;*/
-}
 ol, ul {
 	list-style: none;
 }
@@ -51,13 +45,10 @@ body {
     margin: 0;
     padding: 0;
     color: #000;
-    /*font-family: Tahoma, Geneva, sans-serif;*/
-    /*font-family: 'Open Sans', Arial, Helvetica, sans-serif;*/
     font-family: 'Lato', Helvetica, Arial, sans-serif;
     font-size: 16px;
     line-height: 1.7em;
-    background-color: #ffffff;
-    /*background-image: url(images/body.jpg); */
+    background-color: #fff;/*#CEECF5;*/
     background-repeat: repeat-x;
     background-position: top;
 	overflow-x: hidden;
@@ -308,14 +299,18 @@ hr {
     display: none;
     padding-bottom: 5px;
 }
+
 #welcome-message {
 	float: left;
-    margin-top: 10px;
-    font-size: 107%;
+    margin: 18px 20px 0 20px;
+    font-size: 105%;
     border: 1px solid #BDBDBD;
     background: #F5FBEF;
     opacity: 0.98;
-	filter: alpha(opacity=98); /* For IE8 and earlier */
+	filter: alpha(opacity=98);
+	line-height: 16pt;
+	display: none;
+	text-align: justify;
 }
 #welcome-message p {
 	margin: 20px;
@@ -323,6 +318,7 @@ hr {
 #welcome-message a {
 	color: #006DAF;
 }
+
 #package-report {
 	margin-top: 10px;
 	font-size: 100%;
@@ -451,15 +447,6 @@ hr {
 .close-button {
     float: right;
     text-align: right;
-}
-
-#welcome-message {
-	line-height: 16pt;
-	display: none;
-	float: left;
-	margin: 20px;
-	padding: 0;
-	text-align: justify;
 }
 
 /* Arc JS map */

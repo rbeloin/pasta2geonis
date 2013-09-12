@@ -954,7 +954,8 @@ var GEONIS = (function () {
             $('.banner').each(function() {
                 $(this).css('width', midWidth);
             });
-            $('#welcome-message').css('width', $(window).width() - lterlinksWidth - 40);
+            $('#welcome-message')
+                .css('width', $(window).width() - lterlinksWidth - 40);
         });
         $('#map-block')
             .css('height', $(window).height() - headerHeight)
@@ -984,7 +985,9 @@ var GEONIS = (function () {
             $('#map-block').hide();
             $('#pid').html("Welcome to GeoNIS!");
             $('#leftbar-wrapper').hide();
-            $('#welcome-message').show().css('width', $(window).width() - lterlinksWidth - 40);
+            $('#welcome-message')
+                .show()
+                .css('width', $(window).width() - lterlinksWidth - 40);
             return;
         }
         else if (!pid.split('.')[1] || !pid.split('.')[2]) {
