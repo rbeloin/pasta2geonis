@@ -958,7 +958,7 @@ var GEONIS = (function () {
             $('.banner').each(function() {
                 $(this).css('width', midWidth);
             });
-            $('#welcome-message').show().css('width', $(window).width() - lterlinksWidth - 40);
+            $('#welcome-message').css('width', $(window).width() - lterlinksWidth - 40);
         });
         $('#map-block')
             .css('height', $(window).height() - headerHeight)
