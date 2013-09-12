@@ -342,13 +342,17 @@ hr {
 }
 .report-table {
 	width: 100%;
+	border: 1px solid #BDBDBD;
+	background-color: #EFF8FB;
 }
 .report-table td, th {
     text-align: left;
+    padding: 0 2px;
 }
 .report-table th {
     font-size: 110%;
     border-bottom: 1px solid #ccc;
+	background-color: #CEECF5;
 }
 .report-table td {
     font-size: 100%;
@@ -455,17 +459,13 @@ hr {
     padding: 0;
 }
 #scale {
-	float: right;
-	clear: right;
-	position: relative !important;
-	top: 0;
-	left: -800px;
+
+	display: none;
 }
 
 #active-layers {
     position: absolute;
     bottom: 0;
-    left: 155px;
     z-index: 100;
     margin: 0;
     padding: 0;
@@ -526,7 +526,7 @@ hr {
 /* Link grid */
 #leftbar-wrapper {
     float: left;
-    width: 155px;
+    width: 200px;
     margin-top: 0;
     margin-right: 0;
     padding: 0;
@@ -603,8 +603,15 @@ hr {
 }
 
 .leftbar-menu {
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: auto;
+}
+
+#basemap-gallery-container {
+	position: absolute;
+	right: 65px;
+	top: 40px;
+	z-index: 999;
+	display: none;
 }
 
 /* LTER full name popup */

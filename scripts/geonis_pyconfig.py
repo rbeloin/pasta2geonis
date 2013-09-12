@@ -42,8 +42,8 @@ if platform.node().lower() == "maps3":
     #raster mosaic datasets
     pathToRasterMosaicDatasets = r"C:\pasta2geonis\Gis_data\Raster_md.gdb"
     #geodatabase connection
-    geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
-    #geodatabase = r"Database Connections\Connection to Maps3.sde"
+    #geodatabase = r"C:\pasta2geonis\geonisOnMaps3.sde"
+    geodatabase = r"Database Connections\Connection to Maps3.sde"
     #map doc
     pathToMapDoc = r"C:\pasta2geonis\Arcmap_mxd"
     #map service layer query

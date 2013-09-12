@@ -257,7 +257,7 @@ function createServiceButtons(site) {
             .text("Map service")
         );
     $('#map-service').append(linkToMapService).show();
-    $.getJSON(window.mapInfo.imageUrl + "?f=pjson", function (response) {
+    $.getJSON(window.mapInfo.imageUrl + "?f=pjson&callback=?", function (response) {
         if (!response.error) {
             window.mapInfo.services.image = true;
             /*var linkToImageLightbox = $("<a />")
@@ -299,6 +299,10 @@ function loadMapBlock() {
     dojo.require("dijit.layout.ContentPane");
     dojo.require("esri.map");
     dojo.require("esri.dijit.Scalebar");
+    /*dojo.require("esri.dijit.BasemapGallery");
+    dojo.require("esri.arcgis.utils");
+    dojo.require("dijit.TitlePane");
+    dojo.require("dojo.domReady!");*/
     dojo.addOnLoad(embedInit);
 }
 
@@ -317,6 +321,7 @@ function embedInit() {
         zoom: lter[site].zoom || 12,
         sliderStyle: 'small'
     });
+    //ArcGIS basemaps: "streets" , "satellite" , "hybrid", "topo", "gray", "oceans", "national-geographic", "osm"
 
     // Create the layer stack and click handlers for the layer menu
     window.layerStack = new esri.layers.ArcGISDynamicMapServiceLayer(
@@ -374,7 +379,7 @@ function embedInit() {
     });
 
     // Create the image stack and click handlers for the image menu
-    $.getJSON(window.mapInfo.imageUrl + "?f=pjson", function (response) {
+    $.getJSON(window.mapInfo.imageUrl + "?f=pjson&callback=?", function (response) {
         if (!response.error) {
             var imageParams = new esri.layers.ImageServiceParameters();
             imageParams.noData = 0;
@@ -447,7 +452,7 @@ function embedInit() {
             });
         }
         else {
-            $('#image-checks-title').html('Images (0)');
+            $('#image-checks-title').html('<a href="#">Images (0)</a>');
         }
     });
 
@@ -461,8 +466,21 @@ function embedInit() {
             scalebarUnit: 'dual'
         });
         $('#scale').append(
-            $('.esriScalebar').removeClass('scalebar_bottom-left')
+            $('.esriScalebar')//.removeClass('scalebar_bottom-left')
+        ).show();
+        $('#basemap-gallery-container').show();
+        /*var basemapGallery = new esri.dijit.BasemapGallery(
+            {
+                showArcGISBasemaps: true,
+                map: window.embeddedMap
+            },
+            "basemapGallery"
         );
+        basemapGallery.startup();
+        basemapGallery.on("error", function(msg) {
+            console.log("basemap gallery error:  ", msg);
+        });*/
+
         dojo.connect(dijit.byId('map-block'), 'resize', function () {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function () {
@@ -926,7 +944,7 @@ var GEONIS = (function () {
         $('#' + site).addClass('selected');
         $('.leftbar-menu').css(
             'height',
-            $(window).height() - headerHeight - 10
+            $(window).height() - headerHeight - 60
         );
         servicesUrl = "http://maps3.lternet.edu/arcgis/rest/services/";
         window.mapInfo = {
@@ -936,10 +954,10 @@ var GEONIS = (function () {
             'imageUrl': servicesUrl + "ImageTest/" + site + "_mosaic/ImageServer",
             'entityUrl': servicesUrl + "Test/queryGeonisLayer/MapServer/1/query?" +
                 "where=scope+%3D+%27" + site + "%27&returnGeometry=true&" +
-                "outFields=*&f=pjson",
+                "outFields=*&f=pjson&callback=?",
             'rasterEntityUrl': servicesUrl + "ImageTest/queryRaster/MapServer/1/query?" +
                 "where=packageid+like+%27knb-lter-" + site + "%%%27&returnGeometry=true" +
-                "&outFields=*&f=pjson"
+                "&outFields=*&f=pjson&callback=?"
         };
         if (!pid) {
             $('#pid').html("Welcome to GeoNIS!");
@@ -950,15 +968,17 @@ var GEONIS = (function () {
         }
         else if (!pid.split('.')[1] || !pid.split('.')[2]) {
             generateBanner(pid);
-            $('#active-layers').css('width', $(window).width() - lterlinksWidth - leftbarWidth);
+            $('#active-layers')
+                .css('width', $(window).width() - lterlinksWidth - leftbarWidth)
+                .css('left', leftbarWidth);
             $('#package-report').hide();
             $('#workflow-info').hide();
             $('.banner').css('border', 'none');
             createServiceButtons(site);
             loadMapBlock();
             window.layerData = {};
-            fetchVectors();
             window.imageData = {};
+            fetchVectors();
             fetchRasters();
         }
         else {
@@ -1083,7 +1103,7 @@ var GEONIS = (function () {
                                 }
                             })
                         );
-                        var entityReportSummary = (!this[0].report) ? '' : this[0].report.split(' | ')[0];
+                        var entityReportSummary = (!this[0].jsonreport) ? '' : this[0].jsonreport.split(' | ')[0];
                         $('#vector-entities').append($('<li />')
                             .append($('<div />')
                                 .hide()
@@ -1148,6 +1168,7 @@ var GEONIS = (function () {
                                 }
                             })
                         );
+                        var entityReportSummary = (!this[0].jsonreport) ? '' : this[0].jsonreport.split(' | ')[0];
                         $('#raster-entities').append($('<li />')
                             .append($('<div />')
                                 .hide()
