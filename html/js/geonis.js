@@ -162,7 +162,7 @@ function fetchSitePackages(siteCode) {
         $('#site-report-title').prepend($('<p />').append(packageTitleLink));
         sitePackages = '';
         for (i = 0; i < sitePackageArray.length; i++) {
-            sitePackages += '<li><a href="report.html?packageid=' + sitePackageArray[i] + '">' +
+            sitePackages += '<li><a href="index.html?packageid=' + sitePackageArray[i] + '">' +
                 sitePackageArray[i] + '</a></li>';
         }
         if (sitePackageArray.length) {
@@ -299,10 +299,6 @@ function loadMapBlock() {
     dojo.require("dijit.layout.ContentPane");
     dojo.require("esri.map");
     dojo.require("esri.dijit.Scalebar");
-    /*dojo.require("esri.dijit.BasemapGallery");
-    dojo.require("esri.arcgis.utils");
-    dojo.require("dijit.TitlePane");
-    dojo.require("dojo.domReady!");*/
     dojo.addOnLoad(embedInit);
 }
 
@@ -985,6 +981,7 @@ var GEONIS = (function () {
                 "&outFields=*&f=pjson&callback=?"
         };
         if (!pid) {
+            $('#map-block').hide();
             $('#pid').html("Welcome to GeoNIS!");
             $('#leftbar-wrapper').hide();
             $('#welcome-message').show().css('width', $(window).width() - lterlinksWidth - 40);

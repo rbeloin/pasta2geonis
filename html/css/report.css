@@ -26,6 +26,9 @@ footer, header, hgroup, menu, nav, section {
 }
 body {
 	line-height: 1;
+	/*background: url('../images/lterboundaries.png');
+	background-size: 100% 100%;
+	background-repeat: no-repeat;*/
 }
 ol, ul {
 	list-style: none;
@@ -310,9 +313,15 @@ hr {
     margin-top: 10px;
     font-size: 107%;
     border: 1px solid #BDBDBD;
+    background: #F5FBEF;
+    opacity: 0.98;
+	filter: alpha(opacity=98); /* For IE8 and earlier */
 }
 #welcome-message p {
 	margin: 20px;
+}
+#welcome-message a {
+	color: #006DAF;
 }
 #package-report {
 	margin-top: 10px;

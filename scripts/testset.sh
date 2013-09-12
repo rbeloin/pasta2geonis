@@ -1,12 +1,12 @@
 #!/bin/sh
-sites=( and nwt knz cap pie bnz vcr ntl )
-servers=( pasta pasta-s pasta pasta pasta-s pasta-s pasta-s pasta-s )
+sites=( and nwt knz cap pie bnz vcr ntl luq sbc gce hbr mcr )
+servers=( pasta pasta-s pasta pasta pasta-s pasta-s pasta-s pasta-s pasta-s pasta-s pasta-s pasta-s pasta-s )
 
 echo "python update_wf.py"
 echo ""
 python update_wf.py
 
-for i in {0..6}
+for i in {0..12}
 do
     echo ""
     echo "python pasta2geonis.py --flush ${sites[i]}"
