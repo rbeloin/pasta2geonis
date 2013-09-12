@@ -16,7 +16,6 @@
 <script src="http://js.arcgis.com/3.5/"></script>
 <script src="js/geonis.js" type="text/javascript"></script>
     <script> 
-      var map;
       require([
         "esri/map", "esri/dijit/BasemapGallery", "esri/arcgis/utils",
         "dojo/parser",
@@ -31,8 +30,8 @@
 
         //add the basemap gallery, in this case we'll display maps from ArcGIS.com including bing maps
         var basemapGallery = new BasemapGallery({
-          showArcGISBasemaps: true,
-          map: $('#map-block')
+            showArcGISBasemaps: true,
+            map: window.embeddedMap
         }, "basemapGallery");
         basemapGallery.startup();
         
