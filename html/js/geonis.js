@@ -317,7 +317,6 @@ function embedInit() {
         zoom: lter[site].zoom || 12,
         sliderStyle: 'small'
     });
-    //ArcGIS basemaps: "streets" , "satellite" , "hybrid", "topo", "gray", "oceans", "national-geographic", "osm"
 
     // Create the layer stack and click handlers for the layer menu
     window.layerStack = new esri.layers.ArcGISDynamicMapServiceLayer(
@@ -336,12 +335,6 @@ function embedInit() {
         $('#layer-checks-title').prepend($('<p />').append(layerTitleLink));
         layerChecks = $('<ul />').appendTo('#layer-checks');
         for (i = 0; i < layerInfo.length; i++) {
-            /*checkboxLink = $('<a />')
-                .attr('href', '#')
-                .click({'index': i}, function (event) {
-                    event.preventDefault(event);
-                    mapLayerToggle(event, true);
-                });*/
             if (layerInfo[i].name === "LTER site boundary") {
                 siteBoundary = i;
                 checkbox = $('<label />').text('Boundary').addClass('drop-down-font');
@@ -462,7 +455,7 @@ function embedInit() {
             scalebarUnit: 'dual'
         });
         $('#scale').append(
-            $('.esriScalebar')//.removeClass('scalebar_bottom-left')
+            $('.esriScalebar')
         ).show();
         $('#basemap-gallery-container').show();
         require([
@@ -472,7 +465,8 @@ function embedInit() {
         ], function(Map, BasemapGallery, arcgisUtils, parser) {
             parser.parse();
 
-            //add the basemap gallery, in this case we'll display maps from ArcGIS.com including bing maps
+            // Add the basemap gallery, in this case we'll display maps
+            // from ArcGIS.com including bing maps
             var basemapGallery = new BasemapGallery({
                 showArcGISBasemaps: true,
                 map: embeddedMap
@@ -480,7 +474,7 @@ function embedInit() {
             basemapGallery.startup();
 
             basemapGallery.on("error", function(msg) {
-              console.log("basemap gallery error:  ", msg);
+              console.log("Basemap gallery error:  ", msg);
             });
         });
         dojo.connect(dijit.byId('map-block'), 'resize', function () {
@@ -601,7 +595,7 @@ function fetchVectors() {
                 'entityname': this.attributes.entityname,
                 'abstract': this.attributes.abstract,
                 'sourceloc': this.attributes.sourceloc,
-                'ESRI_OID': this.attributes.ESRI_OID,
+                'ESRI_OID': this.attributes.id,
                 'entitydescription': this.attributes.entitydescription
             };
             var packageid =
@@ -609,7 +603,7 @@ function fetchVectors() {
             var title = shorten(this.attributes.entitydescription);
             var abstract = shorten(this.attributes.abstract);
             var entityname = shorten(this.attributes.entityname);
-            var layerID = this.attributes.ESRI_OID;
+            var layerID = this.attributes.id;
             var fullTitle = $('<li class="detail-title" />').text(this.attributes.title);
             var fullSourceloc = $('<li class="detail-sourceloc" />').append($('<a />')
                 .attr('href', this.attributes.sourceloc)
@@ -955,7 +949,9 @@ var GEONIS = (function () {
                 $(this).css('width', midWidth);
             });
             $('#welcome-message')
-                .css('width', $(window).width() - lterlinksWidth - 40);
+                .css('width', $(window).width() - lterlinksWidth - 90);
+            $('#welcome-map')
+                .css('height', $(window).height() - headerHeight);
         });
         $('#map-block')
             .css('height', $(window).height() - headerHeight)
@@ -987,7 +983,26 @@ var GEONIS = (function () {
             $('#leftbar-wrapper').hide();
             $('#welcome-message')
                 .show()
-                .css('width', $(window).width() - lterlinksWidth - 40);
+                .css('width', $(window).width() - lterlinksWidth - 90);
+            var map;
+            $('#welcome-map')
+                .css('top', headerHeight)
+                .css('height', $(window).height() - headerHeight)
+                .show();
+            require(["esri/map", "dojo/domReady!"], function(Map) {
+                map = new Map("welcome-map", {
+                    center: [lter.sgs.coords[1], lter.sgs.coords[0]],//[-116, 45],
+                    zoom: 5,
+                    basemap: "satellite"
+                });
+                window.layerStack = new esri.layers.ArcGISDynamicMapServiceLayer(
+                    servicesUrl + "Test/lno_layers/MapServer",
+                    {id: 'layerStack'}
+                );
+                dojo.connect(map, 'onLoad', function (theMap) {
+                    theMap.addLayer(layerStack);
+                });
+            });
             return;
         }
         else if (!pid.split('.')[1] || !pid.split('.')[2]) {
@@ -1130,6 +1145,8 @@ var GEONIS = (function () {
                             })
                         );
                         var entityReportSummary = (!this[0].jsonreport) ? '' : this[0].jsonreport.split(' | ')[0];
+                        var entityDescription = (!this[0].entitydescription || this[0].entitydescription === 'None') ?
+                            'No entity description found.' : this[0].entitydescription;
                         $('#vector-entities').append($('<li />')
                             .append($('<div />')
                                 .hide()
@@ -1141,7 +1158,7 @@ var GEONIS = (function () {
                                         .text('Entity name: ' + this[0].entityname)
                                     )
                                     .append($('<li />')
-                                        .text(this[0].entitydescription)
+                                        .text(entityDescription)
                                     )
                                     .append($('<hr />'))
                                     .append($('<li />')
@@ -1195,6 +1212,7 @@ var GEONIS = (function () {
                             })
                         );
                         var entityReportSummary = (!this[0].jsonreport) ? '' : this[0].jsonreport.split(' | ')[0];
+                        var entityDescription = (!this[0].entitydescription) ? 'No entity description found.' : this[0].entitydescription;
                         $('#raster-entities').append($('<li />')
                             .append($('<div />')
                                 .hide()
@@ -1206,7 +1224,7 @@ var GEONIS = (function () {
                                         .text('Entity name: ' + this[0].entityname)
                                     )
                                     .append($('<li />')
-                                        .text(this[0].entitydescription)
+                                        .text(entityDescription)
                                     )
                                     .append($('<hr />'))
                                     .append($('<li />')

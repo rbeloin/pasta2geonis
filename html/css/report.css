@@ -300,23 +300,42 @@ hr {
     padding-bottom: 5px;
 }
 
+#welcome-map {
+	position: absolute;
+	left: 0;
+	z-index: -1;
+	display: none;
+	width: 100%;
+	/*opacity: 0.5;
+	filter: alpha(opacity=50);*/
+}
 #welcome-message {
 	float: left;
-    margin: 18px 20px 0 20px;
-    font-size: 100%;
-    border: 1px solid #BDBDBD;
-    background: #F5FBEF;
-    /*opacity: 0.98;
-	filter: alpha(opacity=98);*/
-	line-height: 16pt;
+    -moz-border-radius: 25px;
+    -webkit-border-radius: 25px;
+	border-radius: 25px;
+    margin: 18px 20px 0 70px;
+    font-size: 12pt;
+    background-color: rgba(0, 15, 30, 0.85);
+    color: #fff;
+	line-height: 18pt;
 	display: none;
 	text-align: justify;
 }
 #welcome-message p {
-	margin: 20px;
+	margin: 25px;
+}
+#welcome-message .to-get-started {
+	font-family: 'Open Sans', Helvetica, Arial, sans-serif;
+	text-align: center;
+	border-top: 1px solid #2E2E2E;
+	border-bottom: 1px solid #2E2E2E;
+    -moz-border-radius: 75px;
+    -webkit-border-radius: 75px;
+	border-radius: 75px;
 }
 #welcome-message a {
-	color: #006DAF;
+	color: #A9D0F5;
 }
 
 #package-report {

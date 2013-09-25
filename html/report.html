@@ -3,10 +3,16 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 <title>GeoNIS</title>
+<script language="javascript">
+    window.location.href = "http://maps3.lternet.edu/geonis/"
+</script>
+<meta http-equiv="refresh" content="0;url=http://maps3.lternet.edu/geonis/">
+<meta name="keywords" content="NIS,LTER,geospatial,spatial,ArcGIS,webmap,map,maps" />
+<meta name="description" content="GeoNIS is a web service that processes, stores, and displays geospatial data collected by the Long Term Ecological Research Network." />
+<meta name="author" content="Jack Peterson, Ron Beloin" />
 <link rel="stylesheet" type="text/css" href="css/report.css" />
-<link rel="stylesheet" type="text/css" href='http://fonts.googleapis.com/css?family=Lato:300' />
+<link rel="stylesheet" type="text/css" href='http://fonts.googleapis.com/css?family=Lato:300|Open+Sans:300' />
 <!--<link href='http://fonts.googleapis.com/css?family=Metrophobic' rel='stylesheet' type='text/css'>-->
-<!--<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>-->
 <link rel="stylesheet" type="text/css" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.5/js/dojo/dijit/themes/claro/claro.css" />
 <link rel="stylesheet" type="text/css" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.5/js/esri/css/esri.css" />
 <script src="js/jquery-1.10.2.min.js" type="text/javascript"></script>
@@ -15,46 +21,57 @@
 <!--<script src="http://serverapi.arcgisonline.com/jsapi/arcgis/3.5/"></script>-->
 <script src="http://js.arcgis.com/3.5/"></script>
 <script src="js/geonis.js" type="text/javascript"></script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-44004114-1', 'lternet.edu');
+  ga('send', 'pageview');
+
+</script>
 </head>
 <body class="claro">
 <div class="wrapper">
 <div id="body_wrapper">
     <div id="header">
         <div id="site-title">
-            <a href="report.html"><h1 id="geonis">GeoNIS</h1></a>
+            <a href="index.html"><h1 id="geonis">GeoNIS</h1></a>
             <h1 id="pid"></h1>
         </div>
         <div class="cleaner"></div>
     </div>
+    <div id="welcome-map"></div>
     <div class="sidebar">
         <ul id="lter-links">
-            <li id="and"><p><a href="report.html?packageid=knb-lter-and">AND</a><a href="report.html?packageid=knb-lter-and"><span>Andrews Forest LTER</span></a></p></li>
-            <li id="arc"><p><a href="report.html?packageid=knb-lter-arc">ARC</a><a href="report.html?packageid=knb-lter-arc"><span>Arctic LTER</span></a></p></li>
-            <li id="bes"><p><a href="report.html?packageid=knb-lter-bes">BES</a><a href="report.html?packageid=knb-lter-bes"><span>Baltimore Ecosystem Study</span></a></p></li>
-            <li id="bnz"><p><a href="report.html?packageid=knb-lter-bnz">BNZ</a><a href="report.html?packageid=knb-lter-bnz"><span>Bonanza Creek LTER</span></a></p></li>
-            <li id="cce"><p><a href="report.html?packageid=knb-lter-cce">CCE</a><a href="report.html?packageid=knb-lter-cce"><span>California Current Ecosystem LTER</span></a></p></li>
-            <li id="cdr"><p><a href="report.html?packageid=knb-lter-cdr">CDR</a><a href="report.html?packageid=knb-lter-cdr"><span>Cedar Creek LTER</span></a></p></li>
-            <li id="cap"><p><a href="report.html?packageid=knb-lter-cap">CAP</a><a href="report.html?packageid=knb-lter-cap"><span>Central Arizona - Phoenix LTER</span></a></p></li>
-            <li id="cwt"><p><a href="report.html?packageid=knb-lter-cwt">CWT</a><a href="report.html?packageid=knb-lter-cwt"><span>Coweeta LTER</span></a></p></li>
-            <li id="fce"><p><a href="report.html?packageid=knb-lter-fce">FCE</a><a href="report.html?packageid=knb-lter-fce"><span>Florida Coastal Everglades LTER</span></a></p></li>
-            <li id="gce"><p><a href="report.html?packageid=knb-lter-gce">GCE</a><a href="report.html?packageid=knb-lter-gce"><span>Georgia Coastal Ecosystems LTER</span></a></p></li>
-            <li id="hfr"><p><a href="report.html?packageid=knb-lter-hfr">HFR</a><a href="report.html?packageid=knb-lter-hfr"><span>Harvard Forest LTER</span></a></p></li>
-            <li id="hbr"><p><a href="report.html?packageid=knb-lter-hbr">HBR</a><a href="report.html?packageid=knb-lter-hbr"><span>Hubbard Brook LTER</span></a></p></li>
-            <li id="jrn"><p><a href="report.html?packageid=knb-lter-jrn">JRN</a><a href="report.html?packageid=knb-lter-jrn"><span>Jornada Basin LTER</span></a></p></li>
-            <li id="kbs"><p><a href="report.html?packageid=knb-lter-kbs">KBS</a><a href="report.html?packageid=knb-lter-kbs"><span>Kellogg Biological Station LTER</span></a></p></li>
-            <li id="knz"><p><a href="report.html?packageid=knb-lter-knz">KNZ</a><a href="report.html?packageid=knb-lter-knz"><span>Konza Prairie LTER</span></a></p></li>
-            <li id="lno"><p><a href="report.html?packageid=knb-lter-lno">LNO</a><a href="report.html?packageid=knb-lter-lno"><span>LTER Network Office</span></a></p></li>
-            <li id="luq"><p><a href="report.html?packageid=knb-lter-luq">LUQ</a><a href="report.html?packageid=knb-lter-luq"><span>Luquillo LTER</span></a></p></li>
-            <li id="mcm"><p><a href="report.html?packageid=knb-lter-mcm">MCM</a><a href="report.html?packageid=knb-lter-mcm"><span>McMurdo Dry Valleys LTER</span></a></p></li>
-            <li id="mcr"><p><a href="report.html?packageid=knb-lter-mcr">MCR</a><a href="report.html?packageid=knb-lter-mcr"><span>Moorea Coral Reef LTER</span></a></p></li>
-            <li id="nwt"><p><a href="report.html?packageid=knb-lter-nwt">NWT</a><a href="report.html?packageid=knb-lter-nwt"><span>Niwot Ridge LTER</span></a></p></li>
-            <li id="ntl"><p><a href="report.html?packageid=knb-lter-ntl">NTL</a><a href="report.html?packageid=knb-lter-ntl"><span>North Temperate Lakes LTER</span></a></p></li>
-            <li id="pal"><p><a href="report.html?packageid=knb-lter-pal">PAL</a><a href="report.html?packageid=knb-lter-pal"><span>Palmer Antarctica LTER</span></a></p></li>
-            <li id="pie"><p><a href="report.html?packageid=knb-lter-pie">PIE</a><a href="report.html?packageid=knb-lter-pie"><span>Plum Island Ecosystem LTER</span></a></p></li>
-            <li id="sbc"><p><a href="report.html?packageid=knb-lter-sbc">SBC</a><a href="report.html?packageid=knb-lter-sbc"><span>Santa Barbara Coastal LTER</span></a></p></li>
-            <li id="sev"><p><a href="report.html?packageid=knb-lter-sev">SEV</a><a href="report.html?packageid=knb-lter-sev"><span>Sevilleta LTER</span></a></p></li>
-            <li id="sgs"><p><a href="report.html?packageid=knb-lter-sgs">SGS</a><a href="report.html?packageid=knb-lter-sgs"><span>Shortgrass Steppe</span></a></p></li>
-            <li id="vcr"><p><a href="report.html?packageid=knb-lter-vcr">VCR</a><a href="report.html?packageid=knb-lter-vcr"><span>Virginia Coast Reserve LTER</span></a></p></li>
+            <li id="and"><p><a href="index.html?packageid=knb-lter-and">AND</a><a href="index.html?packageid=knb-lter-and"><span>Andrews Forest LTER</span></a></p></li>
+            <li id="arc"><p><a href="index.html?packageid=knb-lter-arc">ARC</a><a href="index.html?packageid=knb-lter-arc"><span>Arctic LTER</span></a></p></li>
+            <li id="bes"><p><a href="index.html?packageid=knb-lter-bes">BES</a><a href="index.html?packageid=knb-lter-bes"><span>Baltimore Ecosystem Study</span></a></p></li>
+            <li id="bnz"><p><a href="index.html?packageid=knb-lter-bnz">BNZ</a><a href="index.html?packageid=knb-lter-bnz"><span>Bonanza Creek LTER</span></a></p></li>
+            <li id="cce"><p><a href="index.html?packageid=knb-lter-cce">CCE</a><a href="index.html?packageid=knb-lter-cce"><span>California Current Ecosystem LTER</span></a></p></li>
+            <li id="cdr"><p><a href="index.html?packageid=knb-lter-cdr">CDR</a><a href="index.html?packageid=knb-lter-cdr"><span>Cedar Creek LTER</span></a></p></li>
+            <li id="cap"><p><a href="index.html?packageid=knb-lter-cap">CAP</a><a href="index.html?packageid=knb-lter-cap"><span>Central Arizona - Phoenix LTER</span></a></p></li>
+            <li id="cwt"><p><a href="index.html?packageid=knb-lter-cwt">CWT</a><a href="index.html?packageid=knb-lter-cwt"><span>Coweeta LTER</span></a></p></li>
+            <li id="fce"><p><a href="index.html?packageid=knb-lter-fce">FCE</a><a href="index.html?packageid=knb-lter-fce"><span>Florida Coastal Everglades LTER</span></a></p></li>
+            <li id="gce"><p><a href="index.html?packageid=knb-lter-gce">GCE</a><a href="index.html?packageid=knb-lter-gce"><span>Georgia Coastal Ecosystems LTER</span></a></p></li>
+            <li id="hfr"><p><a href="index.html?packageid=knb-lter-hfr">HFR</a><a href="index.html?packageid=knb-lter-hfr"><span>Harvard Forest LTER</span></a></p></li>
+            <li id="hbr"><p><a href="index.html?packageid=knb-lter-hbr">HBR</a><a href="index.html?packageid=knb-lter-hbr"><span>Hubbard Brook LTER</span></a></p></li>
+            <li id="jrn"><p><a href="index.html?packageid=knb-lter-jrn">JRN</a><a href="index.html?packageid=knb-lter-jrn"><span>Jornada Basin LTER</span></a></p></li>
+            <li id="kbs"><p><a href="index.html?packageid=knb-lter-kbs">KBS</a><a href="index.html?packageid=knb-lter-kbs"><span>Kellogg Biological Station LTER</span></a></p></li>
+            <li id="knz"><p><a href="index.html?packageid=knb-lter-knz">KNZ</a><a href="index.html?packageid=knb-lter-knz"><span>Konza Prairie LTER</span></a></p></li>
+            <li id="lno"><p><a href="index.html?packageid=knb-lter-lno">LNO</a><a href="index.html?packageid=knb-lter-lno"><span>LTER Network Office</span></a></p></li>
+            <li id="luq"><p><a href="index.html?packageid=knb-lter-luq">LUQ</a><a href="index.html?packageid=knb-lter-luq"><span>Luquillo LTER</span></a></p></li>
+            <li id="mcm"><p><a href="index.html?packageid=knb-lter-mcm">MCM</a><a href="index.html?packageid=knb-lter-mcm"><span>McMurdo Dry Valleys LTER</span></a></p></li>
+            <li id="mcr"><p><a href="index.html?packageid=knb-lter-mcr">MCR</a><a href="index.html?packageid=knb-lter-mcr"><span>Moorea Coral Reef LTER</span></a></p></li>
+            <li id="nwt"><p><a href="index.html?packageid=knb-lter-nwt">NWT</a><a href="index.html?packageid=knb-lter-nwt"><span>Niwot Ridge LTER</span></a></p></li>
+            <li id="ntl"><p><a href="index.html?packageid=knb-lter-ntl">NTL</a><a href="index.html?packageid=knb-lter-ntl"><span>North Temperate Lakes LTER</span></a></p></li>
+            <li id="pal"><p><a href="index.html?packageid=knb-lter-pal">PAL</a><a href="index.html?packageid=knb-lter-pal"><span>Palmer Antarctica LTER</span></a></p></li>
+            <li id="pie"><p><a href="index.html?packageid=knb-lter-pie">PIE</a><a href="index.html?packageid=knb-lter-pie"><span>Plum Island Ecosystem LTER</span></a></p></li>
+            <li id="sbc"><p><a href="index.html?packageid=knb-lter-sbc">SBC</a><a href="index.html?packageid=knb-lter-sbc"><span>Santa Barbara Coastal LTER</span></a></p></li>
+            <li id="sev"><p><a href="index.html?packageid=knb-lter-sev">SEV</a><a href="index.html?packageid=knb-lter-sev"><span>Sevilleta LTER</span></a></p></li>
+            <li id="sgs"><p><a href="index.html?packageid=knb-lter-sgs">SGS</a><a href="index.html?packageid=knb-lter-sgs"><span>Shortgrass Steppe</span></a></p></li>
+            <li id="vcr"><p><a href="index.html?packageid=knb-lter-vcr">VCR</a><a href="index.html?packageid=knb-lter-vcr"><span>Virginia Coast Reserve LTER</span></a></p></li>
         </ul>
     </div>
     <div id="leftbar-wrapper">
