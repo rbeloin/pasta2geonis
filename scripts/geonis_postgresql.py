@@ -88,6 +88,10 @@ def cursorContext(logger=None, connect=None):
                 attempt += 1
                 conn = psycopg2.connect(dsn=dsnStr)
         if not conn or conn.closed:
+            try:
+                del conn
+            except:
+                pass
             raise Exception("DB connection failed after %d attempts." % (attempt,))
         cur = conn.cursor()
         #enter WITH block with value of cur

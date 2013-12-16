@@ -1,5 +1,4 @@
 '''
-
 Created on Jan 14, 2013
 
 @change: https://github.com/rbeloin/pasta2geonis
@@ -38,7 +37,10 @@ from pprint import pprint
 
 ## *****************************************************************************
 class Setup(ArcpyTool):
-    """Setup selects test mode or production mode, and stores optional set of identifiers to process, instead of all identifiers."""
+    """Setup selects test mode or production mode, and stores an optional set
+    of identifiers to process, instead of all identifiers.
+    """
+
     def __init__(self):
         ArcpyTool.__init__(self)
         self._description = "Selects mode (test or production), and stores identifiers to process"
@@ -73,14 +75,14 @@ class Setup(ArcpyTool):
                   parameterType = 'Required'))
                   
         #testing true by default
-        params[2].value = True
+        params[2].value = False
         params[3].value = True
         params[5].value = False
         params[4].columns = [['GPString','Scope'],['GPString','Identifier(CSV list or range)']]
         return params
 
     def updateParameters(self, parameters):
-        """  """
+        """Setup workflow parameters for this tool."""
         super(Setup, self).updateParameters(parameters)
         if parameters[2].value:
             parameters[3].enabled = True
@@ -89,7 +91,7 @@ class Setup(ArcpyTool):
             parameters[3].enabled = False
 
     def updateMessages(self, parameters):
-        """ puts up warning if running in production """
+        """Send warning if running in production mode."""
         super(Setup, self).updateMessages(parameters)
         if not parameters[2].value:
             parameters[2].setWarningMessage("Workflow to run in production mode.")
@@ -102,6 +104,25 @@ class Setup(ArcpyTool):
             parameters[5].clearMessage()
 
     def flushData(self):
+        """Clears all data for a specified site.
+
+        flushData is the most extreme clean-up method in GeoNIS, short of manually
+        going into ArcCatalog and/or Postgres and resetting everything by hand.  It
+        should generally be used as a last resort, if nothing else will allow the
+        workflow to function again.  Note that flushData deletes ALL data for the
+        site in GeoNIS: it first force-disconnects all users from the geodatabase,
+        then it deletes all raster mosaics, drops all geodatabase tables, deletes 
+        all the site's entries in the geonis_layer, entity, and package tables in
+        Postgres, deletes the service draft file, then finally restarts the map
+        service (now containing only the LTER boundary).
+
+        flushData is called via the pasta2geonis.py script, as:
+
+        python pasta2geonis.py --flush [site code]
+
+        (The scope attribute below corresponds to the site code, and is set in
+        pasta2geonis.py.)
+        """
 
         # Kill all ArcSDE connections
         self.logger.logMessage(INFO, "Disconnecting all users from geodatabase")
@@ -118,7 +139,8 @@ class Setup(ArcpyTool):
                     cred = eval(f.readline())
                 token = getToken(cred['username'], cred['password'])
                 if token:
-                    serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/stop" % site
+                    #serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/stop" % site
+                    serviceStopURL = "/arcgis/admin/services/ImageData/%s_mosaic.ImageServer/stop" % site
                     self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
                     params = urllib.urlencode({'token': token, 'f': 'json'})
                     headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
@@ -260,7 +282,18 @@ class Setup(ArcpyTool):
                 cur.execute(sql % table, (reports, ))
 
     def mapServiceAvailable(self, cur, site):
-        """Verify that the map service exists."""
+        """Verify that the map service exists.
+
+        mapServiceAvailable verifies that the map service for the specified site
+        is available via its REST URL, and that it includes the expected layer
+        information when connected to.
+
+        Args:
+            cur: Postgres database cursor.
+            site: Three-letter LTER site code.
+        Returns:
+            True if the map service is available, False otherwise.
+        """
         self.logger.logMessage(INFO, "Checking for " + site + " map service")
         mapServInfoString = getConfigValue('mapservinfo')
         mapServInfoItems = mapServInfoString.split(';')
@@ -302,7 +335,18 @@ class Setup(ArcpyTool):
         return available
 
     def stopMapService(self, cur):
-        """Stop map service."""
+        """Stop map service.
+
+        Before map service information can be updated by the workflow, the map
+        service has to be stopped.  stopMapService stops the map service via the
+        service's REST API.
+
+        (Note: the site code is stored in the serverInfo attribute, so it is
+        not explicitly passed as an argument.)
+
+        Args:
+            cur: Postgres database cursor.
+        """
         pathToServiceDoc = getConfigValue("pathtomapdoc") + os.sep + "servicedefs"
         self.logger.logMessage(
             INFO,
@@ -317,9 +361,11 @@ class Setup(ArcpyTool):
                 self.serverInfo["service_name"]
             )
             self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
+            
             # This request only needs the token and the response formatting parameter
             params = urllib.urlencode({'token': token, 'f': 'json'})
             headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+
             # Connect to URL and post parameters
             httpConn = httplib.HTTPConnection("localhost", "6080")
             httpConn.request("POST", serviceStopURL, params, headers)
@@ -331,13 +377,23 @@ class Setup(ArcpyTool):
             self.logger.logMessage(WARN, "Error while attempting to get admin token.")
 
     def stopImageService(self, site):
+        """Stops ArcGIS image service.
+
+        Before image service information can be updated by the workflow, the image
+        service must be stopped.  stopImageService stops the image service via the
+        image service's REST API.
+
+        Args:
+            site: Three-letter LTER site code.
+        """
         self.logger.logMessage(INFO, "Checking for image service")
         try:
             with open(arcgiscred) as f:
                 cred = eval(f.readline())
             token = getToken(cred['username'], cred['password'])
             if token:
-                serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/stop" % site
+                #serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/stop" % site
+                serviceStopURL = "/arcgis/admin/services/ImageData/%s_mosaic.ImageServer/stop" % site
                 self.logger.logMessage(DEBUG, "stopping %s" % (serviceStopURL,))
                 params = urllib.urlencode({'token': token, 'f': 'json'})
                 headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
@@ -354,10 +410,16 @@ class Setup(ArcpyTool):
             self.logger.logMessage(INFO, "Image service not found")
 
     def deleteMapLayers(self, cur, package, site):
-        """
-        Delete any layers already in the geonis_layer table from both the map and 
+        """Deletes map layers and their database records.
+
+        Deletes any layers already in the geonis_layer table from both the map and 
         geonis_layer.  Also clears any feature selections (map services will not 
         publish with selected features).
+
+        Args:
+            cur: Postgres database cursor.
+            package: PASTA package ID (code.id.revision)
+            site: Three-letter LTER site code
         """
         self.logger.logMessage(INFO, "Found " + site + ".mxd")
         mxdfile = getConfigValue('pathtomapdoc') + os.sep + site + '.mxd'
@@ -399,10 +461,20 @@ class Setup(ArcpyTool):
         del layersFrame, mxd
 
     def cleanUpTables(self, cur, package, siteWorkflow):
-        """
+        """Cleans up this site's info in Postgres and the geodatabase.
+
         Delete entries for this package from the geonis_layer, entity, and
         package tables in the postgres DB, and also drop tables from the
         geodatabase, if they exist.
+
+        Args:
+            cur: Postgres database cursor.
+            package: PASTA package ID (code.id.revision)
+            siteWorkflow: Three-letter LTER site code and workflow
+        Returns:
+            List of layers which were recorded in the Postgres entity table.
+        Raises:
+            ArcGIS error 000464: Cannot get exclusive schema lock.
         """
         # Drop tables from the enterprise geodatabase (geonisOnMaps3.sde)
         # Get feature class names (from the entity table)
@@ -465,7 +537,20 @@ class Setup(ArcpyTool):
         return layersInEntity
 
     def cleanUpRasters(self, cur, siteWorkflow, layersInEntity):
-        """Delete raster data folders and mosaic datasets, if any."""
+        """Delete raster data folders and mosaic datasets, if any.
+
+        Clean-up method that clears out the raster data folders and mosaic datasets
+        for this site, if any exist.  For consistency, this method uses the list
+        of layers that were stored in the Postgres entity table as an input; only
+        the layers that exist both in this list AND in mosaic dataset or a data
+        folder are processed.
+
+        Args:
+            cur: Postgres database cursor.
+            siteWorkflow: Three-letter LTER site code and active workflow.
+            layersInEntity: List of the layers which were recorded in the entity 
+                table in Postgres.
+        """
         # Delete entries from raster mosaic
         mosaicDataset = getConfigValue('pathtorastermosaicdatasets') + os.sep + siteWorkflow
         if arcpy.Exists(mosaicDataset):
@@ -511,6 +596,19 @@ class Setup(ArcpyTool):
                             )
 
     def cleanUpPackage(self, cur, package, srch, site, siteWorkflow):
+        """Clears data for a single package.
+
+        cleanUpPackage clears out information from Postgres, the geo-
+        database, map and/or image services, and the filesystem related
+        to a specified package.
+
+        Args:
+            cur: Postgres database cursor.
+            package: PASTA package ID (code.id.revision)
+            srch: Search string for Postgres (%site%)
+            site: Three-letter LTER site code.
+            siteWorkflow: Three-letter LTER site code and workflow.
+        """
         self.cleanReportTables(cur, package)
 
         # If we haven't checked this site yet, then shut down its map service
@@ -551,6 +649,7 @@ class Setup(ArcpyTool):
             self.cleanUpRasters(cur, siteWorkflow, layersInEntity)
 
     def cleanUpPackageSet(self, pkg):
+        """Clears data for a set of packages."""
         site = pkg.split('-')[2].split('.')[0]
         siteWorkflow = site + getConfigValue('datasetscopesuffix')
         
@@ -620,14 +719,21 @@ class Setup(ArcpyTool):
                 stmt3 = "update workflow_d.wfconfig set strvalue = 'https://pasta.lternet.edu' where name = 'pastaurl';"
         else:
             #stmt1 = 'alter role workflow in database geonis set search_path = "$user",workflow,sde,public;'
+            #stmt1 = 'alter role geonis in database geonis set search_path = "$user",workflow,sde,public;'
+            #stmt3 = None
             stmt1 = 'alter role geonis in database geonis set search_path = "$user",workflow,sde,public;'
-            stmt3 = None
+            if staging:
+                stmt3 = "update workflow.wfconfig set strvalue = 'https://pasta-s.lternet.edu' where name = 'pastaurl';"
+            else:
+                stmt3 = "update workflow.wfconfig set strvalue = 'https://pasta.lternet.edu' where name = 'pastaurl';"
+            #stmt4 = 'alter role worker in database geonis set search_path = "$user",workflow,sde,public;'
         stmt2 = "delete from limit_identifier;"
         with cursorContext(self.logger, connect='C:\pasta2geonis\geonisDSN.txt') as cur:
             cur.execute(stmt1)
             cur.execute(stmt2)
             if stmt3 is not None:
                 cur.execute(stmt3)
+            #cur.execute(stmt4)
         if hasattr(self, 'flush') and self.flush:
             self.flushData()
             return
@@ -1766,7 +1872,6 @@ class LoadVectorTypes(ArcpyTool):
             self.logger.logMessage(WARN, "Database connection lost:")
             self.logger.logMessage(INFO, "SDE connection: " + str(sdeConnect))
             self.logger.logMessage(INFO, "GeoNIS connection: " + str(geonisConnect))
-            pdb.set_trace()
         
         # This try-except block is to deal with an error that
         # arises when Arc loses its connection to the database.
@@ -1913,7 +2018,6 @@ class LoadVectorTypes(ArcpyTool):
                 entityName = emldata["entityName"]
                 objectName = emldata["objectName"]
                 siteId, n, m = siteFromId(pkgId)
-                #TODO: must add site and optionally '_d' to feature class name. Must be unique in geonis db
                 fullObjectName = objectName + '_' + siteId
                 if getConfigValue("schema").endswith("_d"):
                     fullObjectName = fullObjectName + "_d"
@@ -2764,7 +2868,9 @@ class RefreshMapService(ArcpyTool):
         # The folder for service definition draft and service definition files
         MyWorkspace = r"C:\pasta2geonis\Gis_data\servicedefs"
         Name = "%s%s" % (site, getConfigValue('datasetscopesuffix'))
-        InputData = r"C:\pasta2geonis\Gis_data\Raster_md_test.gdb\%s%s" % \
+        #InputData = r"C:\pasta2geonis\Gis_data\Raster_md_test.gdb\%s%s" % \
+        #    (site, getConfigValue('datasetscopesuffix'))
+        InputData = r"C:\pasta2geonis\Gis_data\Raster_md.gdb\%s%s" % \
             (site, getConfigValue('datasetscopesuffix'))
         Sddraft = os.path.join(MyWorkspace, Name + ".sddraft")
         Sd = os.path.join(MyWorkspace, Name + ".sd")
@@ -2892,7 +2998,8 @@ class RefreshMapService(ArcpyTool):
         with open(arcgiscred) as f:
             cred = eval(f.readline())
         token = getToken(cred['username'], cred['password'])
-        serviceURL = "/arcgis/admin/services/ImageTest/"
+        #serviceURL = "/arcgis/admin/services/ImageTest/"
+        serviceURL = "/arcgis/admin/services/ImageData/"
         self.logger.logMessage(DEBUG, "Fetching catalog from %s" % (serviceURL, ))
         params = urllib.urlencode({'token': token, 'f': 'json'})
         headers = {
@@ -2916,8 +3023,10 @@ class RefreshMapService(ArcpyTool):
         if imageServices:
             for service in imageServices:
                 try:
-                    InputData = r"C:\pasta2geonis\Gis_data\Raster_md_test.gdb\%s%s" % \
+                    InputData = r"C:\pasta2geonis\Gis_data\Raster_md.gdb\%s%s" % \
                         (service, getConfigValue('datasetscopesuffix'))
+                    #InputData = r"C:\pasta2geonis\Gis_data\Raster_md_test.gdb\%s%s" % \
+                    #    (service, getConfigValue('datasetscopesuffix'))
                     if arcpy.Exists(InputData):
                         self.logger.logMessage(INFO, "Analyze mosaic %s:" % InputData)
                         arcpy.AnalyzeMosaicDataset_management(InputData)
@@ -2961,7 +3070,8 @@ class RefreshMapService(ArcpyTool):
                         )
 
                         # Start image service
-                        serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/start" % service
+                        #serviceStopURL = "/arcgis/admin/services/ImageTest/%s_mosaic.ImageServer/start" % service
+                        serviceStopURL = "/arcgis/admin/services/ImageData/%s_mosaic.ImageServer/start" % service
                         self.logger.logMessage(INFO, "Starting image service %s:" % (serviceStopURL,))
                         params = urllib.urlencode({'token': token, 'f': 'json'})
                         headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}

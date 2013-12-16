@@ -51,6 +51,7 @@ if platform.node().lower() == "maps3":
     #scratchWorkspace is NOT saved in settings
     scratchWS = r"C:\Temp"
     #db schema
+    #workflowSchema = "workflow_d"
     workflowSchema = "workflow_d"
     #map service info
     mapServInfo = {'service_name':"", 'service_folder':"Test", 'tags':"GEONIS",'summary':"Testing vector data map service."}

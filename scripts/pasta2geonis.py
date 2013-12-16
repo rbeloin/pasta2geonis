@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 """
-Testing script for pasta2geonis that runs outside of ArcCatalog.
+Script to run the pasta2geonis workflow outside of ArcCatalog.
 
 (c) Jack Peterson (jack@tinybike.net), 6/29/2013
 """
-import os
 import sys
 from getopt import getopt, GetoptError
 from urllib2 import urlopen
 import lno_geonis_wf
 from geonis_postgresql import getConfigValue
-import pdb
 
 def parse_parameters(argv, parameters):
     usage = "Usage: pasta2geonis.py -p <pasta or pasta-s> -s <site> -i <id>"
@@ -19,7 +17,7 @@ def parse_parameters(argv, parameters):
         opts, args = getopt(
             argv,
             'hp:s:i:SMROf:',
-            ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only', 'flush=']
+            ['run-setup', 'run-model', 'refresh-map-service', 'run-setup-only', 'flush=', 'test']
         )
     except GetoptError:
         print usage
@@ -41,6 +39,7 @@ def parse_parameters(argv, parameters):
                     print "Error: pasta server", arg, "not recognized."
                     print usage
                     sys.exit(2)
+    parameters['testing_workflow'] = False
     for opt, arg in opts:
         if opt == '-h':
             print usage
@@ -50,6 +49,11 @@ def parse_parameters(argv, parameters):
             parameters['site'] = arg
             parameters['id'] = '*'
             return parameters
+        if opt == 'test':
+            print "Workflow: TESTING"
+            parameters['testing_workflow'] = True
+    if not parameters['testing_workflow']:
+        print "Workflow: PRODUCTION"
     if '-s' not in optlist or '-i' not in optlist:
         print "Error: you must specify a site code (or * for all) and ID (or * for all)."
         print usage
@@ -145,11 +149,6 @@ def unpack_packages(parameters):
 
 def check_spatial_data(parameters):
     print "************"
-    #pkg_subdirs = os.listdir(parameters['valid_pkg_test'])
-    #if len(pkg_subdirs) > 1:
-    #    parameters['input_dirs'] = [parameters['valid_pkg_test'] + os.sep + d for d in os.listdir(parameters['valid_pkg_test'])[1:]]
-    #else:
-    #    parameters['input_dirs'] = [parameters['valid_pkg_test'] + os.sep + d for d in os.listdir(parameters['valid_pkg_test'])]
     tool = lno_geonis_wf.CheckSpatialData()
     tool._isRunningAsTool = False
     params = tool.getParameterInfo()
@@ -200,10 +199,9 @@ def main(argv):
     parameters = {
         'verbose': True,
         'logfile': "C:\\TEMP\\geonis_wf.log",
-        'testing_workflow': True,
         'cleanup': True,
-        'package_directory': "C:\\TEMP\\pasta_pkg_test",
-        'valid_pkg_test': "C:\\TEMP\\valid_pkg_test",
+        'package_directory': "C:\\TEMP\\pasta_pkg",
+        'valid_pkg_test': "C:\\TEMP\\valid_pkg",
     }
 
     # Parse command line parameters and add them to our dict
