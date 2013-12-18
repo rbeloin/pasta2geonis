@@ -692,6 +692,7 @@ hr {
     background-color: #fff;
     color: #0B2161;
     text-align: left;
+    white-space: nowrap;
 }
 #site-report ul li {
     margin-left: 7px;
